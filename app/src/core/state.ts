@@ -51,6 +51,3 @@ export const parseState = (raw: unknown): AppState => {
 
 /** Слияние «кто новее» по upd (как в прототипе). */
 export const pickNewer = (a: AppState, b: AppState): AppState => ((b.upd || 0) > (a.upd || 0) ? b : a);
-
-export const exportState = (s: AppState, now = new Date()) =>
-  JSON.stringify({ ...s, exportedAt: now.toISOString(), app: "hr2" }, null, 2);

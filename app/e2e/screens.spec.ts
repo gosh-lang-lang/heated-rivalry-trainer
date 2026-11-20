@@ -66,54 +66,6 @@ test.describe("статистика", () => {
   });
 });
 
-test.describe("перенос данных", () => {
-  test("экспорт отдаёт текущий прогресс JSON-ом", async ({ page }) => {
-    await setup(page, { state: afterMorning(6) });
-    await openHome(page);
-    await openSettings(page);
-    await page.getByRole("button", { name: "Экспорт" }).click();
-    const json = JSON.parse(await page.locator(".xio textarea").inputValue());
-    expect(Object.keys(json.srs)).toHaveLength(6);
-    expect(json.days[TODAY].morning.newN).toBe(6);
-    expect(json.app).toBe("hr2");
-  });
-
-  test("импорт экспорта из прототипа восстанавливает уровни, серию и настройки", async ({ page }) => {
-    await setup(page);
-    await openHome(page);
-    const proto = {
-      upd: 1763650000000,
-      settings: { newPerDay: 18 },
-      srs: { sacred: { lvl: 5, due: "2026-12-20", intro: "2026-11-01", right: 9, wrong: 1 } },
-      days: { "2026-11-18": { morning: { score: 30, total: 35, mins: 14, newN: 12, at: "x" } }, "2026-11-19": { evening: { score: 10, total: 12, mins: 13, newN: 0, at: "x" } } },
-      sent: [],
-      exportedAt: "x",
-      app: "hr2",
-    };
-    await openSettings(page);
-    await page.getByRole("button", { name: "Импорт" }).click();
-    await page.locator(".xio textarea").fill(JSON.stringify(proto));
-    await page.getByRole("button", { name: "Заменить мой прогресс" }).click();
-    await expect(page.getByText("Прогресс загружен")).toBeVisible();
-    await expect(page.getByRole("button", { name: "18", exact: true })).toHaveAttribute("aria-pressed", "true");
-    await goTab(page, "Главная");
-    await expect(page.locator(".chip")).toContainText("2 дня");
-    await expect(page.locator(".legend")).toContainText("Выучено1");
-  });
-
-  test("импорт мусора — понятная ошибка, прогресс не тронут", async ({ page }) => {
-    await setup(page, { state: afterMorning(3) });
-    await openHome(page);
-    await openSettings(page);
-    await page.getByRole("button", { name: "Импорт" }).click();
-    await page.locator(".xio textarea").fill('{"foo": 1}');
-    await page.getByRole("button", { name: "Заменить мой прогресс" }).click();
-    await expect(page.getByText(/Не получилось: .*srs/)).toBeVisible();
-    await goTab(page, "Главная");
-    await expect(page.locator(".legend")).toContainText("Учу3");
-  });
-});
-
 test.describe("вёрстка", () => {
   for (const name of ["главная", "занятие", "словарь", "статистика", "настройки"]) {
     test(`без горизонтальной прокрутки: ${name}`, async ({ page }) => {

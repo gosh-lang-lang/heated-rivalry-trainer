@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { exportState, parseState, pickNewer } from "./state";
+import { parseState, pickNewer } from "./state";
 import { state } from "./fixtures";
 
 const prototypeExport = {
@@ -21,10 +21,6 @@ describe("импорт состояния", () => {
     expect(s.settings.newPerDay).toBe(18);
     expect(s.sent).toHaveLength(1);
     expect(s).not.toHaveProperty("exportedAt");
-  });
-  it("круговой экспорт → импорт", () => {
-    const s = parseState(prototypeExport);
-    expect(parseState(exportState(s))).toEqual(s);
   });
   it("мусор отбрасывается", () => {
     const s = parseState({ srs: { a: { lvl: 99, due: "завтра" }, b: "x" }, days: { bad: {} }, sent: [1, { text: "ok" }] });

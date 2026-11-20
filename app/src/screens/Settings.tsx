@@ -1,14 +1,13 @@
 import { Fragment, useState } from "react";
 import type { SetState } from "../App";
-import { todayKey } from "../core/dates";
-import { exportState, NEW_PER_DAY_OPTIONS, parseState } from "../core/state";
+import { NEW_PER_DAY_OPTIONS } from "../core/state";
 import type { AppState } from "../core/types";
 import { ACCENT_LABEL, VOICE_SAMPLE, voiceMeta, type TtsVoice } from "../core/tts";
 import { Back, Check, Chevron, Play } from "../lib/icons";
 import { logout, useMe } from "../lib/auth";
 import { say, setVoice, useVoices } from "../lib/speech";
 
-/** Настройки: новые слова за утро, голос озвучки, перенос данных. На телефоне — вкладка «Настройки», на десктопе — пункт верхнего меню. */
+/** Настройки: новые слова за утро, голос озвучки, вход. На телефоне — вкладка «Настройки», на десктопе — пункт верхнего меню. */
 export function Settings({ state, setState, onBack }: { state: AppState; setState: SetState; onBack: () => void }) {
   return (
     <>
@@ -24,8 +23,6 @@ export function Settings({ state, setState, onBack }: { state: AppState; setStat
           <VoicePicker />
         </div>
         <div className="set-col">
-          <div className="sgroup">Данные</div>
-          <DataTransfer state={state} setState={setState} />
           <div className="sgroup">Вход</div>
           <Account />
         </div>
@@ -128,71 +125,6 @@ export function VoicePicker() {
             ? "▶ — послушать, не меняя голос. Нажми на голос, чтобы выбрать."
             : "Нейросетевой голос Kokoro, озвучка на сервере."}
       </p>
-    </section>
-  );
-}
-
-export function DataTransfer({ state, setState }: { state: AppState; setState: SetState }) {
-  const [mode, setMode] = useState<"" | "export" | "import" | "done">("");
-  const [text, setText] = useState("");
-  const [msg, setMsg] = useState("");
-  const json = mode === "export" ? exportState(state) : "";
-
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(json);
-      setMsg("Скопировано.");
-    } catch {
-      setMsg("Не получилось скопировать — выдели текст в поле и скопируй вручную.");
-    }
-  };
-  const download = () => {
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(new Blob([json], { type: "application/json" }));
-    a.download = `heated-rivalry-${todayKey()}.json`;
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-  };
-  const doImport = (raw: string) => {
-    try {
-      setState(parseState(raw));
-      setMode("done");
-      setMsg("");
-    } catch (err) {
-      setMsg("Не получилось: " + (err instanceof Error ? err.message : "неверный JSON"));
-    }
-  };
-
-  return (
-    <section className="card xio">
-      <h3>Перенос данных</h3>
-      <p className="mute sm" style={{ margin: "4px 0 12px" }}>Прогресс хранится на сервере и сам появляется на всех твоих устройствах. Здесь — резервная копия одним JSON и загрузка экспорта из прототипа.</p>
-      <div className="row2">
-        <button className="btn ghost" aria-pressed={mode === "export"} onClick={() => { setMode("export"); setMsg(""); }}>Экспорт</button>
-        <button className="btn ghost" aria-pressed={mode === "import"} onClick={() => { setMode("import"); setMsg(""); setText(""); }}>Импорт</button>
-      </div>
-      {mode === "export" && (
-        <>
-          <textarea className="inp" readOnly value={json} onFocus={(e) => e.currentTarget.select()} />
-          <div className="row2" style={{ marginTop: 10 }}>
-            <button className="btn" onClick={copy}>Скопировать</button>
-            <button className="btn ghost" onClick={download}>Скачать файл</button>
-          </div>
-        </>
-      )}
-      {mode === "import" && (
-        <>
-          <textarea className="inp" placeholder="Вставь сюда JSON из экспорта" value={text} onChange={(e) => setText(e.target.value)} />
-          <label className="btn ghost wide" style={{ marginTop: 10, display: "grid", placeItems: "center" }}>
-            Выбрать файл…
-            <input type="file" accept="application/json,.json" hidden onChange={async (e) => { const f = e.target.files?.[0]; if (f) setText(await f.text()); }} />
-          </label>
-          <button className="btn bad wide" style={{ marginTop: 10 }} disabled={!text.trim()} onClick={() => doImport(text)}>Заменить мой прогресс</button>
-          <p className="mute sm" style={{ margin: "8px 0 0" }}>Текущий прогресс будет заменён на всех устройствах.</p>
-        </>
-      )}
-      {mode === "done" && <p className="done-tag" style={{ margin: "10px 0 0" }}><Check /> Прогресс загружен</p>}
-      {msg && <p className="mute sm" style={{ margin: "8px 0 0" }}>{msg}</p>}
     </section>
   );
 }
