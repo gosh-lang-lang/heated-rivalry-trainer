@@ -110,7 +110,7 @@ test.describe("навигация", () => {
     await expect(page.getByRole("navigation", { name: "Разделы" }).getByRole("button")).toHaveText(["Сегодня", "Путь", "Слова", "Я"]);
     await expect(page.getByRole("radiogroup", { name: "Голос озвучки" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Экспорт" })).toHaveCount(0);
-    for (const [tab, h1] of [["Путь", "Путь"], ["Слова", "Словарь"], ["Я", "Евгений"]] as const) {
+    for (const [tab, h1] of [["Путь", "Путь"], ["Слова", "Слова"], ["Я", "Евгений"]] as const) {
       await goTab(page, tab);
       await expect(page.getByRole("heading", { level: 1, name: h1 })).toBeVisible();
       await expect(tabButton(page, tab)).toHaveAttribute("aria-current", "page");

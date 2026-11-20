@@ -1,5 +1,6 @@
 import { addDays } from "./dates";
 import { lessonNo } from "./lesson";
+import { HARD_WRONG } from "./srs";
 import type { AppState, Deck, Word } from "./types";
 
 /**
@@ -30,10 +31,20 @@ export const wordLessons = (state: AppState, deck: Deck): LessonGroup[] => {
   return groups;
 };
 
-/** Ключ группы для фильтра: номер урока или "ahead". */
-export type LessonKey = number | "ahead";
+/** Страница словаря: урок (номер), «Впереди» или «Трудные». */
+export type LessonKey = number | "ahead" | "hard";
 export const groupKey = (g: LessonGroup): LessonKey => g.no ?? "ahead";
 export const groupTitle = (g: LessonGroup): string => (g.no === null ? "Впереди" : `Урок ${g.no}`);
+
+/** Уровень, с которого слово «знакомо» (группы «знакомо» и «выучено»). */
+export const KNOWN_LVL = 3;
+export const knownCount = (words: readonly Word[], srs: AppState["srs"]): number => words.filter((w) => (srs[w.id]?.lvl ?? 0) >= KNOWN_LVL).length;
+
+/** «Трудные» — 4+ ошибок (isHard), больше ошибок — выше; поровну — порядок колоды. */
+export const hardWords = (state: AppState, deck: Deck): Word[] =>
+  deck.words
+    .filter((w) => (state.srs[w.id]?.wrong ?? 0) >= HARD_WRONG)
+    .sort((a, b) => (state.srs[b.id]?.wrong ?? 0) - (state.srs[a.id]?.wrong ?? 0));
 
 const MONTHS = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
 const WD = ["вс", "пн", "вт", "ср", "чт", "пт", "сб"];

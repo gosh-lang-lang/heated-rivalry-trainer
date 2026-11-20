@@ -120,7 +120,7 @@ test.describe("телефон: раздел — своя страница", () =
     await openSettings(page);
     await settingsRow(page, "Озвучка").click();
     await goTab(page, "Слова");
-    await expect(page.getByRole("heading", { level: 1, name: "Словарь" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Слова" })).toBeVisible();
     await expect.poll(() => depth(page)).toBe(0);
     await openSettings(page); // снова — со списка, а не с последнего раздела
     await expect(page.locator(".srow")).toHaveCount(4);

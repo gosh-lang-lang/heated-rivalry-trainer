@@ -90,9 +90,10 @@ test.describe("голос", () => {
 
 test.describe("кнопка «озвучить» в словаре", () => {
   const W = DECK.words[0];
-  /** Кнопка звука слова W в «Словах»: на десктопе — в строке, на телефоне — на странице слова. */
+  /** Кнопка звука слова W в «Словах» — в раскрытой строке (новый пользователь: W во «Впереди»; на телефоне — её страница). */
   const wordSpeaker = async (page: Page) => {
-    if ((page.viewportSize()?.width ?? 0) < 900) await page.locator(".wlist .wrow").filter({ hasText: W.ru }).first().click();
+    if ((page.viewportSize()?.width ?? 0) < 900) await page.locator(".lrow").filter({ hasText: "Впереди" }).click();
+    await page.locator(".wrow summary").filter({ hasText: W.ru }).first().click();
     return page.locator(`.spk[data-say="${W.en}"]`).first();
   };
 

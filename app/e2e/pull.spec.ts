@@ -135,6 +135,7 @@ test.describe("потяни, чтобы обновить", () => {
     await setup(page);
     await openHome(page);
     await page.getByRole("navigation", { name: "Разделы" }).getByRole("button", { name: "Слова", exact: true }).click();
+    await page.locator(".lrow").filter({ hasText: "Впереди" }).click(); // длинная страница — 62 слова
     await expect(page.locator(".wrow").first()).toBeVisible();
 
     // палец вверх (прокрутка вниз) — не наш жест, событие не отменяем

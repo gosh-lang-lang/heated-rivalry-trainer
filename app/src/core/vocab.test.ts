@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { addDays } from "./dates";
 import { deck, state, TODAY } from "./fixtures";
 import type { DayLog, WordState } from "./types";
-import { dayMonth, dueText, groupKey, groupTitle, weekdayDay, wordLessons } from "./vocab";
+import { dayMonth, dueText, groupKey, groupTitle, hardWords, knownCount, weekdayDay, wordLessons } from "./vocab";
 
 const D = (i: number) => addDays(TODAY, i);
 const part1: DayLog = { morning: { score: 30, total: 40, mins: 15, newN: 6, at: "x" } };
@@ -34,6 +34,22 @@ describe("словарь по урокам", () => {
     const g = wordLessons(state({ srs: { [w.id]: { lvl: 0, due: "", intro: "", right: 0, wrong: 0 } } }), deck);
     expect(g).toHaveLength(1);
     expect(g[0].words[0].id).toBe(w.id);
+  });
+});
+
+describe("знакомые и трудные", () => {
+  it("знакомо — уровень 3 и выше", () => {
+    const [a, b, c] = deck.words;
+    const srs = { [a.id]: { lvl: 2, due: "", intro: D(0), right: 0, wrong: 0 }, [b.id]: { lvl: 3, due: "", intro: D(0), right: 0, wrong: 0 }, [c.id]: { lvl: 6, due: "", intro: D(0), right: 0, wrong: 0 } };
+    expect(knownCount([a, b, c], srs)).toBe(2);
+    expect(knownCount(deck.words, {})).toBe(0);
+  });
+
+  it("трудные — 4+ ошибок, больше ошибок — выше", () => {
+    const [a, b, c] = deck.words;
+    const st = (wrong: number): WordState => ({ lvl: 1, due: "", intro: D(0), right: 0, wrong });
+    const s = state({ srs: { [a.id]: st(4), [b.id]: st(3), [c.id]: st(7) } });
+    expect(hardWords(s, deck).map((w) => w.id)).toEqual([c.id, a.id]);
   });
 });
 
