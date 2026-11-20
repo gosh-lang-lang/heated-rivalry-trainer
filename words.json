@@ -1,0 +1,1033 @@
+{
+  "version": 1,
+  "batches": [
+    {
+      "id": 1,
+      "title": "Отзывы критиков",
+      "pages": "отзывы критиков (стр. 1)"
+    },
+    {
+      "id": 2,
+      "title": "Пролог",
+      "pages": "пролог, стр. 9–10"
+    },
+    {
+      "id": 3,
+      "title": "Фразы из пролога",
+      "pages": "пролог, стр. 9–10"
+    }
+  ],
+  "words": [
+    {
+      "id": "praise",
+      "batch": 1,
+      "picture": "👏",
+      "en": "praise",
+      "ipa": "/preɪz/",
+      "ru": "похвала; хвалебный отзыв",
+      "note": "«Praise for…» в начале книги = «Отзывы о…».",
+      "example": "The new book got a lot of praise.",
+      "exampleRu": "Новая книга получила много похвалы.",
+      "blank": "praise",
+      "correctionOfMyTranslation": false
+    },
+    {
+      "id": "novel",
+      "batch": 1,
+      "picture": "📚",
+      "en": "novel",
+      "ipa": "/ˈnɒvl/",
+      "ru": "роман (книга)",
+      "note": "novels — романы. Прилагательное novel значит «новый, необычный».",
+      "example": "She writes novels about hockey players.",
+      "exampleRu": "Она пишет романы о хоккеистах.",
+      "blank": "novels",
+      "correctionOfMyTranslation": false
+    },
+    {
+      "id": "sacred",
+      "batch": 1,
+      "picture": "🙏",
+      "en": "sacred",
+      "ipa": "/ˈseɪkrɪd/",
+      "ru": "священный",
+      "note": "В блокноте записано scared — это другое слово (испуганный).",
+      "example": "For him, Sunday morning is sacred.",
+      "exampleRu": "Для него утро воскресенья — святое.",
+      "blank": "sacred",
+      "correctionOfMyTranslation": true
+    },
+    {
+      "id": "autumn-lawn",
+      "batch": 1,
+      "picture": "🍂",
+      "en": "autumn lawn",
+      "ipa": "/ˈɔːtəm lɔːn/",
+      "ru": "осенняя лужайка",
+      "note": "lawn — газон, лужайка, а не листва (листва — leaves).",
+      "example": "The kids are playing on the lawn.",
+      "exampleRu": "Дети играют на лужайке.",
+      "blank": "lawn",
+      "correctionOfMyTranslation": true
+    },
+    {
+      "id": "rambunctious",
+      "batch": 1,
+      "picture": "🐶",
+      "en": "rambunctious",
+      "ipa": "/ræmˈbʌŋkʃəs/",
+      "ru": "буйный, неугомонный",
+      "note": "Точнее не «шумный», а «неугомонный, озорной» — про энергию.",
+      "example": "Our rambunctious puppies ran all over the house.",
+      "exampleRu": "Наши неугомонные щенки носились по всему дому.",
+      "blank": "rambunctious",
+      "correctionOfMyTranslation": false
+    },
+    {
+      "id": "passionate",
+      "batch": 1,
+      "picture": "❤️‍🔥",
+      "en": "passionate",
+      "ipa": "/ˈpæʃənət/",
+      "ru": "страстный; увлечённый",
+      "note": "passionate about sth — страстно увлечён чем-то.",
+      "example": "He is passionate about hockey.",
+      "exampleRu": "Он страстно увлечён хоккеем.",
+      "blank": "passionate",
+      "correctionOfMyTranslation": false
+    },
+    {
+      "id": "devour",
+      "batch": 1,
+      "picture": "😋",
+      "en": "devour",
+      "ipa": "/dɪˈvaʊə/",
+      "ru": "жадно поглощать; читать запоем",
+      "note": "devoured — прошедшее время. «I've devoured this entire series» — «я проглотила всю серию».",
+      "example": "I devoured the book in two days.",
+      "exampleRu": "Я проглотил книгу за два дня.",
+      "blank": "devoured",
+      "correctionOfMyTranslation": false
+    },
+    {
+      "id": "entire",
+      "batch": 1,
+      "picture": "💯",
+      "en": "entire",
+      "ipa": "/ɪnˈtaɪə/",
+      "ru": "весь, целый",
+      "note": "",
+      "example": "He slept the entire day.",
+      "exampleRu": "Он проспал весь день.",
+      "blank": "entire",
+      "correctionOfMyTranslation": false
+    },
+    {
+      "id": "banter",
+      "batch": 1,
+      "picture": "😜",
+      "en": "banter",
+      "ipa": "/ˈbæntə/",
+      "ru": "подколки, шутливая перепалка",
+      "note": "Не просто «шутливый тон», а обмен шутками и подколками.",
+      "example": "The players enjoy friendly banter before the game.",
+      "exampleRu": "Игроки любят дружеские подколки перед игрой.",
+      "blank": "banter",
+      "correctionOfMyTranslation": true
+    },
+    {
+      "id": "exploration",
+      "batch": 1,
+      "picture": "🧭",
+      "en": "exploration",
+      "ipa": "/ˌekspləˈreɪʃn/",
+      "ru": "исследование, изучение",
+      "note": "В романе — узнавание друг друга.",
+      "example": "The book is an exploration of first love.",
+      "exampleRu": "Книга исследует тему первой любви.",
+      "blank": "exploration",
+      "correctionOfMyTranslation": false
+    },
+    {
+      "id": "red-hot",
+      "batch": 1,
+      "picture": "🔥",
+      "en": "red-hot",
+      "ipa": "/ˌred ˈhɒt/",
+      "ru": "раскалённый; на пике, в ударе",
+      "note": "red-hot winning streak — горячая победная серия.",
+      "example": "The team is red-hot this month.",
+      "exampleRu": "Команда в этом месяце в ударе.",
+      "blank": "red-hot",
+      "correctionOfMyTranslation": false
+    },
+    {
+      "id": "streak",
+      "batch": 1,
+      "picture": "📈",
+      "en": "streak",
+      "ipa": "/striːk/",
+      "ru": "серия (побед, неудач)",
+      "note": "winning streak — победная серия.",
+      "example": "They are on a five-game winning streak.",
+      "exampleRu": "У них победная серия из пяти игр.",
+      "blank": "streak",
+      "correctionOfMyTranslation": false
+    },
+    {
+      "id": "irresistible",
+      "batch": 1,
+      "picture": "🧲",
+      "en": "irresistible",
+      "ipa": "/ˌɪrɪˈzɪstəbl/",
+      "ru": "неотразимый, непреодолимый",
+      "note": "",
+      "example": "The smell of fresh coffee is irresistible.",
+      "exampleRu": "Запах свежего кофе неотразим.",
+      "blank": "irresistible",
+      "correctionOfMyTranslation": false
+    },
+    {
+      "id": "mix",
+      "batch": 1,
+      "picture": "🥣",
+      "en": "mix",
+      "ipa": "/mɪks/",
+      "ru": "смесь, сочетание",
+      "note": "",
+      "example": "The team is a mix of young and old players.",
+      "exampleRu": "Команда — смесь молодых и опытных игроков.",
+      "blank": "mix",
+      "correctionOfMyTranslation": false
+    },
+    {
+      "id": "score",
+      "batch": 1,
+      "picture": "🥅",
+      "en": "score",
+      "ipa": "/skɔː/",
+      "ru": "забить (гол); добиться успеха",
+      "note": "scored another hat trick (о книге) — снова добилась тройного успеха.",
+      "example": "He scored two goals last night.",
+      "exampleRu": "Вчера вечером он забил два гола.",
+      "blank": "scored",
+      "correctionOfMyTranslation": false
+    },
+    {
+      "id": "another",
+      "batch": 1,
+      "picture": "➕",
+      "en": "another",
+      "ipa": "/əˈnʌðə/",
+      "ru": "ещё один; другой",
+      "note": "",
+      "example": "Can I have another coffee?",
+      "exampleRu": "Можно мне ещё один кофе?",
+      "blank": "another",
+      "correctionOfMyTranslation": false
+    },
+    {
+      "id": "wink",
+      "batch": 1,
+      "picture": "😉",
+      "en": "wink",
+      "ipa": "/wɪŋk/",
+      "ru": "подмигивать; подмигивание",
+      "note": "«(wink!)» — автор подмигивает: каламбур game changer / Game Changers.",
+      "example": "He winked at me and smiled.",
+      "exampleRu": "Он подмигнул мне и улыбнулся.",
+      "blank": "winked",
+      "correctionOfMyTranslation": false
+    },
+    {
+      "id": "firmly-ensconced",
+      "batch": 1,
+      "picture": "🛋️",
+      "en": "firmly ensconced",
+      "ipa": "/ˈfɜːmli ɪnˈskɒnst/",
+      "ru": "прочно обосновавшийся",
+      "note": "ensconced — удобно и надёжно устроился.",
+      "example": "The cat was firmly ensconced on the sofa.",
+      "exampleRu": "Кот прочно обосновался на диване.",
+      "blank": "firmly ensconced",
+      "correctionOfMyTranslation": false
+    },
+    {
+      "id": "take-on-sensitive-topics",
+      "batch": 1,
+      "picture": "🫣",
+      "en": "take on sensitive topics",
+      "ipa": "/teɪk ɒn ˈsensətɪv ˈtɒpɪks/",
+      "ru": "браться за деликатные темы",
+      "note": "take on — браться за что-то сложное.",
+      "example": "This film takes on sensitive topics.",
+      "exampleRu": "Этот фильм берётся за деликатные темы.",
+      "blank": "takes on",
+      "correctionOfMyTranslation": false
+    },
+    {
+      "id": "heartfelt",
+      "batch": 1,
+      "picture": "💌",
+      "en": "heartfelt",
+      "ipa": "/ˈhɑːtfelt/",
+      "ru": "искренний, прочувствованный",
+      "note": "«still deliver a heartfelt… romance» — «и всё же выдать искренний роман». still — «всё же», deliver — «выдать, создать».",
+      "example": "She wrote him a heartfelt letter.",
+      "exampleRu": "Она написала ему искреннее письмо.",
+      "blank": "heartfelt",
+      "correctionOfMyTranslation": true
+    },
+    {
+      "id": "grumpy",
+      "batch": 1,
+      "picture": "😾",
+      "en": "grumpy",
+      "ipa": "/ˈɡrʌmpi/",
+      "ru": "ворчливый, сердитый",
+      "note": "Это прилагательное. grumpy/sunshine — сюжет «ворчун и солнышко».",
+      "example": "He is always grumpy in the morning.",
+      "exampleRu": "Он всегда ворчливый по утрам.",
+      "blank": "grumpy",
+      "correctionOfMyTranslation": false
+    },
+    {
+      "id": "enemies-to-lovers",
+      "batch": 1,
+      "picture": "⚔️",
+      "en": "enemies-to-lovers",
+      "ipa": "/ˈenəmiz tə ˈlʌvəz/",
+      "ru": "от врагов к возлюбленным",
+      "note": "Название популярного сюжета в романах.",
+      "example": "I love enemies-to-lovers stories.",
+      "exampleRu": "Я люблю истории «от врагов к возлюбленным».",
+      "blank": "enemies-to-lovers",
+      "correctionOfMyTranslation": false
+    },
+    {
+      "id": "loads-of",
+      "batch": 1,
+      "picture": "📦",
+      "en": "loads of",
+      "ipa": "/ləʊdz əv/",
+      "ru": "куча, масса (разг.)",
+      "note": "",
+      "example": "We have loads of time.",
+      "exampleRu": "У нас куча времени.",
+      "blank": "loads",
+      "correctionOfMyTranslation": false
+    },
+    {
+      "id": "literally",
+      "batch": 1,
+      "picture": "🔍",
+      "en": "literally",
+      "ipa": "/ˈlɪtərəli/",
+      "ru": "буквально, в прямом смысле",
+      "note": "",
+      "example": "I literally ran to the station.",
+      "exampleRu": "Я буквально бежал до станции.",
+      "blank": "literally",
+      "correctionOfMyTranslation": false
+    },
+    {
+      "id": "sizzling",
+      "batch": 1,
+      "picture": "🍳",
+      "en": "sizzling",
+      "ipa": "/ˈsɪzlɪŋ/",
+      "ru": "шипящий; обжигающе горячий",
+      "note": "Не «яростный»: шипит, как мясо на сковороде, — очень горячий.",
+      "example": "The steak was still sizzling on the plate.",
+      "exampleRu": "Стейк ещё шипел на тарелке.",
+      "blank": "sizzling",
+      "correctionOfMyTranslation": true
+    },
+    {
+      "id": "all-tied-up",
+      "batch": 1,
+      "picture": "🎀",
+      "en": "all tied up",
+      "ipa": "/ɔːl taɪd ʌp/",
+      "ru": "всё увязано, упаковано в одно",
+      "note": "tie up — завязать, связать.",
+      "example": "All the stories are tied up in the last chapter.",
+      "exampleRu": "Все линии связываются в последней главе.",
+      "blank": "tied up",
+      "correctionOfMyTranslation": false
+    },
+    {
+      "id": "helluva",
+      "batch": 1,
+      "picture": "😈",
+      "en": "helluva",
+      "ipa": "/ˈheləvə/",
+      "ru": "чертовски (= a hell of a)",
+      "note": "",
+      "example": "That was a helluva game!",
+      "exampleRu": "Это была чертовски крутая игра!",
+      "blank": "helluva",
+      "correctionOfMyTranslation": false
+    },
+    {
+      "id": "slow-burn",
+      "batch": 1,
+      "picture": "🕯️",
+      "en": "slow-burn",
+      "ipa": "/ˌsləʊ ˈbɜːn/",
+      "ru": "медленно разгорающийся",
+      "note": "Не просто «медленно»: чувства разгораются постепенно.",
+      "example": "It's a slow-burn story, so be patient.",
+      "exampleRu": "Это медленно разгорающаяся история, наберись терпения.",
+      "blank": "slow-burn",
+      "correctionOfMyTranslation": true
+    },
+    {
+      "id": "endure",
+      "batch": 2,
+      "picture": "🏋️",
+      "en": "endure",
+      "ipa": "/ɪnˈdjʊə/",
+      "ru": "вытерпеть, выдержать",
+      "note": "endured — прошедшее время.",
+      "example": "She endured three hours of meetings.",
+      "exampleRu": "Она вытерпела три часа встреч.",
+      "blank": "endured",
+      "correctionOfMyTranslation": false
+    },
+    {
+      "id": "frustrating",
+      "batch": 2,
+      "picture": "😤",
+      "en": "frustrating",
+      "ipa": "/frʌˈstreɪtɪŋ/",
+      "ru": "досадный, выводящий из себя",
+      "note": "Точнее не «разочаровывающий», а «бесящий»: стараешься, а не получается.",
+      "example": "Losing your keys is so frustrating.",
+      "exampleRu": "Терять ключи так бесит.",
+      "blank": "frustrating",
+      "correctionOfMyTranslation": true
+    },
+    {
+      "id": "glorious",
+      "batch": 2,
+      "picture": "🏆",
+      "en": "glorious",
+      "ipa": "/ˈɡlɔːriəs/",
+      "ru": "великолепный, славный",
+      "note": "",
+      "example": "It was a glorious sunny day.",
+      "exampleRu": "Это был великолепный солнечный день.",
+      "blank": "glorious",
+      "correctionOfMyTranslation": false
+    },
+    {
+      "id": "voyageurs",
+      "batch": 2,
+      "picture": "🛶",
+      "en": "Voyageurs",
+      "ipa": "/ˌvwɑːjəˈʒɜːz/",
+      "ru": "«путешественники» (франц.), команда",
+      "note": "В Канаде так называли гребцов, торговавших мехом.",
+      "example": "The Voyageurs play at home tonight.",
+      "exampleRu": "«Вояжёры» сегодня играют дома.",
+      "blank": "Voyageurs",
+      "correctionOfMyTranslation": false
+    },
+    {
+      "id": "against",
+      "batch": 2,
+      "picture": "🆚",
+      "en": "against",
+      "ipa": "/əˈɡenst/",
+      "ru": "против",
+      "note": "",
+      "example": "Montreal plays against Boston tonight.",
+      "exampleRu": "Монреаль сегодня играет против Бостона.",
+      "blank": "against",
+      "correctionOfMyTranslation": false
+    },
+    {
+      "id": "their",
+      "batch": 2,
+      "picture": "👥",
+      "en": "their",
+      "ipa": "/ðeə/",
+      "ru": "их",
+      "note": "",
+      "example": "The fans love their team.",
+      "exampleRu": "Фанаты любят свою команду.",
+      "blank": "their",
+      "correctionOfMyTranslation": false
+    },
+    {
+      "id": "archrival",
+      "batch": 2,
+      "picture": "🥊",
+      "en": "archrival",
+      "ipa": "/ˌɑːtʃˈraɪvl/",
+      "ru": "заклятый соперник",
+      "note": "archrivals — мн. ч.",
+      "example": "Boston is our archrival.",
+      "exampleRu": "Бостон — наш заклятый соперник.",
+      "blank": "archrival",
+      "correctionOfMyTranslation": false
+    },
+    {
+      "id": "instead",
+      "batch": 2,
+      "picture": "🔄",
+      "en": "instead",
+      "ipa": "/ɪnˈsted/",
+      "ru": "вместо этого; вместо",
+      "note": "В начале предложения Instead — «Вместо этого». instead of — вместо чего-то.",
+      "example": "I didn't go out. Instead, I read a book.",
+      "exampleRu": "Я не пошёл гулять. Вместо этого читал книгу.",
+      "blank": "Instead",
+      "correctionOfMyTranslation": false
+    },
+    {
+      "id": "grueling-humiliation",
+      "batch": 2,
+      "picture": "😩",
+      "en": "grueling humiliation",
+      "ipa": "/ˈɡruːəlɪŋ hjuːˌmɪliˈeɪʃn/",
+      "ru": "изнурительное, мучительное унижение",
+      "note": "grueling — изнурительный, выматывающий.",
+      "example": "The game was a grueling humiliation for the home team.",
+      "exampleRu": "Игра стала мучительным унижением для хозяев.",
+      "blank": "grueling humiliation",
+      "correctionOfMyTranslation": false
+    },
+    {
+      "id": "the-score-stood-at",
+      "batch": 2,
+      "picture": "🧮",
+      "en": "the score stood at",
+      "ipa": "/skɔː stʊd/",
+      "ru": "счёт был (составлял)",
+      "note": "stood at 4–1 — счёт был 4:1.",
+      "example": "The score stood at 2–2 after the first period.",
+      "exampleRu": "После первого периода счёт был 2:2.",
+      "blank": "stood",
+      "correctionOfMyTranslation": false
+    },
+    {
+      "id": "century-old",
+      "batch": 2,
+      "picture": "🏛️",
+      "en": "century-old",
+      "ipa": "/ˈsentʃəri əʊld/",
+      "ru": "вековой, столетний",
+      "note": "near century-old — почти вековое.",
+      "example": "They live in a century-old house.",
+      "exampleRu": "Они живут в столетнем доме.",
+      "blank": "century-old",
+      "correctionOfMyTranslation": false
+    },
+    {
+      "id": "become-personified",
+      "batch": 2,
+      "picture": "🎭",
+      "en": "become personified",
+      "ipa": "/pəˈsɒnɪfaɪd/",
+      "ru": "олицетворяться, воплотиться в ком-то",
+      "note": "Соперничество «стало олицетворяться» Холландером и Розановым.",
+      "example": "For the fans, the rivalry became personified by two players.",
+      "exampleRu": "Для фанатов соперничество олицетворяли два игрока.",
+      "blank": "personified",
+      "correctionOfMyTranslation": false
+    },
+    {
+      "id": "intense",
+      "batch": 2,
+      "picture": "⚡",
+      "en": "intense",
+      "ipa": "/ɪnˈtens/",
+      "ru": "сильный, острый, напряжённый",
+      "note": "",
+      "example": "The last minutes of the game were intense.",
+      "exampleRu": "Последние минуты игры были напряжёнными.",
+      "blank": "intense",
+      "correctionOfMyTranslation": false
+    },
+    {
+      "id": "animosity",
+      "batch": 2,
+      "picture": "😡",
+      "en": "animosity",
+      "ipa": "/ˌænɪˈmɒsəti/",
+      "ru": "враждебность, неприязнь",
+      "note": "",
+      "example": "There is no animosity between us.",
+      "exampleRu": "Между нами нет вражды.",
+      "blank": "animosity",
+      "correctionOfMyTranslation": false
+    },
+    {
+      "id": "the-farthest",
+      "batch": 2,
+      "picture": "🔭",
+      "en": "the farthest",
+      "ipa": "/ˈfɑːðɪst/",
+      "ru": "самый дальний",
+      "note": "",
+      "example": "We sat in the farthest row.",
+      "exampleRu": "Мы сидели в самом дальнем ряду.",
+      "blank": "farthest",
+      "correctionOfMyTranslation": false
+    },
+    {
+      "id": "the-cheapest",
+      "batch": 2,
+      "picture": "🏷️",
+      "en": "the cheapest",
+      "ipa": "/ˈtʃiːpɪst/",
+      "ru": "самый дешёвый",
+      "note": "",
+      "example": "This is the cheapest ticket.",
+      "exampleRu": "Это самый дешёвый билет.",
+      "blank": "cheapest",
+      "correctionOfMyTranslation": false
+    },
+    {
+      "id": "bend-bent",
+      "batch": 2,
+      "picture": "🙇",
+      "en": "bend — bent",
+      "ipa": "/bent/",
+      "ru": "наклониться, согнуться",
+      "note": "bend — bent — bent. На вбрасывании игрок наклоняется в стойку.",
+      "example": "He bent down to tie his skates.",
+      "exampleRu": "Он наклонился, чтобы завязать коньки.",
+      "blank": "bent",
+      "correctionOfMyTranslation": false
+    },
+    {
+      "id": "face-off",
+      "batch": 2,
+      "picture": "🏒",
+      "en": "face-off",
+      "ipa": "/ˈfeɪs ɒf/",
+      "ru": "вбрасывание (хоккей)",
+      "note": "face-off circle — круг вбрасывания.",
+      "example": "He won the face-off.",
+      "exampleRu": "Он выиграл вбрасывание.",
+      "blank": "face-off",
+      "correctionOfMyTranslation": false
+    },
+    {
+      "id": "puck",
+      "batch": 2,
+      "picture": "⚫",
+      "en": "puck",
+      "ipa": "/pʌk/",
+      "ru": "шайба",
+      "note": "drop the puck — вбросить шайбу.",
+      "example": "The referee dropped the puck.",
+      "exampleRu": "Судья вбросил шайбу.",
+      "blank": "puck",
+      "correctionOfMyTranslation": false
+    },
+    {
+      "id": "cheerfully",
+      "batch": 2,
+      "picture": "😄",
+      "en": "cheerfully",
+      "ipa": "/ˈtʃɪəfəli/",
+      "ru": "бодро, весело",
+      "note": "",
+      "example": "She cheerfully said hello to everyone.",
+      "exampleRu": "Она бодро поздоровалась со всеми.",
+      "blank": "cheerfully",
+      "correctionOfMyTranslation": false
+    },
+    {
+      "id": "sparkle",
+      "batch": 2,
+      "picture": "✨",
+      "en": "sparkle",
+      "ipa": "/ˈspɑːkl/",
+      "ru": "сверкать, искриться",
+      "note": "sparkled — прошедшее время.",
+      "example": "Her eyes sparkled with joy.",
+      "exampleRu": "Её глаза сверкали от радости.",
+      "blank": "sparkled",
+      "correctionOfMyTranslation": false
+    },
+    {
+      "id": "growl",
+      "batch": 2,
+      "picture": "🐻",
+      "en": "growl",
+      "ipa": "/ɡraʊl/",
+      "ru": "рычать, прорычать",
+      "note": "growled — прошедшее время.",
+      "example": "The dog growled at the stranger.",
+      "exampleRu": "Собака зарычала на незнакомца.",
+      "blank": "growled",
+      "correctionOfMyTranslation": false
+    },
+    {
+      "id": "still",
+      "batch": 2,
+      "picture": "⏳",
+      "en": "still",
+      "ipa": "/stɪl/",
+      "ru": "всё ещё, ещё",
+      "note": "«Still time for…» = (There's) still time — «ещё есть время».",
+      "example": "There is still time to win.",
+      "exampleRu": "Ещё есть время победить.",
+      "blank": "still",
+      "correctionOfMyTranslation": true
+    },
+    {
+      "id": "muse",
+      "batch": 2,
+      "picture": "🤔",
+      "en": "muse",
+      "ipa": "/mjuːz/",
+      "ru": "задумчиво произнести; размышлять вслух",
+      "note": "Здесь не «задумался», а «задумчиво протянул» — глагол речи, как said.",
+      "example": "\"Maybe we should go home,\" she mused.",
+      "exampleRu": "«Может, пойдём домой», — задумчиво протянула она.",
+      "blank": "mused",
+      "correctionOfMyTranslation": true
+    },
+    {
+      "id": "barely",
+      "batch": 2,
+      "picture": "🤏",
+      "en": "barely",
+      "ipa": "/ˈbeəli/",
+      "ru": "едва, еле",
+      "note": "",
+      "example": "I could barely hear him.",
+      "exampleRu": "Я еле его слышал.",
+      "blank": "barely",
+      "correctionOfMyTranslation": false
+    },
+    {
+      "id": "comprehensible",
+      "batch": 2,
+      "picture": "💡",
+      "en": "comprehensible",
+      "ipa": "/ˌkɒmprɪˈhensəbl/",
+      "ru": "понятный, разборчивый",
+      "note": "barely comprehensible — еле понятный.",
+      "example": "His notes are barely comprehensible.",
+      "exampleRu": "Его записи едва понятны.",
+      "blank": "comprehensible",
+      "correctionOfMyTranslation": false
+    },
+    {
+      "id": "mouth-guard",
+      "batch": 2,
+      "picture": "🦷",
+      "en": "mouth guard",
+      "ipa": "/ˈmaʊθ ɡɑːd/",
+      "ru": "капа",
+      "note": "",
+      "example": "Always wear a mouth guard in hockey.",
+      "exampleRu": "В хоккее всегда надевай капу.",
+      "blank": "mouth guard",
+      "correctionOfMyTranslation": false
+    },
+    {
+      "id": "grit-one-s-teeth",
+      "batch": 2,
+      "picture": "😬",
+      "en": "grit one's teeth",
+      "ipa": "/ɡrɪt/",
+      "ru": "стиснуть зубы",
+      "note": "gritted — прошедшее время.",
+      "example": "He gritted his teeth and kept playing.",
+      "exampleRu": "Он стиснул зубы и продолжил играть.",
+      "blank": "gritted",
+      "correctionOfMyTranslation": false
+    },
+    {
+      "id": "get-under-someone-s-skin",
+      "batch": 3,
+      "picture": "😒",
+      "en": "get under someone's skin",
+      "ipa": "/ɡet ˈʌndə skɪn/",
+      "ru": "достать, вывести из себя",
+      "note": "Идиома. Дословно «залезть под кожу», но смысл — сильно раздражать.",
+      "example": "His jokes really get under my skin.",
+      "exampleRu": "Его шутки меня реально бесят.",
+      "blank": "get under my skin",
+      "correctionOfMyTranslation": true
+    },
+    {
+      "id": "lose-it",
+      "batch": 3,
+      "picture": "🤯",
+      "en": "lose it",
+      "ipa": "/luːz ɪt/",
+      "ru": "сорваться, потерять самообладание",
+      "note": "lost it — прошедшее время.",
+      "example": "When the referee said no, he almost lost it.",
+      "exampleRu": "Когда судья отказал, он чуть не сорвался.",
+      "blank": "lost it",
+      "correctionOfMyTranslation": false
+    },
+    {
+      "id": "capitalize-on",
+      "batch": 3,
+      "picture": "🎯",
+      "en": "capitalize on",
+      "ipa": "/ˈkæpɪtəlaɪz ɒn/",
+      "ru": "воспользоваться (ошибкой, шансом)",
+      "note": "capitalized on — прошедшее время.",
+      "example": "Boston capitalized on our mistakes.",
+      "exampleRu": "Бостон воспользовался нашими ошибками.",
+      "blank": "capitalized on",
+      "correctionOfMyTranslation": false
+    },
+    {
+      "id": "talk-shit",
+      "batch": 3,
+      "picture": "🗯️",
+      "en": "talk shit",
+      "ipa": "/tɔːk ʃɪt/",
+      "ru": "трепаться, задирать словами (груб.)",
+      "note": "В спорте говорят ещё trash talk — словесные провокации.",
+      "example": "He loves to talk shit on the ice.",
+      "exampleRu": "Он любит задирать соперников на льду.",
+      "blank": "talk shit",
+      "correctionOfMyTranslation": false
+    },
+    {
+      "id": "prepare-to",
+      "batch": 3,
+      "picture": "🎒",
+      "en": "prepare to",
+      "ipa": "/prɪˈpeə tə/",
+      "ru": "готовиться (что-то сделать)",
+      "note": "prepared здесь глагол «готовился», а не «готовый».",
+      "example": "The team prepared to leave the hotel.",
+      "exampleRu": "Команда готовилась выезжать из отеля.",
+      "blank": "prepared to",
+      "correctionOfMyTranslation": true
+    },
+    {
+      "id": "thick-accent",
+      "batch": 3,
+      "picture": "🗣️",
+      "en": "thick accent",
+      "ipa": "/θɪk ˈæksənt/",
+      "ru": "сильный акцент",
+      "note": "thick — «толстый, густой», но об акценте — «сильный».",
+      "example": "She speaks English with a thick Russian accent.",
+      "exampleRu": "Она говорит по-английски с сильным русским акцентом.",
+      "blank": "thick",
+      "correctionOfMyTranslation": false
+    }
+  ],
+  "sentences": [
+    {
+      "en": "I devoured the entire novel in one night.",
+      "ru": "Я проглотил весь роман за одну ночь.",
+      "words": [
+        "devour",
+        "entire",
+        "novel"
+      ]
+    },
+    {
+      "en": "The rambunctious puppies played on the lawn.",
+      "ru": "Неугомонные щенки играли на лужайке.",
+      "words": [
+        "rambunctious",
+        "autumn-lawn"
+      ]
+    },
+    {
+      "en": "He is grumpy but passionate about his work.",
+      "ru": "Он ворчливый, но страстно любит свою работу.",
+      "words": [
+        "grumpy",
+        "passionate"
+      ]
+    },
+    {
+      "en": "Their banter is literally irresistible.",
+      "ru": "Их подколки буквально неотразимы.",
+      "words": [
+        "banter",
+        "literally",
+        "irresistible",
+        "their"
+      ]
+    },
+    {
+      "en": "The team is on a red-hot winning streak.",
+      "ru": "Команда на горячей победной серии.",
+      "words": [
+        "red-hot",
+        "streak"
+      ]
+    },
+    {
+      "en": "She scored another goal and winked at the fans.",
+      "ru": "Она забила ещё один гол и подмигнула фанатам.",
+      "words": [
+        "score",
+        "another",
+        "wink"
+      ]
+    },
+    {
+      "en": "It is a slow-burn enemies-to-lovers story.",
+      "ru": "Это медленно разгорающаяся история «от врагов к возлюбленным».",
+      "words": [
+        "slow-burn",
+        "enemies-to-lovers"
+      ]
+    },
+    {
+      "en": "This heartfelt book got loads of praise.",
+      "ru": "Эта искренняя книга получила массу похвал.",
+      "words": [
+        "heartfelt",
+        "loads-of",
+        "praise"
+      ]
+    },
+    {
+      "en": "He endured a frustrating game against their archrivals.",
+      "ru": "Он вытерпел досадную игру против их заклятых соперников.",
+      "words": [
+        "endure",
+        "frustrating",
+        "against",
+        "their",
+        "archrival"
+      ]
+    },
+    {
+      "en": "Instead of a glorious win, it was a grueling humiliation.",
+      "ru": "Вместо великолепной победы это было мучительное унижение.",
+      "words": [
+        "instead",
+        "glorious",
+        "grueling-humiliation"
+      ]
+    },
+    {
+      "en": "The score stood at three to one.",
+      "ru": "Счёт был три–один.",
+      "words": [
+        "the-score-stood-at"
+      ]
+    },
+    {
+      "en": "Their animosity was intense.",
+      "ru": "Их враждебность была сильной.",
+      "words": [
+        "their",
+        "animosity",
+        "intense"
+      ]
+    },
+    {
+      "en": "We had the cheapest seats in the farthest row.",
+      "ru": "У нас были самые дешёвые места в самом дальнем ряду.",
+      "words": [
+        "the-cheapest",
+        "the-farthest"
+      ]
+    },
+    {
+      "en": "He bent at the face-off circle and waited for the puck.",
+      "ru": "Он наклонился у круга вбрасывания и ждал шайбу.",
+      "words": [
+        "bend-bent",
+        "face-off",
+        "puck"
+      ]
+    },
+    {
+      "en": "His English was barely comprehensible.",
+      "ru": "Его английский был едва понятен.",
+      "words": [
+        "barely",
+        "comprehensible"
+      ]
+    },
+    {
+      "en": "He gritted his teeth and growled.",
+      "ru": "Он стиснул зубы и прорычал.",
+      "words": [
+        "grit-one-s-teeth",
+        "growl"
+      ]
+    },
+    {
+      "en": "There is still time for another goal.",
+      "ru": "Ещё есть время для ещё одного гола.",
+      "words": [
+        "still",
+        "another"
+      ]
+    },
+    {
+      "en": "The grumpy player cheerfully winked at him.",
+      "ru": "Ворчливый игрок весело ему подмигнул.",
+      "words": [
+        "grumpy",
+        "cheerfully",
+        "wink"
+      ]
+    },
+    {
+      "en": "His banter really gets under my skin.",
+      "ru": "Его подколки реально меня бесят.",
+      "words": [
+        "banter",
+        "get-under-someone-s-skin"
+      ]
+    },
+    {
+      "en": "The grumpy player almost lost it.",
+      "ru": "Ворчливый игрок чуть не сорвался.",
+      "words": [
+        "grumpy",
+        "lose-it"
+      ]
+    },
+    {
+      "en": "They capitalized on our mistakes.",
+      "ru": "Они воспользовались нашими ошибками.",
+      "words": [
+        "capitalize-on"
+      ]
+    },
+    {
+      "en": "He has a thick accent but his English is comprehensible.",
+      "ru": "У него сильный акцент, но его английский понятен.",
+      "words": [
+        "thick-accent",
+        "comprehensible"
+      ]
+    },
+    {
+      "en": "The team prepared to play against their archrivals.",
+      "ru": "Команда готовилась играть против заклятых соперников.",
+      "words": [
+        "prepare-to",
+        "against",
+        "their",
+        "archrival"
+      ]
+    },
+    {
+      "en": "Stop talking shit and play.",
+      "ru": "Хватит трепаться, играй.",
+      "words": [
+        "talk-shit"
+      ]
+    }
+  ]
+}

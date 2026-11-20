@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Heated Rivalry — тренажёр</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;700;800;900&display=swap" rel="stylesheet">
+<style>
+/* VOICE: a friendly hockey coach — short, warm, encouraging, never childish
+   IDEA: a practice shift on the ice: warm-up (review), drills (new words), game (use them)
+   PICTURE: the live exercise card with a big picture tile, chunky pressable answers
+   COLOUR and TYPE: rink navy, ice white, goal-light red accent, green only for "correct"; Nunito rounded
+   LAYOUT: one phone-width column centred on every screen, sticky check bar at the bottom */
+:root{color-scheme:light dark;
+--bg:light-dark(#eef3f9,#0a111d);--card:light-dark(#ffffff,#131d2e);--ink:light-dark(#0f1b2d,#eaf0f8);
+--mute:light-dark(#5a6a80,#94a5bb);--line:light-dark(#d6e0ec,#24344b);--line2:light-dark(#c2cfde,#1b2a3f);
+--navy:#12306b;--navy2:#0b2152;--blue:light-dark(#1f5fd1,#78a6ff);--blueD:light-dark(#1747a0,#4f7fdc);--blueSoft:light-dark(#e3edfd,#17294a);
+--red:light-dark(#d9233a,#ff6b7c);--redD:light-dark(#a8162a,#c94657);--redSoft:light-dark(#fde6e9,#3a1a22);
+--ok:light-dark(#178a4c,#5ad48f);--okD:light-dark(#0f6a39,#3aa66b);--okSoft:light-dark(#e1f5e9,#12301f);
+--gold:light-dark(#b86e00,#ffc25c);--goldSoft:light-dark(#fff2dc,#3a2c12)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:17px/1.5 Nunito,system-ui,sans-serif;overflow-x:clip;-webkit-tap-highlight-color:transparent}
+button,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+button:focus-visible,textarea:focus-visible,input:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+.app{max-width:620px;margin:0 auto;min-height:100dvh;display:flex;flex-direction:column}
+h1,h2,h3{margin:0;line-height:1.1;font-weight:900}
+.mute{color:var(--mute)}
+.sm{font-size:15px}
+/* home */
+.hero{background:var(--navy);color:#fff;padding:22px 20px 26px;position:relative;overflow:hidden;border-radius:0 0 28px 28px}
+.hero svg.rink{position:absolute;right:-60px;top:-50px;width:240px;height:240px;opacity:.16;pointer-events:none}
+.hero .top{display:flex;justify-content:space-between;align-items:center;gap:10px;position:relative}
+.hero .kick{font-weight:800;opacity:.8;font-size:15px}
+.hero h1{font-size:clamp(30px,7vw,40px);margin-top:10px;position:relative}
+.hero p{margin:6px 0 0;opacity:.85;position:relative}
+.chip{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.14);border-radius:999px;padding:6px 12px;font-weight:800;font-size:15px;white-space:nowrap}
+.chip svg{width:18px;height:18px}
+.wrap{padding:18px 16px 40px;display:grid;gap:14px}
+.card{background:var(--card);border:2px solid var(--line);border-bottom-width:4px;border-radius:22px;padding:18px}
+.sess{display:grid;grid-template-columns:auto minmax(0,1fr);gap:14px;align-items:center}
+.sess .ic{width:64px;height:64px;border-radius:18px;display:grid;place-items:center}
+.sess .ic svg{width:36px;height:36px}
+.ic.sun{background:var(--goldSoft);color:var(--gold)}.ic.moon{background:var(--blueSoft);color:var(--blue)}
+.sess h2{font-size:22px}
+.sess .acts{grid-column:1/-1;display:flex;gap:10px;flex-wrap:wrap}
+.done-tag{display:inline-flex;align-items:center;gap:6px;color:var(--ok);font-weight:800}
+.done-tag svg{width:18px;height:18px}
+.btn{border:0;border-radius:16px;min-height:52px;padding:12px 22px;font-weight:800;font-size:17px;background:var(--blue);color:#fff;box-shadow:0 4px 0 var(--blueD);transition:transform .08s}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 var(--blueD)}
+.btn.wide{width:100%}
+.btn.ghost{background:var(--card);color:var(--blue);border:2px solid var(--line);box-shadow:0 4px 0 var(--line)}
+.btn.okb{background:var(--ok);box-shadow:0 4px 0 var(--okD)}
+.btn.bad{background:var(--red);box-shadow:0 4px 0 var(--redD)}
+.btn:disabled{background:var(--line);color:var(--mute);box-shadow:0 4px 0 var(--line2);cursor:default;transform:none}
+.link{background:none;border:0;color:var(--mute);font-weight:700;min-height:44px;padding:8px 6px;text-decoration:underline}
+.lv{display:flex;height:16px;border-radius:9px;overflow:hidden;background:var(--line);margin:12px 0 10px}
+.lv i{display:block;height:100%}
+.legend{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.legend div{font-size:14px;color:var(--mute)}.legend b{display:block;font-size:22px;color:var(--ink);font-weight:900}
+.legend span{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px}
+.c0{background:var(--line2)}.c1{background:#f59e0b}.c2{background:var(--blue)}.c3{background:#16a34a}
+.row2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.seg{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.seg button{min-height:44px;min-width:56px;border-radius:12px;border:2px solid var(--line);background:var(--card);font-weight:800}
+.seg button[aria-pressed=true]{border-color:var(--blue);background:var(--blueSoft);color:var(--blue)}
+/* session */
+.bar{display:flex;align-items:center;gap:12px;padding:14px 16px;position:sticky;top:0;background:var(--bg);z-index:3}
+.x{width:44px;height:44px;border-radius:12px;border:0;background:none;color:var(--mute);display:grid;place-items:center;flex:none}
+.x svg{width:24px;height:24px}
+.prog{flex:1;height:16px;background:var(--line);border-radius:9px;overflow:hidden}
+.prog b{display:block;height:100%;background:var(--ok);border-radius:9px;transition:width .35s;box-shadow:inset 0 -4px 0 rgba(0,0,0,.12)}
+.stage{flex:1;padding:6px 16px 140px}
+.lbl{font-weight:900;font-size:24px;margin:6px 0 16px}
+.sub{color:var(--mute);margin:-8px 0 16px}
+.pic{border-radius:24px;display:grid;place-items:center;font-size:84px;line-height:1;aspect-ratio:16/9;max-height:220px;width:100%;margin-bottom:16px;border:2px solid var(--line)}
+.p0{background:light-dark(#e6efff,#16284a)}.p1{background:light-dark(#fdeaea,#3a1c22)}.p2{background:light-dark(#e6f6ee,#14301f)}.p3{background:light-dark(#fff3dc,#382b12)}.p4{background:light-dark(#efe9fd,#261d45)}.p5{background:light-dark(#e3f5f8,#11303a)}
+.word{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.word h2{font-size:clamp(32px,8vw,44px)}
+.ipa{color:var(--mute);font-size:17px}
+.ru{font-weight:800;color:var(--blue);font-size:21px;margin-top:4px}
+.note{background:var(--blueSoft);border-radius:14px;padding:10px 14px;margin-top:14px;font-size:16px}
+.note.fix{background:var(--goldSoft);color:var(--gold)}
+.note.fix b{display:block}
+.exs{display:flex;gap:10px;align-items:flex-start;margin-top:14px;padding-top:14px;border-top:2px dashed var(--line)}
+.exs i{display:block;font-style:normal;color:var(--mute);font-size:15px}
+.spk{width:48px;height:48px;border-radius:14px;border:2px solid var(--line);border-bottom-width:4px;background:var(--blueSoft);color:var(--blue);display:grid;place-items:center;flex:none}
+.spk svg{width:24px;height:24px}.spk.s{width:40px;height:40px;border-radius:12px}.spk.s svg{width:20px;height:20px}
+.spk.big{width:120px;height:120px;border-radius:32px;margin:10px auto 22px}.spk.big svg{width:56px;height:56px}
+.spk.on{background:var(--blue);color:#fff}
+.opts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.tile{border:2px solid var(--line);border-bottom-width:4px;border-radius:18px;background:var(--card);padding:14px 10px;min-height:64px;font-weight:800;font-size:17px;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px}
+.tile .em{font-size:44px;line-height:1}
+.tile[aria-pressed=true]{border-color:var(--blue);background:var(--blueSoft);color:var(--blue)}
+.tile.good{border-color:var(--ok);background:var(--okSoft);color:var(--ok)}
+.tile.badt{border-color:var(--red);background:var(--redSoft);color:var(--red)}
+.tile.gone{opacity:.35;border-style:dashed}
+.tile:disabled{cursor:default}
+.pairs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.pairs .col{display:grid;gap:10px}
+.pairs .tile{min-height:58px;font-size:16px}
+.sent{font-size:22px;font-weight:700;line-height:1.45}
+.sent .gap{display:inline-block;min-width:90px;border-bottom:3px solid var(--blue);color:var(--blue)}
+.hint{color:var(--mute);margin-top:6px}
+.inp{width:100%;font-size:20px;font-weight:700;border:2px solid var(--line);border-bottom-width:4px;border-radius:16px;background:var(--card);padding:14px 16px;margin-top:16px}
+textarea.inp{min-height:110px;resize:vertical;font-size:18px;font-weight:600}
+.ans{min-height:70px;border-bottom:2px solid var(--line);display:flex;flex-wrap:wrap;gap:8px;padding:10px 0;margin:16px 0}
+.pool{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.wt{border:2px solid var(--line);border-bottom-width:4px;border-radius:14px;background:var(--card);padding:8px 14px;min-height:46px;font-weight:700;font-size:17px}
+.wt.used{visibility:hidden}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.wchip{display:flex;align-items:center;gap:8px;border:2px solid var(--line);border-radius:14px;padding:8px 12px;background:var(--card)}
+.wchip .em{font-size:26px}.wchip b{display:block}.wchip span{color:var(--mute);font-size:14px}
+.sect{text-align:center;padding-top:40px}
+.sect .big{font-size:90px;line-height:1;margin-bottom:12px}
+.sect h2{font-size:32px}
+.foot{position:fixed;left:0;right:0;bottom:0;z-index:4;background:var(--card);border-top:2px solid var(--line)}
+.foot .in{max-width:620px;margin:0 auto;padding:14px 16px calc(14px + env(safe-area-inset-bottom));display:grid;gap:10px}
+.foot.good{background:var(--okSoft);border-color:transparent}.foot.badf{background:var(--redSoft);border-color:transparent}
+.fb h3{font-size:22px;display:flex;align-items:center;gap:8px}
+.fb h3 svg{width:28px;height:28px}
+.foot.good .fb{color:var(--ok)}.foot.badf .fb{color:var(--red)}
+.fb p{margin:4px 0 0;font-weight:700}
+.fb .c{color:var(--ink);font-weight:600}
+.frow{display:flex;gap:10px;align-items:center}
+.frow .btn{flex:1}
+.spin{display:inline-block;width:18px;height:18px;border:3px solid currentColor;border-right-color:transparent;border-radius:50%;animation:sp 1s linear infinite;vertical-align:-3px;margin-right:8px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.result{text-align:center;padding-top:28px}
+.result .score{font-size:72px;font-weight:900;color:var(--ok);line-height:1}
+.up{color:var(--ok);font-weight:800}.down{color:var(--red);font-weight:800}
+.stats3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:22px 0}
+.stats3 div{background:var(--card);border:2px solid var(--line);border-radius:18px;padding:12px 6px;font-size:14px;color:var(--mute)}
+.stats3 b{display:block;font-size:26px;color:var(--ink)}
+/* lists */
+.pagehead{display:flex;align-items:center;gap:8px;padding:14px 16px 0}
+.pagehead h1{font-size:28px}
+.wrow{display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 0;border-bottom:2px solid var(--line)}
+.wrow:last-child{border-bottom:0}
+.wrow .em{font-size:34px;text-align:center}
+.wrow b{display:block;font-size:18px}
+.dots{display:flex;gap:3px;margin-top:4px}.dots i{width:14px;height:6px;border-radius:3px;background:var(--line)}.dots i.f{background:var(--ok)}
+details summary{list-style:none;cursor:pointer}details summary::-webkit-details-marker{display:none}
+.det{grid-column:1/-1;font-size:15px;color:var(--mute);padding:0 0 6px 64px}
+.hrow{display:grid;grid-template-columns:4.6em minmax(0,1fr) minmax(0,1fr);gap:8px;align-items:center;font-size:14px;color:var(--mute);margin-top:8px}
+.hb{height:12px;background:var(--line);border-radius:6px;overflow:hidden}.hb i{display:block;height:100%}
+.hb .m{background:#f59e0b}.hb .e{background:var(--blue)}
+.sline{border-bottom:2px dashed var(--line);padding:10px 0;font-size:16px}.sline:last-child{border-bottom:0}
+.sline s{color:var(--mute)}
+@media(max-width:420px){.pic{font-size:68px}.legend b{font-size:19px}}
+@media(prefers-reduced-motion:reduce){.prog b{transition:none}.btn{transition:none}.spin{animation:none}}
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+<script>
+{
+/* ---------- data ---------- */
+const BATCHES=[
+{id:1,title:"Отзывы критиков",pages:"отзывы критиков (стр. 1)"},
+{id:2,title:"Пролог",pages:"пролог, стр. 9–10"},
+{id:3,title:"Фразы из пролога",pages:"пролог, стр. 9–10"}];
+const W=(bt,pic,en,ipa,ru,note,ex,exRu,b,fix)=>({bt,pic,en,ipa,ru,note,ex,exRu,b,fix:!!fix,id:en.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")});
+const WORDS=[
+W(1,"👏","praise","/preɪz/","похвала; хвалебный отзыв","«Praise for…» в начале книги = «Отзывы о…».","The new book got a lot of praise.","Новая книга получила много похвалы.","praise"),
+W(1,"📚","novel","/ˈnɒvl/","роман (книга)","novels — романы. Прилагательное novel значит «новый, необычный».","She writes novels about hockey players.","Она пишет романы о хоккеистах.","novels"),
+W(1,"🙏","sacred","/ˈseɪkrɪd/","священный","В блокноте записано scared — это другое слово (испуганный).","For him, Sunday morning is sacred.","Для него утро воскресенья — святое.","sacred",1),
+W(1,"🍂","autumn lawn","/ˈɔːtəm lɔːn/","осенняя лужайка","lawn — газон, лужайка, а не листва (листва — leaves).","The kids are playing on the lawn.","Дети играют на лужайке.","lawn",1),
+W(1,"🐶","rambunctious","/ræmˈbʌŋkʃəs/","буйный, неугомонный","Точнее не «шумный», а «неугомонный, озорной» — про энергию.","Our rambunctious puppies ran all over the house.","Наши неугомонные щенки носились по всему дому.","rambunctious"),
+W(1,"❤️‍🔥","passionate","/ˈpæʃənət/","страстный; увлечённый","passionate about sth — страстно увлечён чем-то.","He is passionate about hockey.","Он страстно увлечён хоккеем.","passionate"),
+W(1,"😋","devour","/dɪˈvaʊə/","жадно поглощать; читать запоем","devoured — прошедшее время. «I've devoured this entire series» — «я проглотила всю серию».","I devoured the book in two days.","Я проглотил книгу за два дня.","devoured"),
+W(1,"💯","entire","/ɪnˈtaɪə/","весь, целый","","He slept the entire day.","Он проспал весь день.","entire"),
+W(1,"😜","banter","/ˈbæntə/","подколки, шутливая перепалка","Не просто «шутливый тон», а обмен шутками и подколками.","The players enjoy friendly banter before the game.","Игроки любят дружеские подколки перед игрой.","banter",1),
+W(1,"🧭","exploration","/ˌekspləˈreɪʃn/","исследование, изучение","В романе — узнавание друг друга.","The book is an exploration of first love.","Книга исследует тему первой любви.","exploration"),
+W(1,"🔥","red-hot","/ˌred ˈhɒt/","раскалённый; на пике, в ударе","red-hot winning streak — горячая победная серия.","The team is red-hot this month.","Команда в этом месяце в ударе.","red-hot"),
+W(1,"📈","streak","/striːk/","серия (побед, неудач)","winning streak — победная серия.","They are on a five-game winning streak.","У них победная серия из пяти игр.","streak"),
+W(1,"🧲","irresistible","/ˌɪrɪˈzɪstəbl/","неотразимый, непреодолимый","","The smell of fresh coffee is irresistible.","Запах свежего кофе неотразим.","irresistible"),
+W(1,"🥣","mix","/mɪks/","смесь, сочетание","","The team is a mix of young and old players.","Команда — смесь молодых и опытных игроков.","mix"),
+W(1,"🥅","score","/skɔː/","забить (гол); добиться успеха","scored another hat trick (о книге) — снова добилась тройного успеха.","He scored two goals last night.","Вчера вечером он забил два гола.","scored"),
+W(1,"➕","another","/əˈnʌðə/","ещё один; другой","","Can I have another coffee?","Можно мне ещё один кофе?","another"),
+W(1,"😉","wink","/wɪŋk/","подмигивать; подмигивание","«(wink!)» — автор подмигивает: каламбур game changer / Game Changers.","He winked at me and smiled.","Он подмигнул мне и улыбнулся.","winked"),
+W(1,"🛋️","firmly ensconced","/ˈfɜːmli ɪnˈskɒnst/","прочно обосновавшийся","ensconced — удобно и надёжно устроился.","The cat was firmly ensconced on the sofa.","Кот прочно обосновался на диване.","firmly ensconced"),
+W(1,"🫣","take on sensitive topics","/teɪk ɒn ˈsensətɪv ˈtɒpɪks/","браться за деликатные темы","take on — браться за что-то сложное.","This film takes on sensitive topics.","Этот фильм берётся за деликатные темы.","takes on"),
+W(1,"💌","heartfelt","/ˈhɑːtfelt/","искренний, прочувствованный","«still deliver a heartfelt… romance» — «и всё же выдать искренний роман». still — «всё же», deliver — «выдать, создать».","She wrote him a heartfelt letter.","Она написала ему искреннее письмо.","heartfelt",1),
+W(1,"😾","grumpy","/ˈɡrʌmpi/","ворчливый, сердитый","Это прилагательное. grumpy/sunshine — сюжет «ворчун и солнышко».","He is always grumpy in the morning.","Он всегда ворчливый по утрам.","grumpy"),
+W(1,"⚔️","enemies-to-lovers","/ˈenəmiz tə ˈlʌvəz/","от врагов к возлюбленным","Название популярного сюжета в романах.","I love enemies-to-lovers stories.","Я люблю истории «от врагов к возлюбленным».","enemies-to-lovers"),
+W(1,"📦","loads of","/ləʊdz əv/","куча, масса (разг.)","","We have loads of time.","У нас куча времени.","loads"),
+W(1,"🔍","literally","/ˈlɪtərəli/","буквально, в прямом смысле","","I literally ran to the station.","Я буквально бежал до станции.","literally"),
+W(1,"🍳","sizzling","/ˈsɪzlɪŋ/","шипящий; обжигающе горячий","Не «яростный»: шипит, как мясо на сковороде, — очень горячий.","The steak was still sizzling on the plate.","Стейк ещё шипел на тарелке.","sizzling",1),
+W(1,"🎀","all tied up","/ɔːl taɪd ʌp/","всё увязано, упаковано в одно","tie up — завязать, связать.","All the stories are tied up in the last chapter.","Все линии связываются в последней главе.","tied up"),
+W(1,"😈","helluva","/ˈheləvə/","чертовски (= a hell of a)","","That was a helluva game!","Это была чертовски крутая игра!","helluva"),
+W(1,"🕯️","slow-burn","/ˌsləʊ ˈbɜːn/","медленно разгорающийся","Не просто «медленно»: чувства разгораются постепенно.","It's a slow-burn story, so be patient.","Это медленно разгорающаяся история, наберись терпения.","slow-burn",1),
+W(2,"🏋️","endure","/ɪnˈdjʊə/","вытерпеть, выдержать","endured — прошедшее время.","She endured three hours of meetings.","Она вытерпела три часа встреч.","endured"),
+W(2,"😤","frustrating","/frʌˈstreɪtɪŋ/","досадный, выводящий из себя","Точнее не «разочаровывающий», а «бесящий»: стараешься, а не получается.","Losing your keys is so frustrating.","Терять ключи так бесит.","frustrating",1),
+W(2,"🏆","glorious","/ˈɡlɔːriəs/","великолепный, славный","","It was a glorious sunny day.","Это был великолепный солнечный день.","glorious"),
+W(2,"🛶","Voyageurs","/ˌvwɑːjəˈʒɜːz/","«путешественники» (франц.), команда","В Канаде так называли гребцов, торговавших мехом.","The Voyageurs play at home tonight.","«Вояжёры» сегодня играют дома.","Voyageurs"),
+W(2,"🆚","against","/əˈɡenst/","против","","Montreal plays against Boston tonight.","Монреаль сегодня играет против Бостона.","against"),
+W(2,"👥","their","/ðeə/","их","","The fans love their team.","Фанаты любят свою команду.","their"),
+W(2,"🥊","archrival","/ˌɑːtʃˈraɪvl/","заклятый соперник","archrivals — мн. ч.","Boston is our archrival.","Бостон — наш заклятый соперник.","archrival"),
+W(2,"🔄","instead","/ɪnˈsted/","вместо этого; вместо","В начале предложения Instead — «Вместо этого». instead of — вместо чего-то.","I didn't go out. Instead, I read a book.","Я не пошёл гулять. Вместо этого читал книгу.","Instead"),
+W(2,"😩","grueling humiliation","/ˈɡruːəlɪŋ hjuːˌmɪliˈeɪʃn/","изнурительное, мучительное унижение","grueling — изнурительный, выматывающий.","The game was a grueling humiliation for the home team.","Игра стала мучительным унижением для хозяев.","grueling humiliation"),
+W(2,"🧮","the score stood at","/skɔː stʊd/","счёт был (составлял)","stood at 4–1 — счёт был 4:1.","The score stood at 2–2 after the first period.","После первого периода счёт был 2:2.","stood"),
+W(2,"🏛️","century-old","/ˈsentʃəri əʊld/","вековой, столетний","near century-old — почти вековое.","They live in a century-old house.","Они живут в столетнем доме.","century-old"),
+W(2,"🎭","become personified","/pəˈsɒnɪfaɪd/","олицетворяться, воплотиться в ком-то","Соперничество «стало олицетворяться» Холландером и Розановым.","For the fans, the rivalry became personified by two players.","Для фанатов соперничество олицетворяли два игрока.","personified"),
+W(2,"⚡","intense","/ɪnˈtens/","сильный, острый, напряжённый","","The last minutes of the game were intense.","Последние минуты игры были напряжёнными.","intense"),
+W(2,"😡","animosity","/ˌænɪˈmɒsəti/","враждебность, неприязнь","","There is no animosity between us.","Между нами нет вражды.","animosity"),
+W(2,"🔭","the farthest","/ˈfɑːðɪst/","самый дальний","","We sat in the farthest row.","Мы сидели в самом дальнем ряду.","farthest"),
+W(2,"🏷️","the cheapest","/ˈtʃiːpɪst/","самый дешёвый","","This is the cheapest ticket.","Это самый дешёвый билет.","cheapest"),
+W(2,"🙇","bend — bent","/bent/","наклониться, согнуться","bend — bent — bent. На вбрасывании игрок наклоняется в стойку.","He bent down to tie his skates.","Он наклонился, чтобы завязать коньки.","bent"),
+W(2,"🏒","face-off","/ˈfeɪs ɒf/","вбрасывание (хоккей)","face-off circle — круг вбрасывания.","He won the face-off.","Он выиграл вбрасывание.","face-off"),
+W(2,"⚫","puck","/pʌk/","шайба","drop the puck — вбросить шайбу.","The referee dropped the puck.","Судья вбросил шайбу.","puck"),
+W(2,"😄","cheerfully","/ˈtʃɪəfəli/","бодро, весело","","She cheerfully said hello to everyone.","Она бодро поздоровалась со всеми.","cheerfully"),
+W(2,"✨","sparkle","/ˈspɑːkl/","сверкать, искриться","sparkled — прошедшее время.","Her eyes sparkled with joy.","Её глаза сверкали от радости.","sparkled"),
+W(2,"🐻","growl","/ɡraʊl/","рычать, прорычать","growled — прошедшее время.","The dog growled at the stranger.","Собака зарычала на незнакомца.","growled"),
+W(2,"⏳","still","/stɪl/","всё ещё, ещё","«Still time for…» = (There's) still time — «ещё есть время».","There is still time to win.","Ещё есть время победить.","still",1),
+W(2,"🤔","muse","/mjuːz/","задумчиво произнести; размышлять вслух","Здесь не «задумался», а «задумчиво протянул» — глагол речи, как said.","\"Maybe we should go home,\" she mused.","«Может, пойдём домой», — задумчиво протянула она.","mused",1),
+W(2,"🤏","barely","/ˈbeəli/","едва, еле","","I could barely hear him.","Я еле его слышал.","barely"),
+W(2,"💡","comprehensible","/ˌkɒmprɪˈhensəbl/","понятный, разборчивый","barely comprehensible — еле понятный.","His notes are barely comprehensible.","Его записи едва понятны.","comprehensible"),
+W(2,"🦷","mouth guard","/ˈmaʊθ ɡɑːd/","капа","","Always wear a mouth guard in hockey.","В хоккее всегда надевай капу.","mouth guard"),
+W(2,"😬","grit one's teeth","/ɡrɪt/","стиснуть зубы","gritted — прошедшее время.","He gritted his teeth and kept playing.","Он стиснул зубы и продолжил играть.","gritted"),
+W(3,"😒","get under someone's skin","/ɡet ˈʌndə skɪn/","достать, вывести из себя","Идиома. Дословно «залезть под кожу», но смысл — сильно раздражать.","His jokes really get under my skin.","Его шутки меня реально бесят.","get under my skin",1),
+W(3,"🤯","lose it","/luːz ɪt/","сорваться, потерять самообладание","lost it — прошедшее время.","When the referee said no, he almost lost it.","Когда судья отказал, он чуть не сорвался.","lost it"),
+W(3,"🎯","capitalize on","/ˈkæpɪtəlaɪz ɒn/","воспользоваться (ошибкой, шансом)","capitalized on — прошедшее время.","Boston capitalized on our mistakes.","Бостон воспользовался нашими ошибками.","capitalized on"),
+W(3,"🗯️","talk shit","/tɔːk ʃɪt/","трепаться, задирать словами (груб.)","В спорте говорят ещё trash talk — словесные провокации.","He loves to talk shit on the ice.","Он любит задирать соперников на льду.","talk shit"),
+W(3,"🎒","prepare to","/prɪˈpeə tə/","готовиться (что-то сделать)","prepared здесь глагол «готовился», а не «готовый».","The team prepared to leave the hotel.","Команда готовилась выезжать из отеля.","prepared to",1),
+W(3,"🗣️","thick accent","/θɪk ˈæksənt/","сильный акцент","thick — «толстый, густой», но об акценте — «сильный».","She speaks English with a thick Russian accent.","Она говорит по-английски с сильным русским акцентом.","thick")
+];
+const BANK=[
+["I devoured the entire novel in one night.","Я проглотил весь роман за одну ночь.",["devour","entire","novel"]],
+["The rambunctious puppies played on the lawn.","Неугомонные щенки играли на лужайке.",["rambunctious","autumn lawn"]],
+["He is grumpy but passionate about his work.","Он ворчливый, но страстно любит свою работу.",["grumpy","passionate"]],
+["Their banter is literally irresistible.","Их подколки буквально неотразимы.",["banter","literally","irresistible","their"]],
+["The team is on a red-hot winning streak.","Команда на горячей победной серии.",["red-hot","streak"]],
+["She scored another goal and winked at the fans.","Она забила ещё один гол и подмигнула фанатам.",["score","another","wink"]],
+["It is a slow-burn enemies-to-lovers story.","Это медленно разгорающаяся история «от врагов к возлюбленным».",["slow-burn","enemies-to-lovers"]],
+["This heartfelt book got loads of praise.","Эта искренняя книга получила массу похвал.",["heartfelt","loads of","praise"]],
+["He endured a frustrating game against their archrivals.","Он вытерпел досадную игру против их заклятых соперников.",["endure","frustrating","against","their","archrival"]],
+["Instead of a glorious win, it was a grueling humiliation.","Вместо великолепной победы это было мучительное унижение.",["instead","glorious","grueling humiliation"]],
+["The score stood at three to one.","Счёт был три–один.",["the score stood at"]],
+["Their animosity was intense.","Их враждебность была сильной.",["their","animosity","intense"]],
+["We had the cheapest seats in the farthest row.","У нас были самые дешёвые места в самом дальнем ряду.",["the cheapest","the farthest"]],
+["He bent at the face-off circle and waited for the puck.","Он наклонился у круга вбрасывания и ждал шайбу.",["bend — bent","face-off","puck"]],
+["His English was barely comprehensible.","Его английский был едва понятен.",["barely","comprehensible"]],
+["He gritted his teeth and growled.","Он стиснул зубы и прорычал.",["grit one's teeth","growl"]],
+["There is still time for another goal.","Ещё есть время для ещё одного гола.",["still","another"]],
+["The grumpy player cheerfully winked at him.","Ворчливый игрок весело ему подмигнул.",["grumpy","cheerfully","wink"]],
+["His banter really gets under my skin.","Его подколки реально меня бесят.",["banter","get under someone's skin"]],
+["The grumpy player almost lost it.","Ворчливый игрок чуть не сорвался.",["grumpy","lose it"]],
+["They capitalized on our mistakes.","Они воспользовались нашими ошибками.",["capitalize on"]],
+["He has a thick accent but his English is comprehensible.","У него сильный акцент, но его английский понятен.",["thick accent","comprehensible"]],
+["The team prepared to play against their archrivals.","Команда готовилась играть против заклятых соперников.",["prepare to","against","their","archrival"]],
+["Stop talking shit and play.","Хватит трепаться, играй.",["talk shit"]]
+];
+const BY=Object.fromEntries(WORDS.map(w=>[w.id,w]));
+const BYEN=Object.fromEntries(WORDS.map(w=>[w.en,w]));
+WORDS.forEach((w,i)=>w.pc="p"+(i%6));
+
+/* ---------- utils ---------- */
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const shuf=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+const dkey=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+const today=()=>dkey(new Date());
+const addDays=(k,n)=>{const [y,m,d]=k.split("-").map(Number);return dkey(new Date(y,m-1,d+n))};
+const IV=[0,1,3,7,14,30,60];
+const norm=s=>String(s).toLowerCase().replace(/[’‘`]/g,"'").replace(/[^a-z0-9' -]/g," ").replace(/\s+/g," ").trim();
+const lev=(a,b)=>{const m=a.length,n=b.length,d=Array.from({length:m+1},(_,i)=>[i]);for(let j=1;j<=n;j++)d[0][j]=j;for(let i=1;i<=m;i++)for(let j=1;j<=n;j++)d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1));return d[m][n]};
+const ls={get(k,d){try{const v=localStorage.getItem("hr2_"+k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem("hr2_"+k,JSON.stringify(v))}catch(e){}}};
+const IC={
+spk:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>',
+x:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>',
+sun:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></svg>',
+moon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>',
+flame:'<svg viewBox="0 0 24 24" fill="#ffb02e" stroke="#ff7a1a" stroke-width="1.5" stroke-linejoin="round"><path d="M12 22c4 0 7-2.7 7-6.6 0-3.5-2.4-5.6-3.6-8.4-.4 1.9-1.4 3-2.6 3.4.3-3.2-1-6.3-3.8-8.4.2 3.6-1.6 5.4-3.2 7.3C4.6 11.3 5 13 5 15.4 5 19.3 8 22 12 22z"/></svg>',
+check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+cross:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>',
+mic:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>',
+back:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>'};
+const spkBtn=(t,cls="")=>`<button class="spk ${cls}" data-say="${esc(t)}" aria-label="Озвучить">${IC.spk}</button>`;
+
+/* ---------- state ---------- */
+let ST=ls.get("state",null)||{upd:0,srs:{},days:{},settings:{newPerDay:12},sent:[]};
+ST.srs=ST.srs||{};ST.days=ST.days||{};ST.settings=ST.settings||{newPerDay:12};ST.sent=ST.sent||[];
+let DB=null,TTS=null,DICT=null,SAMPLE=null,saving=false,again=false;
+function save(){ST.upd=Date.now();ls.set("state",ST);flush()}
+function flush(){if(!DB)return;if(saving){again=true;return}saving=true;
+DB.doc("state/main").set(JSON.parse(JSON.stringify(ST))).catch(()=>{}).finally(()=>{saving=false;if(again){again=false;flush()}})}
+const S_=id=>ST.srs[id];
+function wst(id){return ST.srs[id]||(ST.srs[id]={lvl:0,due:"",intro:"",right:0,wrong:0})}
+const day=k=>ST.days[k]||(ST.days[k]={});
+
+/* ---------- speech ---------- */
+let voice=null;
+const pickVoice=()=>{try{const v=speechSynthesis.getVoices();voice=v.find(x=>/en-GB/i.test(x.lang)&&/Daniel|Serena|Kate|Google UK/i.test(x.name))||v.find(x=>/en-GB/i.test(x.lang))||v.find(x=>/^en/i.test(x.lang))||null}catch(e){}};
+try{pickVoice();speechSynthesis.onvoiceschanged=pickVoice}catch(e){}
+function webSay(t){try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);if(voice)u.voice=voice;u.lang=voice?voice.lang:"en-GB";u.rate=.88;speechSynthesis.speak(u)}catch(e){}}
+function say(t){if(TTS){TTS.speak(t,{language:"en",rate:.9}).catch(e=>{if(e&&(e.code==="not_granted"||e.code==="unavailable")){TTS=null;webSay(t)}});return}webSay(t)}
+
+/* ---------- plans ---------- */
+const learned=()=>WORDS.filter(w=>S_(w.id)&&S_(w.id).lvl>=1);
+const unseen=()=>WORDS.filter(w=>!S_(w.id)||!S_(w.id).intro);
+const dueList=()=>WORDS.filter(w=>{const s=S_(w.id);return s&&s.lvl>=1&&s.due&&s.due<=today()}).sort((a,b)=>S_(a.id).due<S_(b.id).due?-1:1);
+const canBuild=w=>!/["“”]/.test(w.ex)&&w.ex.split(" ").length<=9;
+function blockSteps(block,known){
+const st=[];
+block.forEach(w=>st.push({t:"intro",w:w.id}));
+shuf(block).forEach(w=>st.push({t:"pick",w:w.id}));
+if(block.length>=3)st.push({t:"pairs",ws:block.map(w=>w.id)});
+shuf(block).slice(0,Math.ceil(block.length/2)).forEach(w=>st.push({t:"listen",w:w.id}));
+shuf(block).forEach(w=>st.push({t:"type",w:w.id,hint:true}));
+const ids=new Set(block.map(w=>w.en)),ok=new Set([...known.map(w=>w.en),...ids]);
+const bank=shuf(BANK.filter(([e,r,tags])=>tags.every(t=>ok.has(t))&&tags.some(t=>ids.has(t)))).slice(0,2);
+bank.forEach(([en,ru])=>st.push({t:"build",en,ru}));
+shuf(block.filter(canBuild)).slice(0,3-bank.length).forEach(w=>st.push({t:"build",en:w.ex,ru:w.exRu,w:w.id}));
+return st;
+}
+function morningPlan(extra){
+const steps=[],due=extra?[]:dueList().slice(0,20),fresh=unseen().slice(0,extra?6:ST.settings.newPerDay);
+if(due.length){steps.push({t:"section",pic:"🔁",title:"Разминка: повторение",sub:`${due.length} ${plural(due.length,"слово","слова","слов")} пора освежить`});
+shuf(due).forEach(w=>{const l=S_(w.id).lvl;const t=l>=3?"type":(Math.random()<.5?"pick":"listen");steps.push({t,w:w.id,rev:1,hint:l<4})})}
+const known=learned();
+for(let i=0;i<fresh.length;i+=6){const block=fresh.slice(i,i+6);
+steps.push({t:"section",pic:"🏒",title:fresh.length>6?`Новые слова · блок ${i/6+1}`:"Новые слова",sub:block.map(w=>w.en).join(" · ")});
+steps.push(...blockSteps(block,known.concat(fresh.slice(0,i))))}
+return steps;
+}
+function eveningWords(){const t=today();let ws=WORDS.filter(w=>S_(w.id)&&S_(w.id).intro===t);
+if(!ws.length)ws=WORDS.filter(w=>S_(w.id)&&S_(w.id).intro).sort((a,b)=>S_(a.id).intro<S_(b.id).intro?1:-1).slice(0,12);return ws}
+function eveningPlan(){
+const ws=eveningWords();if(!ws.length)return[];
+const steps=[{t:"section",pic:"🧠",title:"Проверка без подсказок",sub:"Утренние слова: вспомни и впиши"}];
+shuf(ws).slice(0,12).forEach(w=>steps.push({t:"type",w:w.id,hint:false,eve:1}));
+steps.push({t:"section",pic:"✍️",title:"Своё предложение",sub:"Напиши о своей жизни — я проверю"});
+const pool=shuf(ws);for(let n=0;n<3&&pool.length;n++)steps.push({t:"write",ws:pool.splice(0,Math.min(2,pool.length)).map(w=>w.id),n});
+steps.push({t:"section",pic:"🎙️",title:"Скажи вслух",sub:"Послушай и повтори фразу"});
+steps.push({t:"speak",n:0,w:ws[0].id},{t:"speak",n:1,w:(ws[1]||ws[0]).id});
+const bts=[...new Set(ws.map(w=>w.bt))];
+steps.push({t:"reread",pages:bts.map(b=>BATCHES.find(x=>x.id===b).pages)});
+return steps;
+}
+const plural=(n,a,b,c)=>{n=Math.abs(n)%100;const k=n%10;return n>10&&n<20?c:k>1&&k<5?b:k===1?a:c};
+
+/* ---------- views ---------- */
+const app=document.getElementById("app");
+let VIEW="home",S=null;
+function streak(){let n=0,k=today();if(!(ST.days[k]&&(ST.days[k].morning||ST.days[k].evening)))k=addDays(k,-1);
+while(ST.days[k]&&(ST.days[k].morning||ST.days[k].evening)){n++;k=addDays(k,-1)}return n}
+function groups(){const g=[0,0,0,0];WORDS.forEach(w=>{const l=S_(w.id)?S_(w.id).lvl:0;g[l===0?0:l<=2?1:l<=4?2:3]++});return g}
+const rinkSvg='<svg class="rink" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="44" fill="none" stroke="#fff" stroke-width="3"/><circle cx="50" cy="50" r="4" fill="#fff"/><path d="M18 36h12M18 64h12M70 36h12M70 64h12M50 0v100" stroke="#fff" stroke-width="3"/></svg>';
+
+function home(){
+const t=today(),d=ST.days[t]||{},due=dueList().length,nu=unseen().length,np=Math.min(ST.settings.newPerDay,nu),g=groups(),tot=WORDS.length,sk=streak();
+const tomorrow=WORDS.filter(w=>{const s=S_(w.id);return s&&s.lvl>=1&&s.due&&s.due<=addDays(t,1)}).length;
+const m=d.morning,e=d.evening,ew=eveningWords().length;
+const mSub=m?`<span class="done-tag">${IC.check} Готово · ${m.score}/${m.total}</span>`:(due||np?`${due?`${due} на повторение · `:""}${np} ${plural(np,"новое","новых","новых")} · ~15 мин`:"Новых слов нет — пришли новую партию в чат");
+const eSub=e?`<span class="done-tag">${IC.check} Готово · ${e.score}/${e.total}</span>`:(ew?(m?"Проверка, своё предложение, говорение · ~15 мин":"Лучше после утреннего занятия"):"Сначала пройди утреннее занятие");
+app.innerHTML=`<header class="hero">${rinkSvg}<div class="top"><span class="kick">Heated Rivalry · английский</span><span class="chip">${IC.flame}${sk} ${plural(sk,"день","дня","дней")}</span></div>
+<h1>${new Date().getHours()<16?"Доброе утро":"Добрый вечер"}, Евгений</h1><p>Два занятия по 15 минут: утром учим, вечером применяем.</p></header>
+<div class="wrap">
+<section class="card sess"><div class="ic sun">${IC.sun}</div><div><h2>Утро · учим</h2><div class="mute sm">${mSub}</div></div>
+<div class="acts">${!m&&(due||np)?`<button class="btn wide" data-go="morning">Начать утреннее</button>`:""}${m&&nu?`<button class="btn ghost wide" data-go="extra">Ещё 6 новых слов</button>`:""}</div></section>
+<section class="card sess"><div class="ic moon">${IC.moon}</div><div><h2>Вечер · применяем</h2><div class="mute sm">${eSub}</div></div>
+<div class="acts">${!e&&ew?`<button class="btn wide${m?"":" ghost"}" data-go="evening">Начать вечернее</button>`:""}</div></section>
+<section class="card"><h3>Мои слова</h3><div class="lv">${g.map((n,i)=>`<i class="c${i}" style="width:${n/tot*100}%"></i>`).join("")}</div>
+<div class="legend">${["Новые","Учу","Знакомо","Выучено"].map((n,i)=>`<div><span class="c${i}"></span>${n}<b>${g[i]}</b></div>`).join("")}</div>
+<p class="mute sm" style="margin:12px 0 0">Завтра на повторение: ${tomorrow} · всего слов: ${tot}</p></section>
+<div class="row2"><button class="btn ghost" data-view="words">Словарь</button><button class="btn ghost" data-view="stats">Статистика</button></div>
+<section class="card"><h3>Новых слов за утро</h3><div class="seg">${[6,12,18,24].map(n=>`<button data-np="${n}" aria-pressed="${ST.settings.newPerDay===n}">${n}</button>`).join("")}</div>
+<p class="mute sm" style="margin:10px 0 0">Новую партию слов из книги присылай в чат фотографией — я добавлю её сюда.</p></section>
+<section class="card"><h3>Перенос данных</h3><p class="mute sm" style="margin:4px 0 12px">Весь прогресс одним JSON — чтобы перенести его в новую версию приложения.</p>
+<div class="row2"><button class="btn ghost" data-exp>Экспорт</button><button class="btn ghost" data-imp>Импорт</button></div><div id="xio"></div></section>
+</div>`;
+}
+function exportJson(){return JSON.stringify({...ST,exportedAt:new Date().toISOString(),app:"hr2"},null,2)}
+function showExport(){
+const j=exportJson(),box=document.getElementById("xio");if(!box)return;
+box.innerHTML=`<textarea class="inp" id="xout" readonly style="min-height:160px;font-size:13px;font-family:ui-monospace,Menlo,monospace">${esc(j)}</textarea>
+<div class="row2" style="margin-top:10px"><button class="btn" data-expcopy>Скопировать</button><button class="btn ghost" data-expdl>Скачать файл</button></div><p class="mute sm" id="xmsg" style="margin:8px 0 0"></p>`;
+}
+function importState(raw){
+const v=JSON.parse(raw);
+if(!v||typeof v!=="object"||typeof v.srs!=="object"||v.srs===null)throw new Error("В JSON нет поля srs — это не экспорт тренажёра.");
+const n={upd:Date.now(),settings:{newPerDay:12,...(v.settings||{})},srs:v.srs,days:v.days||{},sent:Array.isArray(v.sent)?v.sent:[]};
+return n;
+}
+
+function wordsView(){
+app.innerHTML=`<div class="pagehead"><button class="x" data-view="home" aria-label="Назад">${IC.back}</button><h1>Словарь</h1></div><div class="wrap">`+
+BATCHES.map(b=>`<section class="card"><h3>${esc(b.title)}</h3><p class="mute sm" style="margin:4px 0 6px">${esc(b.pages)}</p>`+
+WORDS.filter(w=>w.bt===b.id).map(w=>{const s=S_(w.id),l=s?s.lvl:0;
+return `<details class="wrow"><summary style="display:contents"><div class="em">${w.pic}</div><div><b>${esc(w.en)}</b><span class="mute sm">${esc(w.ru)}</span><div class="dots">${[1,2,3,4,5,6].map(i=>`<i class="${i<=l?"f":""}"></i>`).join("")}</div></div>${spkBtn(w.en,"s")}</summary>
+<div class="det">${w.note?esc(w.note)+"<br>":""}<b style="color:var(--ink)">${esc(w.ex)}</b> — ${esc(w.exRu)}${s&&s.due?`<br>Следующее повторение: ${s.due.split("-").reverse().join(".")}`:""}</div></details>`}).join("")+`</section>`).join("")+`</div>`;
+}
+
+function statsView(){
+const t=today(),rows=[];for(let i=13;i>=0;i--){const k=addDays(t,-i),d=ST.days[k]||{};rows.push([k,d.morning,d.evening])}
+const pc=x=>x&&x.total?Math.round(x.score/x.total*100):0;
+const hard=WORDS.filter(w=>S_(w.id)&&S_(w.id).wrong).sort((a,b)=>S_(b.id).wrong-S_(a.id).wrong).slice(0,10);
+const g=groups(),sk=streak();
+app.innerHTML=`<div class="pagehead"><button class="x" data-view="home" aria-label="Назад">${IC.back}</button><h1>Статистика</h1></div><div class="wrap">
+<div class="stats3"><div><b>${sk}</b>${plural(sk,"день","дня","дней")} подряд</div><div><b>${g[1]+g[2]+g[3]}</b>в работе</div><div><b>${g[3]}</b>выучено</div></div>
+<section class="card"><h3>Последние 2 недели</h3><p class="mute sm" style="margin:4px 0 4px"><span class="legend"></span>Жёлтый — утро, синий — вечер, % верно с первой попытки</p>
+${rows.map(([k,m,e])=>`<div class="hrow"><span>${k.slice(8)}.${k.slice(5,7)}</span><div class="hb" title="Утро ${m?m.score+"/"+m.total:"—"}"><i class="m" style="width:${pc(m)}%"></i></div><div class="hb" title="Вечер ${e?e.score+"/"+e.total:"—"}"><i class="e" style="width:${pc(e)}%"></i></div></div>`).join("")}</section>
+<section class="card"><h3>Где ошибаюсь чаще</h3>${hard.length?hard.map(w=>`<div class="wrow"><div class="em">${w.pic}</div><div><b>${esc(w.en)}</b><span class="mute sm">${esc(w.ru)}</span></div><span class="mute">${S_(w.id).wrong}×</span></div>`).join(""):`<p class="mute">Пока ошибок нет</p>`}</section>
+<section class="card"><h3>Мои предложения</h3>${ST.sent.length?ST.sent.slice(-12).reverse().map(s=>`<div class="sline">${s.ok?`<b>${esc(s.text)}</b>`:`<s>${esc(s.text)}</s><br><b>${esc(s.corrected||"")}</b>`}${s.comment?`<div class="mute sm">${esc(s.comment)}</div>`:""}</div>`).join(""):`<p class="mute">Появятся после вечернего занятия</p>`}</section></div>`;
+}
+
+/* ---------- session ---------- */
+function start(kind){
+const steps=kind==="evening"?eveningPlan():morningPlan(kind==="extra");
+if(!steps.length)return;
+steps.forEach((s,i)=>s.k=i);
+S={kind,steps,i:0,graded:0,right:0,first:new Set(),checked:false,ok:null,sel:null,written:[],newIds:new Set(),t0:Date.now(),busy:false};
+VIEW="session";draw();
+}
+const cur=()=>S.steps[S.i];
+function opts(w,n=4){return shuf([w,...shuf(WORDS.filter(x=>x!==w&&x.ru!==w.ru)).slice(0,n-1)])}
+function draw(){
+if(VIEW!=="session")return render();
+const s=cur(),done=Math.min(S.i/S.steps.length,1);
+let body="";
+const w=s.w?BY[s.w]:null;
+if(s.t==="section")body=`<div class="sect"><div class="big">${s.pic}</div><h2>${esc(s.title)}</h2><p class="mute">${esc(s.sub)}</p></div>`;
+if(s.t==="intro"){const st=wst(w.id);if(!st.intro){st.intro=today();st.lvl=1;st.due=addDays(today(),1);S.newIds.add(w.id);save()}
+body=`<div class="lbl">Новое слово</div><div class="pic ${w.pc}">${w.pic}</div><div class="word"><h2>${esc(w.en)}</h2>${spkBtn(w.en)}</div><div class="ipa">${esc(w.ipa)}</div><div class="ru">${esc(w.ru)}</div>
+${w.note?`<div class="note${w.fix?" fix":""}">${w.fix?"<b>Поправка к твоему переводу</b>":""}${esc(w.note)}</div>`:""}<div class="exs">${spkBtn(w.ex,"s")}<div><b>${esc(w.ex)}</b><i>${esc(w.exRu)}</i></div></div>`}
+if(s.t==="pick"){s.o=s.o||opts(w).map(x=>x.id);
+body=`<div class="lbl">${s.rev?"Повторение · ":""}Выбери перевод</div><div class="word" style="margin-bottom:18px"><h2>${esc(w.en)}</h2>${spkBtn(w.en)}</div>
+<div class="opts">${s.o.map((id,n)=>{const x=BY[id];return `<button class="tile${tcls(id,w.id)}" data-pick="${id}" aria-pressed="${S.sel===id}" ${S.checked?"disabled":""}><span class="em">${x.pic}</span>${esc(x.ru)}</button>`}).join("")}</div>`}
+if(s.t==="listen"){s.o=s.o||opts(w).map(x=>x.id);
+body=`<div class="lbl">${s.rev?"Повторение · ":""}Что ты слышишь?</div>${spkBtn(w.en,"big")}
+<div class="opts">${s.o.map(id=>`<button class="tile${tcls(id,w.id)}" data-pick="${id}" aria-pressed="${S.sel===id}" ${S.checked?"disabled":""}>${esc(BY[id].en)}</button>`).join("")}</div>`}
+if(s.t==="type"){const gap=w.ex.replace(w.b,"\u0000");const [a,b]=gap.split("\u0000");
+body=`<div class="lbl">${s.rev?"Повторение · ":s.eve?"Вспомни · ":""}Впиши пропущенное</div>${s.hint?`<div class="pic ${w.pc}" style="aspect-ratio:auto;height:120px;font-size:64px">${w.pic}</div>`:""}
+<div class="sent">${esc(a)}<span class="gap">${S.checked?esc(w.b):"&nbsp;"}</span>${esc(b)}</div><div class="hint">${esc(w.exRu)}${s.hint?` · начинается на «${esc(w.b.slice(0,1))}», ${w.b.length} букв`:""}</div>
+<input class="inp" id="tin" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Слово на английском" value="${esc(S.typed||"")}" ${S.checked?"disabled":""}>`}
+if(s.t==="pairs"){s.L=s.L||shuf(s.ws);s.R=s.R||shuf(s.ws);s.m=s.m||[];s.bad=s.bad||0;
+const col=(arr,side)=>arr.map(id=>{const x=BY[id],gone=s.m.includes(id),sel=S.sel&&S.sel.side===side&&S.sel.id===id;
+return `<button class="tile${gone?" gone":""}${s.flash&&s.flash.includes(side+id)?" badt":""}" data-pair="${side}|${id}" aria-pressed="${!!sel}" ${gone?"disabled":""}>${side==="L"?esc(x.en):`${esc(x.ru)}`}</button>`}).join("");
+body=`<div class="lbl">Найди пары</div><div class="pairs"><div class="col">${col(s.L,"L")}</div><div class="col">${col(s.R,"R")}</div></div>`}
+if(s.t==="build"){if(!s.toks){s.toks=s.en.replace(/[.!?]$/,"").split(" ");s.ord=shuf(s.toks.map((_,i)=>i));s.pk=[]}
+body=`<div class="lbl">Собери фразу</div><div class="word"><div class="sent" style="font-weight:800">${esc(s.ru)}</div></div>
+<div class="ans">${s.pk.map((k,n)=>`<button class="wt" data-back="${n}" ${S.checked?"disabled":""}>${esc(s.toks[k])}</button>`).join("")}</div>
+<div class="pool">${s.ord.map(k=>`<button class="wt${s.pk.includes(k)?" used":""}" data-tok="${k}" ${S.checked?"disabled":""}>${esc(s.toks[k])}</button>`).join("")}</div>`}
+if(s.t==="write"){const ws=s.ws.map(id=>BY[id]);
+body=`<div class="lbl">Напиши своё предложение</div><p class="sub">О себе, работе, переезде, хоккее — о чём угодно. Используй хотя бы одно слово:</p>
+<div class="chips">${ws.map(x=>`<div class="wchip"><span class="em">${x.pic}</span><div><b>${esc(x.en)}</b><span>${esc(x.ru)}</span></div></div>`).join("")}</div>
+<textarea class="inp" id="win" placeholder="Например: ${esc(ws[0].ex)}" ${S.checked||S.busy?"disabled":""}>${esc(S.typed||"")}</textarea>
+${!SAMPLE?`<p class="mute sm">Автопроверка здесь недоступна — предложение сохранится, и я проверю его, когда напишешь мне в чат.</p>`:""}`}
+if(s.t==="speak"){const tx=speakText(s);
+body=`<div class="lbl">Скажи вслух</div><p class="sub">Послушай, потом произнеси фразу целиком</p>
+<div class="card" style="display:flex;gap:12px;align-items:flex-start">${spkBtn(tx.en)}<div><div class="sent" style="font-size:20px">${esc(tx.en)}</div><div class="mute sm">${esc(tx.ru||"")}</div></div></div>
+${DICT?`<button class="btn ghost wide" id="mic" style="margin-top:16px" ${S.checked?"disabled":""}>${IC.mic.replace("<svg",'<svg style="width:22px;height:22px;vertical-align:-5px;margin-right:8px"')}<span id="micl">${S.listening?"Слушаю… нажми, чтобы закончить":"Нажми и говори"}</span></button>`:""}
+<textarea class="inp" id="sin" placeholder="${DICT?"Здесь появится то, что ты сказал":"Нажми на поле, затем на микрофон на клавиатуре и произнеси фразу"}" ${S.checked?"disabled":""}>${esc(S.typed||"")}</textarea>`}
+if(s.t==="reread"){body=`<div class="sect"><div class="big">📖</div><h2>Перечитай страницы</h2><p class="mute">Открой книгу и перечитай: <b style="color:var(--ink)">${s.pages.map(esc).join("; ")}</b>. Теперь эти слова ты знаешь — посмотри, как легко читается.</p></div>`}
+app.innerHTML=`<div class="bar"><button class="x" data-quit aria-label="Выйти">${IC.x}</button><div class="prog"><b style="width:${done*100}%"></b></div></div><main class="stage">${body}</main>${foot(s)}`;
+const f=document.getElementById("tin")||document.getElementById("win")||document.getElementById("sin");
+if(f&&!S.checked){f.addEventListener("input",()=>{S.typed=f.value;const b=document.getElementById("chk");if(b)b.disabled=!f.value.trim()});if(s.t==="type")setTimeout(()=>{try{f.focus({preventScroll:true})}catch(e){}},50)}
+}
+const tcls=(id,right)=>!S.checked?"":id===right?" good":id===S.sel?" badt":"";
+function speakText(s){const wr=S.written[s.n];if(wr&&wr.ok!==undefined)return{en:wr.corrected||wr.text,ru:"Твоё предложение"+(wr.ok?"":" (исправленное)")};const w=BY[s.w];return{en:w.ex,ru:w.exRu}}
+function foot(s){
+if(["section","intro"].includes(s.t))return `<div class="foot"><div class="in"><button class="btn wide" id="next">${s.t==="section"?"Поехали":"Дальше"}</button></div></div>`;
+if(s.t==="reread")return `<div class="foot"><div class="in"><button class="btn okb wide" id="reread">Перечитал</button><button class="link" id="next">Сделаю позже</button></div></div>`;
+if(s.t==="pairs"&&!S.checked)return `<div class="foot"><div class="in"><div class="mute sm" style="text-align:center">Нажми слово слева, потом его перевод справа</div></div></div>`;
+if(!S.checked){
+const can=s.t==="pick"||s.t==="listen"?!!S.sel:s.t==="build"?s.pk.length>0:!!(S.typed||"").trim();
+const skip=s.t==="speak"?`<button class="link" id="skip">Не могу сейчас говорить</button>`:s.t==="write"?`<button class="link" id="skip">Пропустить</button>`:s.t==="type"?`<button class="link" id="idk">Не помню</button>`:"";
+return `<div class="foot"><div class="in"><div class="frow"><button class="btn wide" id="chk" ${can&&!S.busy?"":"disabled"}>${S.busy?'<span class="spin"></span>Проверяю…':"Проверить"}</button></div>${skip}</div></div>`}
+return `<div class="foot ${S.ok?"good":"badf"}"><div class="in"><div class="fb">${S.fb}</div><button class="btn ${S.ok?"okb":"bad"} wide" id="next">Дальше</button></div></div>`;
+}
+function grade(s,ok,wid){
+if(!S.first.has(s.k)){S.first.add(s.k);S.graded++;if(ok)S.right++;
+if(wid){const st=wst(wid);
+if(s.rev){if(ok){st.lvl=Math.min(st.lvl+1,6);st.due=addDays(today(),IV[st.lvl])}else{st.lvl=1;st.due=addDays(today(),1)}}
+if(s.eve&&!ok){st.lvl=1;st.due=addDays(today(),1)}
+ok?st.right++:st.wrong++;save()}}
+if(!ok&&!s.retry&&s.t!=="write"&&s.t!=="speak"){const c={...s,retry:true};delete c.o;delete c.toks;delete c.L;delete c.R;delete c.m;delete c.flash;S.steps.push(c)}
+}
+function fbHtml(ok,title,line){return `<h3>${ok?IC.check:IC.cross}${title}</h3>${line?`<p>${line}</p>`:""}`}
+function check(){
+const s=cur(),w=s.w?BY[s.w]:null;
+if(s.t==="pick"||s.t==="listen"){const ok=S.sel===w.id;grade(s,ok,w.id);S.ok=ok;S.fb=fbHtml(ok,ok?"Отлично!":"Правильный ответ:",`${esc(w.en)} — ${esc(w.ru)}`);say(w.en)}
+if(s.t==="type"){const a=norm(S.typed||""),b=norm(w.b);let ok=a===b,typo=false;if(!ok&&b.length>5&&lev(a,b)===1){ok=true;typo=true}
+grade(s,ok,w.id);S.ok=ok;S.fb=fbHtml(ok,ok?(typo?"Почти — опечатка":"Верно!"):"Правильно так:",`<span class="c">${esc(w.ex)}</span>`);say(w.ex)}
+if(s.t==="build"){const got=s.pk.map(k=>s.toks[k]).join(" "),ok=got===s.toks.join(" ");grade(s,ok,s.w);S.ok=ok;
+S.fb=fbHtml(ok,ok?"Верно!":"Правильно так:",`<span class="c">${esc(s.en)}</span>${ok?"":`<br><span class="c sm">Твой вариант: ${esc(got)}</span>`}`);say(s.en)}
+if(s.t==="speak"){const tx=speakText(s),tw=norm(tx.en).split(" "),gw=new Set(norm(S.typed||"").split(" "));const miss=tw.filter(x=>!gw.has(x));const r=1-miss.length/tw.length,ok=r>=.8;
+grade(s,ok,null);S.ok=ok;S.fb=fbHtml(ok,ok?`Отлично! ${Math.round(r*100)}% слов`:`${Math.round(r*100)}% слов — попробуй ещё завтра`,miss.length?`<span class="c sm">Не расслышал: ${esc(miss.join(", "))}</span>`:"")}
+if(s.t==="write")return checkWrite(s);
+S.checked=true;draw();
+}
+async function checkWrite(s){
+const text=(S.typed||"").trim(),ws=s.ws.map(id=>BY[id]);
+const rec={at:new Date().toISOString(),words:ws.map(w=>w.en),text};
+if(!SAMPLE){rec.pending=true;ST.sent.push(rec);S.written[s.n]={...rec,ok:true};save();S.first.add(s.k);S.ok=true;S.checked=true;
+S.fb=fbHtml(true,"Сохранил","Проверю, когда напишешь мне в чат.");return draw()}
+S.busy=true;draw();
+const prompt=`You are a friendly English tutor for a Russian-speaking adult learner (level B1–B2) who learns words from a hockey novel.
+Target words: ${ws.map(w=>`"${w.en}" (${w.ru})`).join(", ")}.
+The learner wrote: """${text}"""
+Check grammar, spelling, word choice and naturalness, and whether at least one target word is used correctly.
+Return only JSON: {"ok": true|false, "corrected": "...", "comment": "..."}
+"ok" is true only if there are no mistakes and a target word is used correctly. "corrected" is a natural, correct version close to the learner's meaning (identical if already correct). "comment" is 1–2 short sentences in Russian: what was wrong and why, or brief praise with a more natural option if there is one.`;
+let v=null;
+try{v=SAMPLE.json?await SAMPLE.json(prompt):null}catch(e){v=null}
+if(!v||typeof v!=="object"){try{const r=await SAMPLE(prompt);const m=String(r.text||"").match(/\{[\s\S]*\}/);v=m?JSON.parse(m[0]):null}catch(e){v=null}}
+S.busy=false;
+if(!v){rec.pending=true;ST.sent.push(rec);S.written[s.n]={...rec,ok:true};save();S.first.add(s.k);S.ok=true;S.checked=true;S.fb=fbHtml(true,"Сохранил","Не получилось проверить сейчас — проверю в чате.");return draw()}
+Object.assign(rec,{ok:!!v.ok,corrected:String(v.corrected||text),comment:String(v.comment||"")});ST.sent.push(rec);S.written[s.n]=rec;
+grade(s,rec.ok,null);save();S.ok=rec.ok;S.checked=true;
+S.fb=fbHtml(rec.ok,rec.ok?"Отлично сказано!":"Почти — вот как лучше:",`${rec.ok?"":`<span class="c"><b>${esc(rec.corrected)}</b></span><br>`}<span class="c sm">${esc(rec.comment)}</span>`);
+draw();
+}
+function next(){
+const s=cur();
+if(s&&s.t==="speak"&&S.listening&&DICT){try{DICT.stop()}catch(e){}}
+S.i++;S.checked=false;S.ok=null;S.sel=null;S.typed="";S.listening=false;
+if(S.i>=S.steps.length)return finish();
+const n=cur();if(n.t==="intro")say(BY[n.w].en);if(n.t==="listen"||n.t==="pick")say(BY[n.w].en);
+draw();
+}
+function finish(){
+const t=today(),d=day(t),kind=S.kind==="extra"?"extra":S.kind,res={score:S.right,total:S.graded,mins:Math.max(1,Math.round((Date.now()-S.t0)/60000)),newN:S.newIds.size,at:new Date().toISOString()};
+let prev=null;Object.keys(ST.days).filter(k=>k<t&&ST.days[k][kind]).sort().forEach(k=>prev=ST.days[k][kind]);
+if(kind==="extra")d.extra=(d.extra||[]).concat(res);else d[kind]=res;save();
+const p=res.total?Math.round(res.score/res.total*100):100;
+let cmp="";if(prev&&prev.total){const dd=p-Math.round(prev.score/prev.total*100);cmp=dd>0?`<span class="up">+${dd}% к прошлому разу</span>`:dd<0?`<span class="down">${dd}% к прошлому разу</span>`:"Как в прошлый раз"}
+VIEW="result";S=null;
+app.innerHTML=`<main class="stage result"><div class="sect" style="padding-top:20px"><div class="big">${p>=90?"🏆":p>=70?"🥅":"💪"}</div></div>
+<h2 style="font-size:30px">${kind==="evening"?"Вечернее занятие готово":"Занятие готово"}</h2><div class="score">${p}%</div><p class="mute">${res.score} из ${res.total} с первой попытки${cmp?"<br>"+cmp:""}</p>
+<div class="stats3"><div><b>${res.newN}</b>новых слов</div><div><b>${res.mins}</b>мин</div><div><b>${streak()}</b>дней подряд</div></div></main>
+<div class="foot"><div class="in"><button class="btn wide" data-view="home">На главную</button></div></div>`;
+}
+
+/* ---------- events ---------- */
+function render(){S=VIEW==="session"?S:null;({home,words:wordsView,stats:statsView})[VIEW]?.();window.scrollTo(0,0)}
+document.addEventListener("click",e=>{
+const t=e.target.closest("button");if(!t)return;
+if(t.dataset.say!==undefined){e.preventDefault();e.stopPropagation();say(t.dataset.say);return}
+if(t.dataset.view){VIEW=t.dataset.view;render();return}
+if(t.dataset.go){start(t.dataset.go);return}
+if(t.dataset.np){ST.settings.newPerDay=+t.dataset.np;save();home();return}
+if(t.hasAttribute("data-quit")){VIEW="home";S=null;render();return}
+if(t.hasAttribute("data-exp")){showExport();return}
+if(t.hasAttribute("data-expcopy")){const m=document.getElementById("xmsg"),ta=document.getElementById("xout");
+const ok=()=>{if(m)m.textContent="Скопировано. Вставь в новую версию или пришли в чат."};
+const fallback=()=>{try{ta.select();if(document.execCommand("copy"))return ok()}catch(e){}if(m)m.textContent="Не получилось скопировать автоматически — выдели текст в поле и скопируй вручную."};
+try{navigator.clipboard.writeText(ta.value).then(ok,fallback)}catch(e){fallback()}return}
+if(t.hasAttribute("data-expdl")){try{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([exportJson()],{type:"application/json"}));a.download=`heated-rivalry-${today()}.json`;document.body.appendChild(a);a.click();a.remove()}catch(e){}
+const m=document.getElementById("xmsg");if(m)m.textContent="Если файл не скачался — используй «Скопировать».";return}
+if(t.hasAttribute("data-imp")){const box=document.getElementById("xio");if(box)box.innerHTML=`<textarea class="inp" id="xin" placeholder="Вставь сюда JSON из экспорта" style="min-height:140px;font-size:13px;font-family:ui-monospace,Menlo,monospace"></textarea>
+<button class="btn bad wide" data-impgo style="margin-top:10px">Заменить мой прогресс</button><p class="mute sm" id="xmsg" style="margin:8px 0 0">Текущий прогресс на этом устройстве будет заменён.</p>`;return}
+if(t.hasAttribute("data-impgo")){const m=document.getElementById("xmsg");try{ST=importState(document.getElementById("xin").value);save();home();const b=document.getElementById("xio");if(b)b.innerHTML=`<p class="done-tag" style="margin:10px 0 0">${IC.check} Прогресс загружен</p>`}catch(e){if(m)m.textContent="Не получилось: "+(e&&e.message||"неверный JSON")}return}
+if(!S)return;
+const s=cur();
+if(t.dataset.pick){S.sel=t.dataset.pick;draw();if(s.t==="pick"){}return}
+if(t.dataset.tok!==undefined){const k=+t.dataset.tok;if(!s.pk.includes(k)){s.pk.push(k);draw()}return}
+if(t.dataset.back!==undefined){s.pk.splice(+t.dataset.back,1);draw();return}
+if(t.dataset.pair){const [side,id]=t.dataset.pair.split("|");
+if(!S.sel||S.sel.side===side){S.sel={side,id};draw();return}
+const a=S.sel.id;S.sel=null;
+if(a===id){s.m.push(id);say(BY[id].en);if(s.m.length===s.ws.length){const ok=s.bad===0;
+if(!S.first.has(s.k)){S.first.add(s.k);S.graded++;if(ok)S.right++}S.ok=true;S.checked=true;S.fb=fbHtml(true,ok?"Все пары верно!":"Готово",ok?"":`Ошибок по ходу: ${s.bad}`)}draw()}
+else{s.bad++;s.ws.forEach(()=>{});[a,id].forEach(x=>{const st=wst(x);st.wrong++});save();s.flash=["L"+(side==="L"?id:a),"R"+(side==="R"?id:a)];draw();setTimeout(()=>{s.flash=null;if(S&&cur()===s)draw()},600)}
+return}
+if(t.id==="chk"){check();return}
+if(t.id==="idk"){S.typed="";const w=BY[s.w];grade(s,false,w.id);S.ok=false;S.checked=true;S.fb=fbHtml(false,"Правильно так:",`<span class="c">${esc(w.ex)}</span>`);say(w.ex);draw();return}
+if(t.id==="next"){next();return}
+if(t.id==="skip"){next();return}
+if(t.id==="reread"){day(today()).reread=true;save();next();return}
+if(t.id==="mic"&&DICT){if(S.listening){DICT.stop().catch(()=>{})}else{S.listening=true;const p=DICT.start();if(p&&p.catch)p.catch(err=>{S.listening=false;if(err&&err.code==="not_granted")DICT=null;draw()});const l=document.getElementById("micl");if(l)l.textContent="Слушаю… нажми, чтобы закончить"}return}
+});
+document.addEventListener("keydown",e=>{
+if(VIEW!=="session"||!S)return;const s=cur();
+if(e.key==="Enter"&&!e.shiftKey){const b=document.getElementById("chk")||document.getElementById("next");if(b&&!b.disabled){e.preventDefault();b.click()}return}
+if(/^[1-4]$/.test(e.key)&&(s.t==="pick"||s.t==="listen")&&!S.checked&&document.activeElement.tagName!=="TEXTAREA"&&document.activeElement.tagName!=="INPUT"){S.sel=s.o[+e.key-1];draw()}
+});
+
+/* ---------- capabilities ---------- */
+(async()=>{
+if(typeof claude==="undefined"||!claude.use)return;
+const [db,tts,dict,smp]=await Promise.all(["db","tts","dictation","sample"].map(n=>claude.use(n).catch(()=>null)));
+TTS=tts||null;SAMPLE=smp||null;
+if(dict){DICT=dict;
+try{DICT.onFinal(({text})=>{const f=document.getElementById("sin");if(!f||!S)return;S.typed=((S.typed||"")+" "+text).trim();f.value=S.typed;const b=document.getElementById("chk");if(b)b.disabled=!S.typed})}catch(e){}
+try{DICT.onState(({state})=>{if(!S)return;S.listening=state==="listening";const l=document.getElementById("micl");if(l)l.textContent=S.listening?"Слушаю… нажми, чтобы закончить":"Нажми и говори"})}catch(e){}}
+if(db){try{const snap=await Promise.race([db.doc("state/main").get(),new Promise((_,r)=>setTimeout(()=>r(0),10000))]);DB=db;
+const r=snap.exists?snap.data():null;
+if(r&&(r.upd||0)>(ST.upd||0)){ST=JSON.parse(JSON.stringify(r));ST.sent=ST.sent||[];ST.days=ST.days||{};ST.srs=ST.srs||{};ST.settings=ST.settings||{newPerDay:12};ls.set("state",ST)}
+else if(ST.upd)flush();
+}catch(e){}}
+if(VIEW==="session")draw();else if(VIEW!=="result")render();
+})();
+render();
+}
+</script>
+</body>
+</html>
