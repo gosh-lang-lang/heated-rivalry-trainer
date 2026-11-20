@@ -42,6 +42,19 @@ export const Rink = () => (
 export const Chevron = (p: P) => (
   <svg {...base} strokeWidth={2.6} {...p}><path d="M6 9l6 6 6-6" /></svg>
 );
+/* устройства — список «где выполнен вход» в настройках */
+export const Phone = (p: P) => (
+  <svg {...base} strokeWidth={2} {...p}><rect x="6.5" y="2.5" width="11" height="19" rx="2.5" /><path d="M10.5 18.5h3" /></svg>
+);
+export const Tablet = (p: P) => (
+  <svg {...base} strokeWidth={2} {...p}><rect x="4" y="2.5" width="16" height="19" rx="2.5" /><path d="M10.5 18.5h3" /></svg>
+);
+export const Laptop = (p: P) => (
+  <svg {...base} strokeWidth={2} {...p}><rect x="4.5" y="5" width="15" height="10.5" rx="1.5" /><path d="M2 19h20" /></svg>
+);
+export const Key = (p: P) => (
+  <svg {...base} strokeWidth={2.2} {...p}><circle cx="8" cy="15" r="4" /><path d="M11 12l8.5-8.5M16.5 6.5l2.5 2.5M14 9l2 2" /></svg>
+);
 export const Play = (p: P) => (
   <svg viewBox="0 0 24 24" fill="currentColor" {...p}><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z" /></svg>
 );

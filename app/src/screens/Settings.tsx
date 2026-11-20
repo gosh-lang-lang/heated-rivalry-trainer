@@ -3,8 +3,9 @@ import type { SetState } from "../App";
 import { NEW_PER_DAY_OPTIONS } from "../core/state";
 import type { AppState } from "../core/types";
 import { ACCENT_LABEL, VOICE_SAMPLE, voiceMeta, type TtsVoice } from "../core/tts";
-import { Back, Check, Chevron, Play } from "../lib/icons";
-import { logout, useMe } from "../lib/auth";
+import { Back, Check, Chevron, Key, Laptop, Phone, Play, Tablet } from "../lib/icons";
+import { logout, revokeDevice, revokeOtherDevices, useDevices, useMe, type Devices } from "../lib/auth";
+import { seenAgo, type DeviceKind } from "../core/device";
 import { say, useVoices } from "../lib/speech";
 import { LOOKS, useLook } from "../lib/glass";
 import { SKATER_BLACK, SKATER_RED } from "../lib/skaters";
@@ -66,14 +67,91 @@ function LookPicker() {
   );
 }
 
+const KIND_ICON: Record<DeviceKind, typeof Phone> = { phone: Phone, tablet: Tablet, computer: Laptop };
+
+const passkeyNote = ({ count, synced }: Devices["passkeys"]) =>
+  count === 0
+    ? "Passkey не привязан"
+    : `Passkey: ${count} (${
+        synced === count ? "iCloud, на всех устройствах Apple" : synced === 0 ? "только на устройстве, где создан" : `${synced} в iCloud, ${count - synced} на отдельном устройстве`
+      })`;
+
+/**
+ * «Вход»: устройства, где выполнен вход (сессии), — выйти на любом из них или везде, кроме этого; passkey — только для сведения.
+ * Удалять passkey отсюда нельзя: passkey из iCloud один на все устройства Apple — удалив его, не войдёшь нигде (отзыв — server/cli.ts).
+ */
 function Account() {
   const me = useMe();
+  const { data, failed, reload } = useDevices();
+  const [busy, setBusy] = useState<string | null>(null);
+  const [confirm, setConfirm] = useState(false);
+  const [err, setErr] = useState("");
+  const now = Date.now();
+  const others = data?.sessions.filter((s) => !s.current) ?? [];
+
+  const run = async (key: string, act: () => Promise<boolean>) => {
+    setBusy(key);
+    setErr("");
+    const ok = await act();
+    if (!ok) setErr("Не получилось — проверь интернет и попробуй ещё раз.");
+    await reload();
+    setBusy(null);
+    setConfirm(false);
+  };
+
   return (
     <section className="card account">
       <h3>{me ? me.user.displayName : "Аккаунт"}</h3>
-      <p className="mute sm" style={{ margin: "4px 0 12px" }}>
-        {me ? `Вход по passkey · привязано: ${me.passkeys}. Новое устройство с тем же Apple ID получит passkey само.` : "Вход по passkey."}
-      </p>
+      <p className="mute sm" style={{ margin: "2px 0 0" }}>Где выполнен вход</p>
+
+      {data ? (
+        <ul className="devs" aria-label="Где выполнен вход">
+          {data.sessions.map((s) => {
+            const Icon = KIND_ICON[s.kind];
+            return (
+              <li className="dev" key={s.id} data-current={s.current || undefined}>
+                <span className="dev-ic" aria-hidden="true"><Icon /></span>
+                <span className="dev-tx">
+                  <b>{s.name}</b>
+                  <small>{s.current ? `это устройство · ${seenAgo(now, now)}` : seenAgo(s.lastSeenAt, now)}</small>
+                </span>
+                {!s.current && (
+                  <button className="dev-out" aria-label={`Выйти: ${s.name}, ${seenAgo(s.lastSeenAt, now)}`} disabled={busy !== null} onClick={() => void run(s.id, () => revokeDevice(s.id))}>
+                    {busy === s.id ? <span className="spin" /> : "Выйти"}
+                  </button>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      ) : (
+        <p className="mute sm dev-wait">{failed ? "Список устройств не загрузился — нет связи с сервером." : "Загружаю список устройств…"}</p>
+      )}
+
+      {others.length > 0 &&
+        (confirm ? (
+          <div className="dev-confirm" role="group" aria-label="Подтверждение">
+            <p>
+              Выйти на {others.length === 1 ? "другом устройстве" : `других устройствах (${others.length})`}? Там нужно будет снова войти по passkey.
+            </p>
+            <div className="dev-confirm-btns">
+              <button className="btn bad" disabled={busy !== null} onClick={() => void run("others", revokeOtherDevices)}>
+                {busy === "others" ? <span className="spin" /> : "Да, выйти"}
+              </button>
+              <button className="btn ghost" disabled={busy !== null} onClick={() => setConfirm(false)}>Отмена</button>
+            </div>
+          </div>
+        ) : (
+          <button className="btn ghost wide dev-all" disabled={busy !== null} onClick={() => setConfirm(true)}>Выйти везде, кроме этого</button>
+        ))}
+      {err && <p className="dev-err" role="alert">{err}</p>}
+
+      <div className="dev-keys">
+        <span className="dev-ic" aria-hidden="true"><Key /></span>
+        <p className="mute sm">
+          {data ? passkeyNote(data.passkeys) : me ? `Passkey: ${me.passkeys}` : "Вход по passkey"}. Новое устройство с тем же Apple ID получит passkey само.
+        </p>
+      </div>
       <button className="btn ghost wide" onClick={() => void logout()}>Выйти</button>
     </section>
   );

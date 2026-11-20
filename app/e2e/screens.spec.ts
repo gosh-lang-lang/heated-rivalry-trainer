@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { afterMorning, DECK, goTab, openHome, openSettings, setup, state, TODAY, ws } from "./helpers";
+import { afterMorning, DECK, goTab, MOCK_DEVICES, openHome, openSettings, setup, state, TODAY, ws } from "./helpers";
 
 test.describe("главная", () => {
   test("новый пользователь: приветствие, 62 новых слова, серия 0", async ({ page }) => {
@@ -186,4 +186,54 @@ test("оформление и день/ночь, выбранные раньше
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute("data-glass", "classic");
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+});
+
+test("вход: устройства — список, выйти на одном, везде кроме этого (с подтверждением)", async ({ page }) => {
+  const hint = page.waitForRequest((r) => r.url().endsWith("/api/auth/device") && r.method() === "POST");
+  await setup(page);
+  const posts: { path: string; body: unknown }[] = [];
+  let list = MOCK_DEVICES;
+  await page.route("**/api/auth/sessions", (route) => route.fulfill({ json: list }));
+  await page.route("**/api/auth/sessions/*", (route) => {
+    const path = new URL(route.request().url()).pathname;
+    posts.push({ path, body: route.request().postDataJSON() });
+    list = path.endsWith("revoke-others")
+      ? { ...list, sessions: list.sessions.filter((s) => s.current) }
+      : { ...list, sessions: list.sessions.filter((s) => s.id !== (route.request().postDataJSON() as { id: string }).id) };
+    return route.fulfill({ json: { ok: true } });
+  });
+  await openHome(page);
+  // при запуске браузер сообщает о себе только два флага
+  const sent = (await hint).postDataJSON() as Record<string, unknown>;
+  expect(Object.keys(sent).sort()).toEqual(["standalone", "touch"]);
+  expect(Object.values(sent).every((v) => typeof v === "boolean")).toBe(true);
+
+  await openSettings(page);
+  const devs = page.getByRole("list", { name: "Где выполнен вход" }).getByRole("listitem");
+  await expect(devs).toHaveCount(3);
+  await expect(devs.nth(0)).toContainText("iPhone · приложение");
+  await expect(devs.nth(0)).toContainText("это устройство · сейчас");
+  await expect(devs.nth(0).getByRole("button")).toHaveCount(0); // своё — обычной кнопкой «Выйти» внизу
+  await expect(devs.nth(1)).toContainText("Mac · Chrome");
+  await expect(devs.nth(1)).toContainText("вчера в 21:40");
+  await expect(devs.nth(2)).toContainText("iPad · Safari");
+  await expect(devs.nth(2)).toContainText("3 дня назад");
+  await expect(page.locator(".account")).toContainText("Passkey: 1 (iCloud, на всех устройствах Apple)");
+
+  // выйти на ноутбуке — сразу, без подтверждения
+  await page.getByRole("button", { name: /^Выйти: Mac · Chrome/ }).click();
+  await expect(devs).toHaveCount(2);
+  expect(posts).toEqual([{ path: "/api/auth/sessions/revoke", body: { id: "b2b2b2b2b2b2b2b2" } }]);
+
+  // «везде, кроме этого» — только после подтверждения
+  await page.getByRole("button", { name: "Выйти везде, кроме этого" }).click();
+  await expect(page.getByText("Выйти на другом устройстве?")).toBeVisible();
+  await page.getByRole("button", { name: "Отмена" }).click();
+  expect(posts).toHaveLength(1);
+  await page.getByRole("button", { name: "Выйти везде, кроме этого" }).click();
+  await page.getByRole("button", { name: "Да, выйти" }).click();
+  await expect(devs).toHaveCount(1);
+  expect(posts[1]).toEqual({ path: "/api/auth/sessions/revoke-others", body: {} });
+  await expect(page.getByRole("button", { name: "Выйти везде, кроме этого" })).toHaveCount(0); // других устройств нет
+  await expect(page.getByRole("button", { name: "Выйти", exact: true })).toBeVisible();
 });

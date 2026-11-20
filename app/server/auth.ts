@@ -8,6 +8,11 @@
  *   POST /api/auth/login/verify   { response }         → сессия открыта
  *   POST /api/auth/logout
  *   GET  /api/auth/me                                  → { user } | 401
+ * Устройства, где выполнен вход (нужна сессия; POST — только со своей страницы):
+ *   POST /api/auth/device { touch, standalone }        — подсказка браузера о себе (только флаги)
+ *   GET  /api/auth/sessions                            → { sessions: [{ id, name, kind, createdAt, lastSeenAt, current }], passkeys: { count, synced } }
+ *   POST /api/auth/sessions/revoke { id }              — выйти на устройстве (только своём; текущее — обычный выход)
+ *   POST /api/auth/sessions/revoke-others              — выйти везде, кроме этого устройства
  */
 import {
   generateAuthenticationOptions,
@@ -19,7 +24,8 @@ import {
 } from "@simplewebauthn/server";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { createLimiter } from "../src/core/ratelimit.ts";
-import { CHALLENGE_TTL_MS, SESSION_TTL_MS, type AuthStore, type User } from "./auth-store.ts";
+import { describeDevice } from "../src/core/device.ts";
+import { CHALLENGE_TTL_MS, decodeHint, SESSION_TTL_MS, sessionIdOf, type AuthStore, type User } from "./auth-store.ts";
 
 export interface AuthConfig {
   /** https://heated-rivalry-trainer.spill-the-tea.xyz */
@@ -66,13 +72,15 @@ export const createAuth = (store: AuthStore, cfg: AuthConfig, deps: { json: Json
 
   const publicUser = (u: User) => ({ name: u.name, displayName: u.display_name });
 
-  /** Пользователь текущей сессии (и продление cookie, если сессия продлена). */
-  const sessionUser = (req: IncomingMessage, res?: ServerResponse): User | undefined => {
+  /** Текущая сессия: пользователь и токен (и продление cookie, если сессия продлена). */
+  const currentSession = (req: IncomingMessage, res?: ServerResponse): { user: User; token: string } | undefined => {
     const token = parseCookies(req)[SESSION];
     const s = store.sessionUser(token);
     if (s?.refreshed && res && token) res.setHeader("set-cookie", cookie(SESSION, token, SESSION_TTL_MS / 1000));
-    return s?.user;
+    return s && token ? { user: s.user, token } : undefined;
   };
+  /** Пользователь текущей сессии. */
+  const sessionUser = (req: IncomingMessage, res?: ServerResponse): User | undefined => currentSession(req, res)?.user;
 
   /** Запрос пришёл с нашей страницы (защита от CSRF для POST). Без Origin — не браузер, пропускаем. */
   const sameOrigin = (req: IncomingMessage) => {
@@ -90,6 +98,50 @@ export const createAuth = (store: AuthStore, cfg: AuthConfig, deps: { json: Json
 
   const BAD_LINK = "Ссылка недействительна или устарела — попроси новую.";
 
+  /** Список устройств (сессий) и выход на них. */
+  const devices = async (req: IncomingMessage, res: ServerResponse, route: string) => {
+    if (req.method !== "GET" && !sameOrigin(req)) return json(res, 403, { error: "чужой источник запроса" });
+    const cur = currentSession(req, res);
+    if (!cur) return json(res, 401, { error: "нужен вход" });
+    const { user, token } = cur;
+    const currentId = sessionIdOf(token);
+
+    switch (route) {
+      case "GET /api/auth/sessions": {
+        const sessions = store.sessionsOf(user.id).map((s) => ({
+          id: s.id,
+          ...describeDevice(s.user_agent, decodeHint(s.device)),
+          createdAt: s.created_at,
+          lastSeenAt: s.last_seen_at,
+          current: s.id === currentId,
+        }));
+        sessions.sort((a, b) => Number(b.current) - Number(a.current)); // своё — первым, остальные — недавние выше
+        res.setHeader("cache-control", "no-store");
+        return json(res, 200, { sessions, passkeys: store.passkeySummary(user.id) });
+      }
+      case "POST /api/auth/device": {
+        // только два флага; свободный текст от клиента не храним — имя выводится из User-Agent
+        const b = await body<{ touch?: unknown; standalone?: unknown }>(req);
+        store.setSessionDevice(token, String(req.headers["user-agent"] ?? ""), { touch: b?.touch === true, standalone: b?.standalone === true });
+        return json(res, 200, { ok: true });
+      }
+      case "POST /api/auth/sessions/revoke": {
+        const b = await body<{ id?: unknown }>(req);
+        const id = typeof b?.id === "string" ? b.id : "";
+        if (id === currentId) {
+          store.deleteSession(token);
+          res.setHeader("set-cookie", cookie(SESSION, "", 0));
+          return json(res, 200, { ok: true, current: true });
+        }
+        if (!store.revokeSession(user.id, id)) return json(res, 404, { error: "нет такого устройства" });
+        return json(res, 200, { ok: true, current: false });
+      }
+      case "POST /api/auth/sessions/revoke-others":
+        return json(res, 200, { ok: true, revoked: store.revokeOtherSessions(user.id, token) });
+    }
+    return json(res, req.method === "GET" || req.method === "POST" ? 404 : 405, { error: "нет такого метода" });
+  };
+
   /** Обрабатывает /api/auth/*. Возвращает false, если путь не наш. */
   const handle = async (req: IncomingMessage, res: ServerResponse, path: string): Promise<boolean> => {
     if (!path.startsWith("/api/auth/")) return false;
@@ -100,6 +152,9 @@ export const createAuth = (store: AuthStore, cfg: AuthConfig, deps: { json: Json
       if (!u) return json(res, 401, { error: "нужен вход" }), true;
       return json(res, 200, { user: publicUser(u), passkeys: store.credentialsOf(u.id).length }), true;
     }
+
+    // устройства, где выполнен вход: только с сессией, без лимита попыток входа
+    if (path === "/api/auth/device" || path === "/api/auth/sessions" || path.startsWith("/api/auth/sessions/")) return await devices(req, res, route), true;
 
     if (req.method !== "POST") return json(res, 405, { error: "метод не поддерживается" }), true;
     if (!sameOrigin(req)) return json(res, 403, { error: "чужой источник запроса" }), true;

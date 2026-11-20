@@ -6,6 +6,7 @@
  *   enroll <имя> [минут=15]             — одноразовая ссылка привязки passkey
  *   passkeys [имя]                      — привязанные passkey
  *   passkey:remove <id или начало id>   — отозвать passkey
+ *   sessions [имя]                      — где выполнен вход: устройство, когда вошёл, когда был
  *   logout <имя>                        — завершить все сессии пользователя
  *   user:remove <имя>                   — удалить пользователя со всеми passkey, сессиями и прогрессом
  *   progress                            — чей прогресс на сервере и когда сохранён
@@ -13,7 +14,8 @@
 import { join } from "node:path";
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { openAuthStore } from "./auth-store.ts";
+import { describeDevice } from "../src/core/device.ts";
+import { decodeHint, openAuthStore } from "./auth-store.ts";
 import { authConfigFromEnv } from "./auth.ts";
 import { openProgress } from "./progress.ts";
 
@@ -60,6 +62,11 @@ switch (cmd) {
     console.log(`отозван passkey ${found[0].id.slice(0, 16)}… пользователя ${found[0].user_name}`);
     break;
   }
+  case "sessions":
+    for (const u of store.listUsers().filter((u) => !args[0] || u.name === args[0]))
+      for (const s of store.sessionsOf(u.id))
+        console.log(`${s.id}\t${u.name}\t${describeDevice(s.user_agent, decodeHint(s.device)).name}\tвход ${date(s.created_at)}\tбыл ${date(s.last_seen_at)}`);
+    break;
   case "logout": {
     const u = need(args[0]);
     console.log(`завершено сессий: ${store.deleteSessionsOf(u.id)}`);
@@ -77,6 +84,6 @@ switch (cmd) {
 }
 
 function readmeUsage() {
-  return `Команды: user:add <имя> [Имя], users, enroll <имя> [минут], passkeys [имя], passkey:remove <id>, logout <имя>, user:remove <имя>, progress
+  return `Команды: user:add <имя> [Имя], users, enroll <имя> [минут], passkeys [имя], passkey:remove <id>, sessions [имя], logout <имя>, user:remove <имя>, progress
 База: ${process.env.AUTH_DB ?? "server/cache/auth.db"} · адрес: ${cfg.origin}`;
 }

@@ -6,12 +6,32 @@ import { createHash, randomBytes } from "node:crypto";
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { DatabaseSync } from "node:sqlite";
+import type { DeviceHint } from "../src/core/device.ts";
 
 export const ENROLL_TTL_MS = 15 * 60 * 1000;
 export const CHALLENGE_TTL_MS = 5 * 60 * 1000;
 export const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 /** Сессию продлеваем, когда до конца осталось меньше этого. */
 const SESSION_REFRESH_MS = 15 * 24 * 60 * 60 * 1000;
+/** «Когда был» обновляем не чаще раза в 5 минут — не пишем в базу на каждый запрос. */
+export const SEEN_EVERY_MS = 5 * 60 * 1000;
+
+/** Открытый id сессии для списка устройств: начало SHA-256 токена (в базе и так лежит только хэш) — по нему токен не восстановить. */
+export const sessionIdOf = (token: string) => sha256(token).slice(0, 16);
+const SESSION_ID_RE = /^[0-9a-f]{16}$/;
+
+/** Подсказка браузера в колонке sessions.device: «t» — сенсорный экран, «s» — установленное приложение, «-» — ни того ни другого. */
+export const encodeHint = (h: DeviceHint) => (h.touch ? "t" : "") + (h.standalone ? "s" : "") || "-";
+export const decodeHint = (d: string | null): DeviceHint | null => (d ? { touch: d.includes("t"), standalone: d.includes("s") } : null);
+
+export interface SessionRow {
+  /** sessionIdOf(токен) */
+  id: string;
+  created_at: number;
+  last_seen_at: number;
+  user_agent: string | null;
+  device: string | null;
+}
 
 export const sha256 = (s: string) => createHash("sha256").update(s).digest("hex");
 export const randomToken = (bytes = 32) => randomBytes(bytes).toString("base64url");
@@ -79,9 +99,24 @@ export const openAuthStore = (path: string, now: () => number = Date.now) => {
       user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       created_at INTEGER NOT NULL,
       expires_at INTEGER NOT NULL,
-      user_agent TEXT
+      user_agent TEXT,
+      last_seen_at INTEGER,
+      device TEXT
     );
   `);
+  // базы до списка устройств: в sessions не было last_seen_at и device
+  // (сервер и cli.ts могут открыть старую базу одновременно — «колонка уже есть» не ошибка)
+  const addColumn = (table: string, col: string, sql: string) => {
+    const cols = (db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]).map((c) => c.name);
+    if (cols.includes(col)) return;
+    try {
+      db.exec(sql);
+    } catch (e) {
+      if (!String(e).includes("duplicate column")) throw e;
+    }
+  };
+  addColumn("sessions", "last_seen_at", "ALTER TABLE sessions ADD COLUMN last_seen_at INTEGER; UPDATE sessions SET last_seen_at = created_at;");
+  addColumn("sessions", "device", "ALTER TABLE sessions ADD COLUMN device TEXT");
 
   const cleanup = () => {
     const t = now();
@@ -150,6 +185,11 @@ export const openAuthStore = (path: string, now: () => number = Date.now) => {
       db.prepare("SELECT c.*, u.name AS user_name FROM credentials c JOIN users u ON u.id = c.user_id ORDER BY c.created_at").all() as unknown as (Credential & {
         user_name: string;
       })[],
+    /** Для настроек: сколько passkey и сколько из них синхронизируются (связка ключей iCloud и т. п.). */
+    passkeySummary(userId: number): { count: number; synced: number } {
+      const r = db.prepare("SELECT count(*) AS n, COALESCE(sum(backed_up), 0) AS s FROM credentials WHERE user_id = ?").get(userId) as { n: number; s: number };
+      return { count: Number(r.n), synced: Number(r.s) };
+    },
     touchCredential(id: string, counter: number) {
       db.prepare("UPDATE credentials SET counter = ?, last_used_at = ? WHERE id = ?").run(counter, now(), id);
     },
@@ -173,33 +213,70 @@ export const openAuthStore = (path: string, now: () => number = Date.now) => {
     createSession(userId: number, userAgent = ""): string {
       const token = randomToken();
       const t = now();
-      db.prepare("INSERT INTO sessions (hash, user_id, created_at, expires_at, user_agent) VALUES (?, ?, ?, ?, ?)").run(
+      db.prepare("INSERT INTO sessions (hash, user_id, created_at, expires_at, user_agent, last_seen_at) VALUES (?, ?, ?, ?, ?, ?)").run(
         sha256(token),
         userId,
         t,
         t + SESSION_TTL_MS,
         userAgent.slice(0, 200),
+        t,
       );
       return token;
     },
-    /** Пользователь по токену сессии; продлевает сессию, если она скоро истечёт. */
+    /**
+     * Пользователь по токену сессии; продлевает сессию, если она скоро истечёт,
+     * и отмечает «когда был» (не чаще SEEN_EVERY_MS).
+     */
     sessionUser(token: string | undefined): { user: User; refreshed: boolean } | undefined {
       if (!token || token.length > 100) return undefined;
       const h = sha256(token),
         t = now();
-      const row = db.prepare("SELECT user_id, expires_at FROM sessions WHERE hash = ? AND expires_at > ?").get(h, t) as
-        | { user_id: number; expires_at: number }
+      const row = db.prepare("SELECT user_id, expires_at, last_seen_at FROM sessions WHERE hash = ? AND expires_at > ?").get(h, t) as
+        | { user_id: number; expires_at: number; last_seen_at: number | null }
         | undefined;
       if (!row) return undefined;
       const user = userById(row.user_id);
       if (!user) return undefined;
-      let refreshed = false;
-      if (row.expires_at - t < SESSION_REFRESH_MS) {
-        db.prepare("UPDATE sessions SET expires_at = ? WHERE hash = ?").run(t + SESSION_TTL_MS, h);
-        refreshed = true;
-      }
+      const refreshed = row.expires_at - t < SESSION_REFRESH_MS;
+      const seen = row.last_seen_at === null || t - row.last_seen_at >= SEEN_EVERY_MS;
+      if (refreshed || seen)
+        db.prepare("UPDATE sessions SET expires_at = ?, last_seen_at = ? WHERE hash = ?").run(
+          refreshed ? t + SESSION_TTL_MS : row.expires_at,
+          seen ? t : row.last_seen_at,
+          h,
+        );
       return { user, refreshed };
     },
+    /**
+     * Подсказка браузера о себе (сенсорный экран, установленное приложение) и свежий User-Agent для текущей сессии.
+     * Пишет, только если что-то изменилось. false — сессии нет.
+     */
+    setSessionDevice(token: string, userAgent: string, hint: DeviceHint): boolean {
+      const h = sha256(token);
+      const row = db.prepare("SELECT user_agent, device FROM sessions WHERE hash = ? AND expires_at > ?").get(h, now()) as
+        | { user_agent: string | null; device: string | null }
+        | undefined;
+      if (!row) return false;
+      const ua = userAgent.slice(0, 200),
+        d = encodeHint(hint);
+      if (row.user_agent !== ua || row.device !== d) db.prepare("UPDATE sessions SET user_agent = ?, device = ? WHERE hash = ?").run(ua, d, h);
+      return true;
+    },
+    /** Действующие сессии пользователя — устройства, где выполнен вход; недавние первыми. */
+    sessionsOf: (userId: number) =>
+      db
+        .prepare(
+          "SELECT substr(hash, 1, 16) AS id, created_at, COALESCE(last_seen_at, created_at) AS last_seen_at, user_agent, device FROM sessions WHERE user_id = ? AND expires_at > ? ORDER BY last_seen_at DESC, created_at DESC",
+        )
+        .all(userId, now()) as unknown as SessionRow[],
+    /** Завершить сессию по открытому id — только свою (userId). true — была такая. */
+    revokeSession(userId: number, id: string): boolean {
+      if (typeof id !== "string" || !SESSION_ID_RE.test(id)) return false;
+      return db.prepare("DELETE FROM sessions WHERE user_id = ? AND substr(hash, 1, 16) = ?").run(userId, id).changes > 0;
+    },
+    /** Завершить все сессии пользователя, кроме этой. Сколько завершено. */
+    revokeOtherSessions: (userId: number, keepToken: string) =>
+      Number(db.prepare("DELETE FROM sessions WHERE user_id = ? AND hash <> ?").run(userId, sha256(keepToken)).changes),
     deleteSession: (token: string) => db.prepare("DELETE FROM sessions WHERE hash = ?").run(sha256(token)),
     deleteSessionsOf: (userId: number) => db.prepare("DELETE FROM sessions WHERE user_id = ?").run(userId).changes,
     countSessions: (userId: number) => (db.prepare("SELECT count(*) n FROM sessions WHERE user_id = ? AND expires_at > ?").get(userId, now()) as { n: number }).n,

@@ -66,6 +66,17 @@ describe("CLI входа", () => {
     expect(store().credentialsOf(u.id).map((c) => c.id)).toEqual(["AAAAkey1-iphone"]);
   });
 
+  it("sessions: где выполнен вход — имя устройства по User-Agent и подсказке браузера", () => {
+    const s = store();
+    const u = s.userByName("evgeny")!;
+    const ipad = s.createSession(u.id, "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1 Safari/605.1.15");
+    s.setSessionDevice(ipad, "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1 Safari/605.1.15", { touch: true, standalone: true });
+    const out = cli("sessions", "evgeny").out;
+    expect(out).toMatch(/^[0-9a-f]{16}\tevgeny\tiPad · приложение\tвход 20\d\d-\d\d-\d\d \d\d:\d\d\tбыл 20/m);
+    expect(out).not.toContain(ipad); // токен не печатается
+    expect(cli("sessions", "nobody").out).toBe("");
+  });
+
   it("logout завершает все сессии пользователя", () => {
     const s = store();
     const u = s.userByName("evgeny")!;
