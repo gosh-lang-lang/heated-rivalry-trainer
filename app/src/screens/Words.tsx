@@ -9,7 +9,7 @@ import { SpeakBtn } from "../ui";
 const LEVELS = ["Новые", "Учу", "Знакомо", "Выучено"];
 
 export function Words({ deck, state, onBack }: { deck: Deck; state: AppState; onBack: () => void }) {
-  const [batch, setBatch] = useState(0); // 0 — все партии
+  const [batch, setBatch] = useState(0); // 0 — все слова книги
   const [lvl, setLvl] = useState(-1); // -1 — все уровни
   const [q, setQ] = useState("");
 
@@ -28,18 +28,18 @@ export function Words({ deck, state, onBack }: { deck: Deck; state: AppState; on
       <div className="pagehead">
         <button className="x" aria-label="Назад" onClick={onBack}><Back /></button>
         <h1>Словарь</h1>
-        <span className="ph-meta">{deck.words.length} {plural(deck.words.length, "слово", "слова", "слов")} · {deck.batches.length} {plural(deck.batches.length, "партия", "партии", "партий")}</span>
+        <span className="ph-meta">{deck.words.length} {plural(deck.words.length, "слово", "слова", "слов")}</span>
       </div>
       <div className="wrap words">
         <aside className="filters" aria-label="Фильтры словаря">
           <input className="inp find" type="search" placeholder="Найти слово" aria-label="Найти слово" value={q} onChange={(e) => setQ(e.target.value)} />
           <div className="fgroup fbatch">
-            <div className="flabel">Партии</div>
+            <div className="flabel">Откуда</div>
             <div className="fl">
-              <button aria-pressed={batch === 0} onClick={() => setBatch(0)}>Все партии<em>{deck.words.length}</em></button>
+              <button aria-pressed={batch === 0} onClick={() => setBatch(0)}>Вся книга<em>{deck.words.length}</em></button>
               {deck.batches.map((b) => (
                 <button key={b.id} title={b.title} aria-pressed={batch === b.id} onClick={() => setBatch(batch === b.id ? 0 : b.id)}>
-                  Партия {b.id}<em>{deck.words.filter((w) => w.batch === b.id).length}</em>
+                  {b.title}<em>{deck.words.filter((w) => w.batch === b.id).length}</em>
                 </button>
               ))}
             </div>

@@ -60,7 +60,9 @@ test.describe("урок из двух частей", () => {
     await card(page, 2).getByRole("button", { name: "Начать часть 2" }).click();
     const r = await playSession(page);
     expect(r.steps).not.toContain("Повторение"); // вчерашние слова проверяет «впиши», а не разминка
-    await expect(page.getByRole("heading", { name: "Урок 1 · часть 2 готова" })).toBeVisible();
+    // перенесённая часть 2 закрыла вчерашний урок — карточка №01
+    await expect(page.getByRole("heading", { name: "Урок 1 пройден!" })).toBeVisible();
+    await expect(page.locator(".rw-new")).toContainText("Новая карточка · №\u200901 из 10");
 
     // итог — в день урока, «перечитал» — тоже
     const st = await readState(page);

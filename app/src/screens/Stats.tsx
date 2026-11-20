@@ -5,9 +5,9 @@ import { pct } from "../core/session";
 import { groups, HARD_WRONG, isHard, streak } from "../core/srs";
 import { plural } from "../core/text";
 import type { AppState, Deck, SessionResult } from "../core/types";
-import { Back } from "../lib/icons";
 
-export function Stats({ deck, state, onBack }: { deck: Deck; state: AppState; onBack: () => void }) {
+/** Статистика — нижняя часть экрана «Я» (раньше — своя вкладка «Статистика»; содержимое прежнее). */
+export function StatsContent({ deck, state }: { deck: Deck; state: AppState }) {
   const t = todayKey();
   const rows: [string, SessionResult | undefined, SessionResult | undefined][] = [];
   for (let i = 13; i >= 0; i--) {
@@ -35,10 +35,6 @@ export function Stats({ deck, state, onBack }: { deck: Deck; state: AppState; on
 
   return (
     <>
-      <div className="pagehead">
-        <button className="x" aria-label="Назад" onClick={onBack}><Back /></button>
-        <h1>Статистика</h1>
-      </div>
       <div className="wrap stats">
         <div className="stats3">
           <div className="streak"><b>{sk}</b>{plural(sk, "день", "дня", "дней")} подряд</div>

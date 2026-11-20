@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { afterMorning, DECK, goTab, MOCK_DEVICES, openHome, openSettings, openSettingsSection, setup, state, TODAY, ws, type SettingsSectionTitle } from "./helpers";
+import { afterMorning, DECK, goTab, MOCK_DEVICES, tabButton, openHome, openSettings, openSettingsSection, setup, state, TODAY, ws, type SettingsSectionTitle } from "./helpers";
 
 test.describe("главная", () => {
   test("новый пользователь: приветствие, 62 новых слова, серия 0", async ({ page }) => {
@@ -28,7 +28,7 @@ test.describe("главная", () => {
     await openSettingsSection(page, "Занятия");
     await page.getByRole("button", { name: "18", exact: true }).click();
     await expect(page.getByRole("button", { name: "18", exact: true })).toHaveAttribute("aria-pressed", "true");
-    await goTab(page, "Главная");
+    await goTab(page, "Сегодня");
     await expect(page.getByText("18 новых · ~15 мин")).toBeVisible();
     await page.reload();
     await expect(page.getByText("18 новых · ~15 мин")).toBeVisible();
@@ -40,7 +40,7 @@ test.describe("словарь", () => {
     const w = DECK.words[0];
     await setup(page, { state: state({ srs: { [w.id]: ws({ lvl: 3, due: "2026-11-27" }) } }) });
     await openHome(page);
-    await page.getByRole("button", { name: "Словарь" }).first().click();
+    await goTab(page, "Слова");
     for (const b of DECK.batches) await expect(page.getByRole("heading", { name: b.title, exact: true })).toBeVisible();
     await expect(page.locator(".wrow")).toHaveCount(62);
     const row = page.locator(".wrow").filter({ hasText: w.ru }).first();
@@ -51,7 +51,7 @@ test.describe("словарь", () => {
   });
 });
 
-test.describe("статистика", () => {
+test.describe("статистика — на вкладке «Я»", () => {
   test("серия, частые ошибки и свои предложения", async ({ page }) => {
     const [a, b] = DECK.words;
     const r = { score: 9, total: 10, mins: 12, newN: 6, at: "x" };
@@ -66,7 +66,8 @@ test.describe("статистика", () => {
       }),
     });
     await openHome(page);
-    await page.getByRole("button", { name: "Статистика" }).first().click();
+    await goTab(page, "Я");
+    await expect(page.getByRole("heading", { level: 2, name: "Статистика" })).toBeVisible();
     await expect(page.locator(".stats3")).toContainText("2дня подряд");
     await expect(page.locator(".stats3")).toContainText("1выучено");
     await expect(page.locator(".wrow").first()).toContainText(a.en);
@@ -78,7 +79,7 @@ test.describe("статистика", () => {
 });
 
 test.describe("вёрстка", () => {
-  for (const name of ["главная", "занятие", "словарь", "статистика", "настройки"]) {
+  for (const name of ["главная", "занятие", "словарь", "путь", "я", "коллекция", "настройки"]) {
     test(`без горизонтальной прокрутки: ${name}`, async ({ page }) => {
       await setup(page, { state: afterMorning(12) });
       await openHome(page);
@@ -86,8 +87,13 @@ test.describe("вёрстка", () => {
         await page.getByRole("button", { name: "Начать часть 2" }).click();
         await page.getByRole("button", { name: "Поехали" }).click();
       }
-      if (name === "словарь") await page.getByRole("button", { name: "Словарь" }).first().click();
-      if (name === "статистика") await page.getByRole("button", { name: "Статистика" }).first().click();
+      if (name === "словарь") await goTab(page, "Слова");
+      if (name === "путь") await goTab(page, "Путь");
+      if (name === "я") await goTab(page, "Я");
+      if (name === "коллекция") {
+        await goTab(page, "Я");
+        await page.getByRole("button", { name: /^Коллекция/ }).click();
+      }
       if (name === "настройки") await openSettings(page);
       const overflow = () => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
       expect(await overflow()).toBeLessThanOrEqual(0);
@@ -114,18 +120,37 @@ test.describe("вёрстка", () => {
 });
 
 test.describe("навигация", () => {
-  test("разделы открываются из меню, на главной нет настроек", async ({ page }) => {
+  test("вкладки «Сегодня · Путь · Слова · Я», на главной нет настроек", async ({ page }) => {
     await setup(page);
     await openHome(page);
+    await expect(page.getByRole("navigation", { name: "Разделы" }).getByRole("button")).toHaveText(["Сегодня", "Путь", "Слова", "Я"]);
     await expect(page.getByRole("radiogroup", { name: "Голос озвучки" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Экспорт" })).toHaveCount(0);
-    for (const [tab, h1] of [["Словарь", "Словарь"], ["Статистика", "Статистика"], ["Настройки", "Настройки"]] as const) {
+    for (const [tab, h1] of [["Путь", "Путь"], ["Слова", "Словарь"], ["Я", "Евгений"]] as const) {
       await goTab(page, tab);
       await expect(page.getByRole("heading", { level: 1, name: h1 })).toBeVisible();
-      await expect(page.getByRole("navigation", { name: "Разделы" }).getByRole("button", { name: tab, exact: true })).toHaveAttribute("aria-current", "page");
+      await expect(tabButton(page, tab)).toHaveAttribute("aria-current", "page");
     }
-    await goTab(page, "Главная");
+    await goTab(page, "Сегодня");
     await expect(page.getByRole("button", { name: "Начать часть 1" })).toBeVisible();
+    await expect(tabButton(page, "Сегодня")).toHaveAttribute("aria-current", "page");
+  });
+
+  test("«Я» → шестерёнка → «Настройки» → назад: вкладка «Я» выбрана всё время", async ({ page }) => {
+    await setup(page);
+    await openHome(page);
+    await goTab(page, "Я");
+    await page.getByRole("button", { name: "Настройки", exact: true }).click();
+    await expect(page.getByRole("heading", { level: 1, name: "Настройки" })).toBeVisible();
+    await expect(tabButton(page, "Я")).toHaveAttribute("aria-current", "page");
+    await page.getByRole("button", { name: "Назад: Я" }).click();
+    await expect(page.getByRole("heading", { level: 1, name: "Евгений" })).toBeVisible();
+    // и «назад» браузера (жест в Safari)
+    await page.getByRole("button", { name: "Настройки", exact: true }).click();
+    await expect(page.getByRole("heading", { level: 1, name: "Настройки" })).toBeVisible();
+    await page.goBack();
+    await expect(page.getByRole("heading", { level: 1, name: "Евгений" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Настройки", exact: true })).toBeVisible();
   });
 
   test("во время занятия меню скрыто", async ({ page }) => {

@@ -68,22 +68,24 @@ export function useMedia(q: string) {
 
 export const useWide = () => useMedia(WIDE_QUERY);
 
-export type Section = "home" | "words" | "stats" | "settings";
+/** Вкладки: «Сегодня» (главная), «Путь», «Слова» (словарь), «Я» (коллекция, достижения, статистика; настройки — шестерёнкой). */
+export type Section = "home" | "path" | "words" | "me";
 const TABS: [Section, string][] = [
-  ["home", "Главная"],
-  ["words", "Словарь"],
-  ["stats", "Статистика"],
-  ["settings", "Настройки"],
+  ["home", "Сегодня"],
+  ["path", "Путь"],
+  ["words", "Слова"],
+  ["me", "Я"],
 ];
 
 /* иконки нижней панели — 24×24, обводка, как в lib/icons */
 const ic = { viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2.2, strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": true } as const;
 const TAB_ICON: Record<Section, ReactNode> = {
-  // главная — площадка: борт, центральный круг
+  // сегодня — площадка: борт, центральный круг
   home: <svg {...ic}><rect x="2.5" y="5" width="19" height="14" rx="6" /><circle cx="12" cy="12" r="2.6" /><path d="M12 5v4.4M12 14.6V19" /></svg>,
+  // путь — дорожка от старта к флажку
+  path: <svg {...ic}><circle cx="6" cy="19" r="2.2" /><path d="M8.2 19H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h7" /><path d="M17 3v7" /><path d="M17 3.4h4l-1.3 1.8L21 7h-4" /></svg>,
   words: <svg {...ic}><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z" /><path d="M4 20.5A2.5 2.5 0 0 1 6.5 18H20v3H6.5" /><path d="M9 8h7" /></svg>,
-  stats: <svg {...ic}><path d="M5 20V12M10 20V5M15 20v-9M20 20v-5" /></svg>,
-  settings: <svg {...ic}><path d="M4 7h10M18 7h2M4 17h4M12 17h8" /><circle cx="16" cy="7" r="2.2" /><circle cx="10" cy="17" r="2.2" /></svg>,
+  me: <svg {...ic}><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></svg>,
 };
 
 /** Нижняя панель вкладок на телефоне и планшете. В занятии и на итоге не показывается. */
@@ -131,7 +133,7 @@ export function TopNav({ current, go }: { current: Section; go: (v: View) => voi
 /**
  * «Потяни, чтобы обновить»: полоска льда над страницей, двое игроков выезжают с краёв навстречу,
  * на пороге — вбрасывание: клюшки стукаются, искра — и перезагрузка (lib/pull.ts, pull.css).
- * Монтируется только в разделах (главная, словарь, статистика, настройки) — во время занятия жеста нет.
+ * Монтируется только в разделах (сегодня, путь, слова, «Я» и её подстраницы) — во время занятия жеста нет.
  */
 export function PullRefresh() {
   usePullToRefresh(true);

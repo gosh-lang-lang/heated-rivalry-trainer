@@ -26,7 +26,7 @@ const THEME_LABEL: Record<ThemePref, string> = { system: "как в систем
  * раздел — своя страница внутри настроек с кнопкой «‹ Настройки». Открытый раздел — в состоянии вида (View.section)
  * и в истории браузера (App.go): жест «назад» в Safari и кнопка «назад» браузера возвращают к списку, а не из настроек.
  * На десктопе — список слева, выбранный раздел справа (по умолчанию первый); в историю не пишется.
- * На телефоне — вкладка «Настройки», на десктопе — пункт верхнего меню.
+ * Открываются шестерёнкой в шапке «Я» (подстраница «Я»: вкладка «Я» остаётся выбранной), «‹ Я» — назад.
  */
 export function Settings({
   state,
@@ -100,8 +100,11 @@ export function Settings({
   const detail = open && SECTIONS.find((x) => x.id === open);
   return (
     <>
-      <div className="pagehead">
-        <button className="x" aria-label="Назад" onClick={onBack}><Back /></button>
+      <div className="pagehead set-head">
+        <button className="sback" aria-label="Назад: Я" onClick={onBack}>
+          <Back aria-hidden="true" />
+          Я
+        </button>
         <h1>Настройки</h1>
       </div>
       <div className="wrap settings-page">
