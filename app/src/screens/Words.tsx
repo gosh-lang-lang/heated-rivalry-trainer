@@ -1,19 +1,19 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import type { View } from "../App";
 import { todayKey } from "../core/dates";
 import { HARD_WRONG, isHard, levelGroup } from "../core/srs";
 import { plural } from "../core/text";
 import type { AppState, Deck, Word } from "../core/types";
 import { dayMonth, dueText, groupKey, groupTitle, hardWords, knownCount, type LessonGroup, type LessonKey, weekdayDay, wordLessons } from "../core/vocab";
-import { Alert, Back, Chevron, Route, Search } from "../lib/icons";
+import { Alert, Back, Chevron, Play, Route } from "../lib/icons";
 import { WordArt } from "../lib/WordArt";
 import { SpeakBtn } from "../ui";
 
 const LEVELS = ["Новое", "Учу", "Знакомо", "Выучено"];
 const nWords = (n: number) => `${n} ${plural(n, "слово", "слова", "слов")}`;
 
-/** Поиск словаря: открыт ли и что набрано — живёт, пока открыто приложение (между корнем и страницей урока). */
-const memo = { q: "", open: false };
+/** Что набрано в поиске — живёт, пока открыто приложение (ушли в урок и вернулись — поиск на месте). */
+const memo = { q: "" };
 
 /** Страница словаря — урок, «Впереди» или «Трудные». */
 interface Page {
@@ -21,7 +21,7 @@ interface Page {
   title: string;
   /** подпись под заголовком страницы */
   sub: string;
-  /** подпись в списке уроков (без кольца у «Впереди» и «Трудных») */
+  /** подпись в списке уроков */
   rowSub: string;
   words: Word[];
   today?: boolean;
@@ -59,7 +59,21 @@ function Ring({ n, of }: { n: number; of: number }) {
   );
 }
 
-/** Строка слова: слово, перевод, точка уровня; раскрытие — пример, звук, уровень и дата повтора. */
+/** Полоска уровня: 6 делений, заполнено по уровню слова, цвет — группы (учу, знакомо, выучено). */
+function Level({ lvl }: { lvl: number }) {
+  const g = levelGroup(lvl);
+  return (
+    <span className={`wlv g${g}`} role="img" aria-label={`${LEVELS[g]} · уровень ${lvl} из 6`} title={`${LEVELS[g]} · уровень ${lvl} из 6`}>
+      {[1, 2, 3, 4, 5, 6].map((i) => <i key={i} className={i <= lvl ? "f" : ""} />)}
+    </span>
+  );
+}
+
+/**
+ * Строка слова: картинка, СЛОВО (с пометками «редкое», «трудное») · ПЕРЕВОД · УРОВЕНЬ · ПОВТОР и рупор (нажат, пока
+ * звучит); на телефоне — как раньше в словаре: перевод под словом, повтор под полоской уровня. Нажатие на строку раскрывает
+ * транскрипцию, сцену к слову (если нарисована), пример со звуком, пояснение и цитату.
+ */
 function WordRow({ w, state, today }: { w: Word; state: AppState; today: string }) {
   const s = state.srs[w.id];
   const lvl = s?.lvl ?? 0;
@@ -70,26 +84,30 @@ function WordRow({ w, state, today }: { w: Word; state: AppState; today: string 
   return (
     <details className="wrow" onToggle={(e) => setOpen(e.currentTarget.open)}>
       <summary>
-        <span className="wtx">
-          <b lang="en">{w.en}<span className="ipa">{w.ipa}</span></b>
-          <span className="wru">{w.ru}</span>
+        <span className="wem" aria-hidden="true">{w.picture}</span>
+        <span className="wen">
+          <b lang="en">{w.en}</b>
+          {w.rare && <span className="rare" title="Редкое книжное слово: повторяется вдвое реже">редкое</span>}
+          {isHard(s) && <span className="rare hard" title={`${HARD_WRONG}+ ошибок`}>трудное</span>}
         </span>
-        <span className="wdue">{s?.intro ? due : ""}</span>
-        <span className={`wdot c${g}`} role="img" aria-label={`${LEVELS[g]} · уровень ${lvl} из 6`} title={`${LEVELS[g]} · уровень ${lvl} из 6`} />
+        <span className="wru">{w.ru}</span>
+        <Level lvl={lvl} />
+        <span className="wdue">{due}</span>
+        <SpeakBtn text={w.en} size="s" />
       </summary>
       <div className="det">
         {open && <WordArt wordId={w.id} label={w.example} />}
-        <p className="dex"><b lang="en">{w.example}</b><span>{w.exampleRu}</span></p>
+        <div className="dtop">
+          <span className="ipa">{w.ipa}</span>
+          <span>{s?.intro ? `${LEVELS[g]} · уровень ${lvl} из 6 · повтор ${due}` : "Ещё не начато"}</span>
+          {isHard(s) && <span>ошибок: {s!.wrong}</span>}
+        </div>
+        <div className="dex">
+          <SpeakBtn text={w.example} size="s" />
+          <p><b lang="en">{w.example}</b><span>{w.exampleRu}</span></p>
+        </div>
         {w.note && <p className="dnote">{w.note}</p>}
         {w.quote && <p className="dnote"><i>«{w.quote}»</i>{w.page && <> — стр. {w.page}</>}</p>}
-        <div className="dmeta">
-          <SpeakBtn text={w.en} size="s" />
-          <span className="dm-tx">
-            <span>{s?.intro ? `${LEVELS[g]} · повтор ${due}` : "Ещё не начато"}</span>
-            {w.rare && <span className="rare" title="Редкое книжное слово: повторяется вдвое реже">редкое</span>}
-            {isHard(s) && <span className="rare hard" title={`${HARD_WRONG}+ ошибок`}>трудное · {s!.wrong}×</span>}
-          </span>
-        </div>
       </div>
     </details>
   );
@@ -97,42 +115,38 @@ function WordRow({ w, state, today }: { w: Word; state: AppState; today: string 
 
 function WordList({ words, state, today, label }: { words: Word[]; state: AppState; today: string; label: string }) {
   return (
-    <div className="card wlist" role="list" aria-label={label}>
-      {words.map((w) => (
-        <div role="listitem" key={w.id}>
-          <WordRow w={w} state={state} today={today} />
-        </div>
-      ))}
+    <div className="card wlist">
+      <div className="whead" aria-hidden="true">
+        <span />
+        <span>Слово</span>
+        <span>Перевод</span>
+        <span>Уровень</span>
+        <span>Повтор</span>
+        <span />
+      </div>
+      <div role="list" aria-label={label}>
+        {words.map((w) => (
+          <div role="listitem" key={w.id}>
+            <WordRow w={w} state={state} today={today} />
+          </div>
+        ))}
+      </div>
     </div>
   );
-}
-
-/** Поле поиска: на телефоне открывается значком в шапке, на десктопе — всегда над списком уроков. */
-function Find({ q, setQ, auto }: { q: string; setQ: (q: string) => void; auto?: boolean }) {
-  const ref = useRef<HTMLInputElement>(null);
-  useEffect(() => {
-    if (auto) ref.current?.focus();
-  }, [auto]);
-  return <input ref={ref} className="inp find" type="search" placeholder="Найти слово или перевод" aria-label="Найти слово или перевод" value={q} onChange={(e) => setQ(e.target.value)} />;
 }
 
 const matches = (w: Word, needle: string) => w.en.toLowerCase().includes(needle) || w.ru.toLowerCase().includes(needle);
 
 /**
- * «Слова» — два уровня, как «Настройки». Корень: список уроков (от нового к старому) с кольцом «знакомо N из M»,
- * отдельно «Впереди» и «Трудные»; поиск — значком в шапке. Урок — своя страница («‹ Слова»): слово, перевод и точка
- * уровня (жёлтая — учу, синяя — знакомо, зелёная — выучено); строка раскрывается — пример, звук, уровень и повтор.
- * Десктоп: уроки слева, слова выбранного урока справа, поиск над уроками.
+ * «Слова» — два уровня, как «Настройки». Сверху — поиск по слову и переводу. Корень: список уроков (от нового
+ * к старому) с кольцом «знакомо N из M», отдельно «Впереди» и «Трудные». Урок — своя страница («‹ Слова») с кнопкой
+ * «Пройти все слова» (тренировка, уровни не меняются) и строками СЛОВО · ПЕРЕВОД · УРОВЕНЬ · ПОВТОР · рупор.
+ * Десктоп: поиск и уроки слева, слова выбранного урока справа.
  * @param lesson — открытая страница (урок, «Впереди», «Трудные»); без неё — корень (на десктопе — первый урок)
  */
 export function Words({ deck, state, go, wide, lesson }: { deck: Deck; state: AppState; go: (v: View) => void; wide: boolean; lesson?: LessonKey }) {
   const [q, setQ0] = useState(memo.q);
-  const [open, setOpen0] = useState(memo.open || !!memo.q);
   const setQ = (v: string) => setQ0((memo.q = v));
-  const setOpen = (v: boolean) => {
-    setOpen0((memo.open = v));
-    if (!v) setQ("");
-  };
 
   const today = todayKey();
   const { lessons, ahead, hard } = pagesOf(state, deck, today);
@@ -144,6 +158,9 @@ export function Words({ deck, state, go, wide, lesson }: { deck: Deck; state: Ap
   const page = lesson !== undefined ? all.find((p) => p.key === lesson) : undefined;
   const shown = page ?? (wide ? all[0] : undefined);
 
+  const find = (
+    <input className="inp find" type="search" placeholder="Найти слово или перевод" aria-label="Найти слово или перевод" value={q} onChange={(e) => setQ(e.target.value)} />
+  );
   const results = needle ? deck.words.filter((w) => matches(w, needle)) : [];
   const resultsView = (
     <>
@@ -152,8 +169,28 @@ export function Words({ deck, state, go, wide, lesson }: { deck: Deck; state: Ap
     </>
   );
 
+  /** «Пройти все слова»: урок и «Трудные» (у «Впереди» слова ещё не начаты — их вводит урок). */
+  const drill = (p: Page) =>
+    p.key !== "ahead" && (
+      <button
+        className="btn wide drill"
+        onClick={() => go({ name: "session", kind: "drill", words: p.words.map((w) => w.id), title: p.title, from: "words", lesson: p.key })}
+      >
+        <Play aria-hidden="true" />
+        Пройти все слова · {p.words.length}
+      </button>
+    );
+
   const row = (p: Page) => (
-    <button key={String(p.key)} className="srow lrow" aria-current={wide && !needle && shown?.key === p.key ? "true" : undefined} onClick={() => { if (wide) setQ(""); go({ name: "words", lesson: p.key }); }}>
+    <button
+      key={String(p.key)}
+      className="srow lrow"
+      aria-current={wide && !needle && shown?.key === p.key ? "true" : undefined}
+      onClick={() => {
+        if (wide) setQ("");
+        go({ name: "words", lesson: p.key });
+      }}
+    >
       {p.key === "ahead" ? (
         <span className="s-ic t-ahead" aria-hidden="true"><Route /></span>
       ) : p.key === "hard" ? (
@@ -172,7 +209,7 @@ export function Words({ deck, state, go, wide, lesson }: { deck: Deck; state: Ap
 
   const nav = (
     <div className="set-nav wnav">
-      {wide && <Find q={q} setQ={setQ} />}
+      {wide && find}
       {lessons.length > 0 && (
         <>
           <div className="sgroup">Уроки</div>
@@ -191,23 +228,14 @@ export function Words({ deck, state, go, wide, lesson }: { deck: Deck; state: Ap
           Слова
         </button>
       )}
-      <div className="whd-row">
-        <div className="whd-t">
-          <h1>{title}{isToday && <span className="ftag">сегодня</span>}</h1>
-          <p className="whd-sub">{sub}</p>
-        </div>
-        {!wide && (
-          <button className="hbtn" aria-label={open ? "Закрыть поиск" : "Поиск"} aria-pressed={open} onClick={() => setOpen(!open)}>
-            <Search aria-hidden="true" />
-          </button>
-        )}
-      </div>
+      <h1>{title}{isToday && <span className="ftag">сегодня</span>}</h1>
+      <p className="whd-sub">{sub}</p>
     </div>
   );
 
   const rootSub = `${nWords(deck.words.length)} · знакомо ${known}`;
 
-  // десктоп: уроки слева, справа — слова выбранного урока или найденные
+  // десктоп: поиск и уроки слева, справа — слова выбранного урока или найденные
   if (wide)
     return (
       <>
@@ -224,8 +252,11 @@ export function Words({ deck, state, go, wide, lesson }: { deck: Deck; state: Ap
               shown && (
                 <>
                   <div className="wd-head">
-                    <h2 id="wd-h">{shown.title}{shown.today && <span className="ftag">сегодня</span>}</h2>
-                    <p className="whd-sub">{shown.sub}</p>
+                    <div>
+                      <h2 id="wd-h">{shown.title}{shown.today && <span className="ftag">сегодня</span>}</h2>
+                      <p className="whd-sub">{shown.sub}</p>
+                    </div>
+                    {drill(shown)}
                   </div>
                   <WordList words={shown.words} state={state} today={today} label={shown.title} />
                 </>
@@ -236,26 +267,24 @@ export function Words({ deck, state, go, wide, lesson }: { deck: Deck; state: Ap
       </>
     );
 
-  // телефон: страница урока (поиск — внутри урока)
-  if (page) {
-    const ws = needle ? page.words.filter((w) => matches(w, needle)) : page.words;
+  // телефон: страница урока
+  if (page)
     return (
       <>
         {head(page.title, page.sub, true, page.today)}
         <div className="wrap settings-page vocab">
-          {open && <Find q={q} setQ={setQ} auto />}
-          {ws.length ? <WordList words={ws} state={state} today={today} label={page.title} /> : <p className="mute wempty">В этом уроке такого слова нет.</p>}
+          {drill(page)}
+          <WordList words={page.words} state={state} today={today} label={page.title} />
         </div>
       </>
     );
-  }
 
-  // телефон: корень
+  // телефон: корень — поиск сверху, ниже уроки или найденные слова
   return (
     <>
       {head("Слова", rootSub)}
       <div className="wrap settings-page vocab">
-        {open && <Find q={q} setQ={setQ} auto />}
+        {find}
         {needle ? resultsView : nav}
       </div>
     </>

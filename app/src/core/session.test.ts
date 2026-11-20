@@ -107,3 +107,29 @@ describe("движок занятия", () => {
     expect([r.score, r.total, r.revScore, r.revTotal]).toEqual([2, 3, 1, 2]);
   });
 });
+
+describe("тренировка «Пройти все слова» (drill)", () => {
+  const drill: Step[] = [
+    { k: 0, t: "pick", w: "praise", rev: true },
+    { k: 1, t: "type", w: "praise", rev: true, hint: true },
+  ];
+  it("ответы считаются, но уровень и дата повтора не меняются; ошибка — в конец", () => {
+    const ws = { ...blankState(), lvl: 2, intro: TODAY, due: "2026-11-25" };
+    let s = startSession("drill", drill, 0)!;
+    let st = state({ srs: { praise: ws } });
+    ({ sess: s, state: st } = gradeCurrent(s, st, true, "praise", TODAY));
+    expect(st.srs.praise).toEqual(ws);
+    s = advance(s);
+    ({ sess: s, state: st } = gradeCurrent(s, st, false, "praise", TODAY));
+    expect(st.srs.praise).toEqual(ws);
+    expect([s.graded, s.right, s.steps.length]).toEqual([2, 1, 3]);
+  });
+
+  it("итог не пишется в дни: серия, статистика и уроки не меняются", () => {
+    const st = state();
+    const fin = finishSession(advance(advance(startSession("drill", drill, 0)!)), st, TODAY, new Date(60000));
+    expect(fin.state).toBe(st);
+    expect(fin.prev).toBeNull();
+    expect(fin.kind).toBe("drill");
+  });
+});

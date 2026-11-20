@@ -22,13 +22,14 @@ const compare = (res: SessionResult, prev: SessionResult | null): ReactNode => {
  * лицом (0,4 с), потом блик и вибрация (0,8 с); при «уменьшить движение» — сразу лицом, без полёта.
  * Ниже — счёт, как всегда. Панели вкладок нет: итог — экран сосредоточенности.
  */
-export function Result({ fin, state, deck, go }: { fin: Finished; state: AppState; deck: Deck; go: (v: View) => void }) {
+export function Result({ fin, state, deck, go, back }: { fin: Finished; state: AppState; deck: Deck; go: (v: View) => void; back?: View }) {
   const { result: res, prev, kind, day } = fin;
   const card = kind === "evening" ? cardForDay(earnedCards(state, deck), day) : null;
   if (card) return <Reward card={card} fin={fin} state={state} deck={deck} go={go} />;
 
   const n = lessonNo(fin.state.days, day);
-  const title = kind === "morning" ? `Урок ${n} · часть 1 готова` : kind === "evening" ? `Урок ${n} · часть 2 готова` : "Занятие готово";
+  const drill = kind === "drill";
+  const title = kind === "morning" ? `Урок ${n} · часть 1 готова` : kind === "evening" ? `Урок ${n} · часть 2 готова` : drill ? "Все слова пройдены" : "Занятие готово";
   const p = pct(res);
   const cmp = compare(res, prev);
   return (
@@ -40,14 +41,15 @@ export function Result({ fin, state, deck, go }: { fin: Finished; state: AppStat
         <p className="mute">
           {res.score} из {res.total} с первой попытки
           {cmp && <><br />{cmp}</>}
+          {drill && <><br />Тренировка: уровни и даты повтора не изменились.</>}
         </p>
         <div className="stats3">
-          <div><b>{res.newN}</b>новых слов</div>
+          {drill ? <div><b>{res.total}</b>заданий</div> : <div><b>{res.newN}</b>новых слов</div>}
           <div><b>{res.mins}</b>мин</div>
           <div><b>{streak(state.days, todayKey())}</b>дней подряд</div>
         </div>
       </main>
-      <div className="foot"><div className="in"><button className="btn wide" onClick={() => go({ name: "home" })}>На главную</button></div></div>
+      <div className="foot"><div className="in"><button className="btn wide" onClick={() => go(back ?? { name: "home" })}>{back ? "К словам" : "На главную"}</button></div></div>
     </>
   );
 }

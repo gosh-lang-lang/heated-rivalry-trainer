@@ -2,7 +2,7 @@ import { emptyState } from "./state";
 import { describe, expect, it } from "vitest";
 import { addDays } from "./dates";
 import { validateDeck } from "./deck";
-import { eveningPlan, eveningWords, MAX_REVIEW, morningPlan, newToday, QUEUE_STOP, reviewAccuracy, writeGroups } from "./plans";
+import { drillPlan, eveningPlan, eveningWords, MAX_REVIEW, morningPlan, newToday, QUEUE_STOP, reviewAccuracy, writeGroups } from "./plans";
 import { seeded } from "./rng";
 import { blankState } from "./srs";
 import { deck, state, TODAY } from "./fixtures";
@@ -201,5 +201,31 @@ describe("темп новых слов", () => {
     // мало данных или старше недели — не учитываем
     expect(newToday(deck, state({ days: { "2026-11-19": day(5, 10) } }), TODAY).n).toBe(12);
     expect(newToday(deck, state({ days: { "2026-11-10": day(5, 30) } }), TODAY).n).toBe(12);
+  });
+});
+
+describe("«Пройти все слова» — drillPlan", () => {
+  it("по заданию на слово, по уровню: 1–2 — узнать, 3 — вписать с подсказкой, 4+ — без; не начатое — как 1", () => {
+    const [a, b, c, d] = deck.words;
+    const s = state({
+      srs: {
+        [a.id]: { lvl: 1, due: TODAY, intro: TODAY, right: 0, wrong: 0 },
+        [b.id]: { lvl: 3, due: TODAY, intro: TODAY, right: 0, wrong: 0 },
+        [c.id]: { lvl: 5, due: TODAY, intro: TODAY, right: 0, wrong: 0 },
+      },
+    });
+    const p = drillPlan(deck, s, [a.id, b.id, c.id, d.id, "нет-такого"], "Урок 1", () => 0.1);
+    expect(p[0]).toMatchObject({ t: "section", title: "Урок 1" });
+    const by = Object.fromEntries(p.slice(1).map((x) => ["w" in x ? x.w : "", x]));
+    expect(p).toHaveLength(5);
+    expect(by[a.id].t).toMatch(/pick|listen/);
+    expect(by[b.id]).toMatchObject({ t: "type", hint: true });
+    expect(by[c.id]).toMatchObject({ t: "type", hint: false });
+    expect(by[d.id].t).toMatch(/pick|listen/);
+    expect(p.map((x) => x.k)).toEqual([0, 1, 2, 3, 4]);
+  });
+
+  it("пустой список — пустой план", () => {
+    expect(drillPlan(deck, state(), [], "Урок 1")).toEqual([]);
   });
 });

@@ -36,7 +36,7 @@ const NO_RETRY = new Set<Step["t"]>(["write", "speak", "pairs", "section", "intr
 /**
  * Ответ на текущий шаг.
  * Счёт — по первой попытке: повтор того же шага (retry) в счёт не идёт.
- * SRS слова меняется только на первой попытке.
+ * SRS слова меняется только на первой попытке (и никогда — в тренировке drill).
  * Ошибка → копия шага в конец занятия (один раз; не для write/speak/pairs).
  */
 export const gradeCurrent = (
@@ -53,7 +53,7 @@ export const gradeCurrent = (
   if (!sess.first.includes(step.k)) {
     s = { ...s, first: [...s.first, step.k], graded: s.graded + 1, right: s.right + (ok ? 1 : 0) };
     if ("rev" in step && step.rev) s = { ...s, revGraded: s.revGraded + 1, revRight: s.revRight + (ok ? 1 : 0) };
-    if (wordId) {
+    if (wordId && sess.kind !== "drill") {
       const ctx = { rev: "rev" in step && !!step.rev, eve: "eve" in step && !!step.eve, rare };
       st = { ...st, srs: { ...st.srs, [wordId]: applyGrade(st.srs[wordId], ok, ctx, today) } };
     }
@@ -112,6 +112,8 @@ export const finishSession = (sess: Session, state: AppState, today: string, now
     at: now.toISOString(),
     ...(sess.revGraded ? { revScore: sess.revRight, revTotal: sess.revGraded } : {}),
   };
+  // тренировка «Пройти все слова» — только счёт: дни, серия и статистика не меняются
+  if (kind === "drill") return { state, result, prev: null, kind, day: today };
   let prev: SessionResult | null = null;
   for (const k of Object.keys(state.days).filter((k) => k < today).sort()) {
     const d = state.days[k];

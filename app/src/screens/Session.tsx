@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 
 import type { SetState } from "../App";
 import { picClass } from "../core/deck";
 import { todayKey } from "../core/dates";
-import { eveningPlan, morningPlan } from "../core/plans";
+import { drillPlan, eveningPlan, morningPlan } from "../core/plans";
 import { shuffle } from "../core/rng";
 import {
   advance,
@@ -30,6 +30,9 @@ interface Props {
   kind: SessionKind;
   /** день урока для части 2 (перенесённой со вчера); по умолчанию — сегодня */
   day?: string;
+  /** «Пройти все слова» (drill): слова и заголовок тренировки */
+  words?: string[];
+  title?: string;
   state: AppState;
   setState: SetState;
   onQuit: () => void;
@@ -48,10 +51,15 @@ interface Api {
   addSentence: (rec: SentenceRecord, n: number, graded: boolean) => void;
 }
 
-export function SessionScreen({ deck, kind, day, state, setState, onQuit, onFinish }: Props) {
+export function SessionScreen({ deck, kind, day, words, title, state, setState, onQuit, onFinish }: Props) {
   const [sess, setSess] = useState<Session | null>(() => {
     const t = todayKey();
-    const steps = kind === "evening" ? eveningPlan(deck, state, t, Math.random, day ?? t) : morningPlan(deck, state, t, { extra: kind === "extra" });
+    const steps =
+      kind === "drill"
+        ? drillPlan(deck, state, words ?? [], title ?? "Все слова")
+        : kind === "evening"
+          ? eveningPlan(deck, state, t, Math.random, day ?? t)
+          : morningPlan(deck, state, t, { extra: kind === "extra" });
     return startSession(kind, steps);
   });
 

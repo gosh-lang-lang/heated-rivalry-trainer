@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { addDays, DECK, goTab, openHome, setup, state, TODAY, ws } from "./helpers";
+import { addDays, DECK, goTab, openHome, playSession, readState, setup, state, TODAY, ws } from "./helpers";
 
 /**
  * «Слова» — два уровня, как «Настройки»: список уроков (кольцо «знакомо N из M»), «Впереди» и «Трудные»;
@@ -37,7 +37,7 @@ test.describe("слова по урокам", () => {
     await expect(lessonRow(page, "Трудные")).toContainText("4+ ошибок1");
   });
 
-  test("урок: слово, перевод и точка уровня; раскрытие — пример, звук, уровень и повтор", async ({ page }) => {
+  test("урок: СЛОВО · ПЕРЕВОД · УРОВЕНЬ · ПОВТОР и рупор; раскрытие — пример со звуком", async ({ page }) => {
     await setup(page, { state: twoLessons() });
     await openHome(page);
     await goTab(page, "Слова");
@@ -53,21 +53,29 @@ test.describe("слова по урокам", () => {
     await expect(rows).toHaveCount(2);
     const w = DECK.words[3];
     const row = rows.filter({ hasText: w.ru });
-    await expect(row.locator(".wdot")).toHaveAttribute("aria-label", "Знакомо · уровень 3 из 6");
-    await expect(row.locator(".spk")).toBeHidden();
-    await row.locator("summary").click();
+    await expect(row.locator(".wlv")).toHaveAttribute("aria-label", "Знакомо · уровень 3 из 6");
+    await expect(row.locator(".wlv i.f")).toHaveCount(3);
+    await expect(row.locator(".wdue")).toHaveText("завтра");
+    await expect(rows.filter({ hasText: DECK.words[4].ru }).locator(".wdue")).toHaveText("завтра");
+    // рупор в строке: звучит — нажат, строку не раскрывает
+    const spk = row.locator(`summary .spk[data-say="${w.en}"]`);
+    await expect(spk).toBeVisible();
+    await spk.click();
+    await expect(row.locator(".det")).toBeHidden();
+    await row.locator(".wru").click();
     await expect(row).toContainText(w.example);
     await expect(row).toContainText(w.exampleRu);
-    await expect(row).toContainText("Знакомо · повтор завтра");
-    await expect(row.locator(`.spk[data-say="${w.en}"]`)).toBeVisible();
+    await expect(row).toContainText("Знакомо · уровень 3 из 6");
+    await expect(row.locator(`.det .spk[data-say="${w.example}"]`)).toBeVisible();
 
     // «Трудные»: слово с 4+ ошибками и их число
     if (phone(page)) await page.getByRole("button", { name: "Назад: Слова" }).click();
     await lessonRow(page, "Трудные").click();
     const hard = list(page, "Трудные").locator(".wrow");
     await expect(hard).toHaveCount(1);
-    await hard.locator("summary").click();
-    await expect(hard).toContainText("трудное · 5×");
+    await hard.locator(".wru").click();
+    await expect(hard.locator("summary")).toContainText("трудное");
+    await expect(hard).toContainText("ошибок: 5");
   });
 
   test("телефон: урок — своя страница, «назад» браузера и «‹ Слова» возвращают к списку", async ({ page }) => {
@@ -85,11 +93,10 @@ test.describe("слова по урокам", () => {
     await expect(page.getByRole("heading", { level: 1, name: "Слова" })).toBeVisible();
   });
 
-  test("поиск по слову и переводу — по всем словам", async ({ page }) => {
+  test("поиск сверху — по слову и переводу во всех словах", async ({ page }) => {
     await setup(page, { state: twoLessons() });
     await openHome(page);
     await goTab(page, "Слова");
-    if (phone(page)) await page.getByRole("button", { name: "Поиск" }).click();
     const find = page.getByRole("searchbox", { name: "Найти слово или перевод" });
     await find.fill(DECK.words[10].ru);
     const found = list(page, "Найденные слова").locator(".wrow");
@@ -98,5 +105,34 @@ test.describe("слова по урокам", () => {
     await expect(page.getByText("Ничего не нашлось")).toBeVisible();
     await find.fill("");
     await expect(lessonRow(page, "Урок 1")).toBeVisible();
+  });
+
+  test("«Пройти все слова»: по заданию на слово урока, уровни и дни не меняются, итог — обратно к уроку", async ({ page }) => {
+    const st = twoLessons();
+    await setup(page, { state: st });
+    await openHome(page);
+    await goTab(page, "Слова");
+    await lessonRow(page, "Урок 1").click();
+    await page.getByRole("button", { name: "Пройти все слова · 3" }).click();
+    await expect(page.locator(".sect h2")).toHaveText("Урок 1");
+    const before = await readState(page);
+    const rep = await playSession(page, { mistakes: 1 });
+    expect(rep.steps.filter((k) => k !== "Урок 1").length).toBe(4); // 3 слова + ошибка вернулась в конец
+    await expect(page.getByRole("heading", { name: "Все слова пройдены" })).toBeVisible();
+    await expect(page.getByText("Тренировка: уровни и даты повтора не изменились.")).toBeVisible();
+    const after = await readState(page);
+    expect(after.srs).toEqual(before.srs);
+    expect(after.days).toEqual(before.days);
+    await page.getByRole("button", { name: "К словам" }).click();
+    await expect(list(page, "Урок 1").locator(".wrow")).toHaveCount(3);
+  });
+
+  test("«Впереди» — без «Пройти все слова»: эти слова вводит урок", async ({ page }) => {
+    await setup(page, { state: twoLessons() });
+    await openHome(page);
+    await goTab(page, "Слова");
+    await lessonRow(page, "Впереди").click();
+    await expect(list(page, "Впереди").locator(".wrow").first()).toBeVisible();
+    await expect(page.getByRole("button", { name: /Пройти все слова/ })).toHaveCount(0);
   });
 });

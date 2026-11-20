@@ -121,7 +121,11 @@ export interface AppState {
 
 /* ---------- занятия ---------- */
 
-export type SessionKind = "morning" | "evening" | "extra";
+/**
+ * morning — часть 1 урока, evening — часть 2, extra — «ещё 6 новых»;
+ * drill — «Пройти все слова» из словаря: тренировка, уровни, даты повтора и дни не меняются.
+ */
+export type SessionKind = "morning" | "evening" | "extra" | "drill";
 
 interface StepBase {
   /** номер исходного шага; повтор после ошибки сохраняет k оригинала */

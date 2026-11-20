@@ -38,9 +38,13 @@ export type View =
   | { name: "card"; no: number; from: View }
   /** section — открытый раздел настроек; без него на телефоне — список разделов (на десктопе — первый раздел) */
   | { name: "settings"; section?: SettingsSection }
-  /** day — день урока для части 2, перенесённой со вчера; from — откуда начали (туда «выйти») */
-  | { name: "session"; kind: SessionKind; day?: string; from?: "home" | "path" }
-  | { name: "result"; fin: Finished };
+  /**
+   * day — день урока для части 2, перенесённой со вчера; from — откуда начали (туда «выйти»);
+   * для «Пройти все слова» (drill): words — слова, title — заголовок, lesson — страница «Слов», куда вернуться
+   */
+  | { name: "session"; kind: SessionKind; day?: string; from?: "home" | "path" | "words"; words?: string[]; title?: string; lesson?: LessonKey }
+  /** back — куда ведёт кнопка итога (тренировка из «Слов» — обратно к уроку); без него — на главную */
+  | { name: "result"; fin: Finished; back?: View };
 
 export type SettingsSection = "lessons" | "voice" | "look" | "account";
 
@@ -201,14 +205,16 @@ export default function App({ user, name = null }: { user: string | null; name?:
           deck={DECK}
           kind={view.kind}
           day={view.day}
+          words={view.words}
+          title={view.title}
           state={state}
           setState={setState}
-          onQuit={() => go({ name: view.from ?? "home" })}
-          onFinish={(fin) => go({ name: "result", fin })}
+          onQuit={() => go(view.from === "words" ? { name: "words", lesson: view.lesson } : { name: view.from ?? "home" })}
+          onFinish={(fin) => go({ name: "result", fin, back: view.from === "words" ? { name: "words", lesson: view.lesson } : undefined })}
         />
       );
     case "result":
-      return withSettings(<Result fin={view.fin} state={state} deck={DECK} go={go} />);
+      return withSettings(<Result fin={view.fin} state={state} deck={DECK} go={go} back={view.back} />);
   }
 
   /** Экран раздела (для карточки — экран под ней). */

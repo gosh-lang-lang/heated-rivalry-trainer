@@ -150,6 +150,18 @@ export const morningPlan = (deck: Deck, state: AppState, today: string, opts: Mo
   return number(st);
 };
 
+/**
+ * «Пройти все слова» (урок или «Трудные» в словаре): по одному заданию на слово — как на повторении,
+ * по уровню слова (не начатое — как уровень 1); ошибка вернёт задание в конец. Уровни не меняются (drill).
+ */
+export const drillPlan = (deck: Deck, state: AppState, ids: readonly string[], title: string, rng: Rng = Math.random): Step[] => {
+  const ws = ids.map((id) => deck.byId[id]).filter((w): w is Word => !!w);
+  if (!ws.length) return [];
+  const st: Draft[] = [{ t: "section", pic: "🏒", title, sub: `${ws.length} ${plural(ws.length, "слово", "слова", "слов")} подряд — тренировка: уровни и даты повтора не меняются` }];
+  shuffle(ws, rng).forEach((w) => st.push(reviewStep(w, Math.max(1, state.srs[w.id]?.lvl ?? 1), rng)));
+  return number(st);
+};
+
 /** Слова для части 2 урока дня `day`: выученные в этот день, иначе 12 последних по дате знакомства. */
 export const eveningWords = (deck: Deck, srs: AppState["srs"], day: string): Word[] => {
   const ws = deck.words.filter((w) => srs[w.id]?.intro === day);
