@@ -197,6 +197,9 @@ test("личные настройки одинаковы на всех устр�
   await phone.getByRole("radio", { name: /Emma/ }).click();
   await perDay(phone, 24).click();
   await expect(phone.locator(".vsel")).toContainText("Emma");
+  await phone.getByRole("radiogroup", { name: "Оформление" }).getByRole("radio", { name: /Матч/ }).click();
+  await phone.getByRole("switch", { name: "Ночная тема" }).click(); // система — светлая, выбрали ночь
+  await expect(phone.locator("html")).toHaveAttribute("data-theme", "dark");
   await phone.waitForTimeout(1500); // ушло на сервер
 
   // ноутбук продолжает занятие — его прогресс новее, но настройки телефона не трогает
@@ -211,6 +214,10 @@ test("личные настройки одинаковы на всех устр�
     await settings(page);
     await expect(page.locator(".vsel"), "голос").toContainText("Emma");
     await expect(perDay(page, 24), "новых слов").toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByRole("radio", { name: /Матч/ }), "оформление").toHaveAttribute("aria-checked", "true");
+    await expect(page.locator("html"), "оформление").toHaveAttribute("data-players", "on");
+    await expect(page.getByRole("switch", { name: "Ночная тема" }), "день/ночь").toHaveAttribute("aria-checked", "true");
+    await expect(page.locator("html"), "день/ночь").toHaveAttribute("data-theme", "dark");
   }
   await expect.poll(() => cli("progress")).toMatch(/^evgeny\tслов: 3\t/);
 
@@ -219,6 +226,8 @@ test("личные настройки одинаковы на всех устр�
   await settings(tablet);
   await expect(tablet.locator(".vsel")).toContainText("Emma");
   await expect(perDay(tablet, 24)).toHaveAttribute("aria-pressed", "true");
+  await expect(tablet.locator("html")).toHaveAttribute("data-players", "on");
+  await expect(tablet.locator("html")).toHaveAttribute("data-theme", "dark");
   for (const p of [laptop, phone, tablet]) await p.context().close();
 });
 

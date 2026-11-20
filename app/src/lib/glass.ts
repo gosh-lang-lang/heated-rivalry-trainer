@@ -1,32 +1,34 @@
-import { useState } from "react";
+import type { Look } from "../core/types";
 import { SKATER_BLACK, SKATER_RED } from "./skaters";
+import { useSettings } from "./settings";
 
 /**
  * Оформление: «Классика» (плотные карточки, как было), «Лёд» (каток, стеклянные карточки — glass.css)
- * или «Матч» (тот же лёд, а за стеклом катаются два хоккеиста). Атрибуты <html data-glass> и data-players. Пока выбор хранится на устройстве.
+ * или «Матч» (тот же лёд, а за стеклом катаются два хоккеиста). Атрибуты <html data-glass> и data-players.
+ * Выбор — в личных настройках (settings.look), общих для всех устройств.
  * В Chromium у стеклянной капсулы вкладок — линза с преломлением (SVG-фильтр), в Safari — обычное размытие.
  */
 
-export type Look = "classic" | "ice" | "match";
+export type { Look };
 export const LOOKS: [Look, string, string][] = [
   ["classic", "Классика", "Плотные карточки, как было"],
   ["ice", "Лёд", "Каток и стеклянные карточки"],
   ["match", "Матч", "Лёд, а на нём катаются соперники"],
 ];
-const KEY = "hr2_look";
-const DEFAULT: Look = "ice";
 
-const read = (): Look => {
+/** Выбор, сделанный до того, как оформление стало общей настройкой (жил в localStorage). */
+const LEGACY_KEY = "hr2_look";
+export const legacyLook = (take = false): Look | null => {
   try {
-    const m = localStorage.getItem(KEY);
-    if (LOOKS.some(([k]) => k === m)) return m as Look;
+    const m = localStorage.getItem(LEGACY_KEY);
+    if (take) localStorage.removeItem(LEGACY_KEY);
+    return LOOKS.some(([k]) => k === m) ? (m as Look) : null;
   } catch {
-    /* хранилище недоступно — оформление по умолчанию */
+    return null;
   }
-  return DEFAULT;
 };
 
-const apply = (m: Look) => {
+export const applyLook = (m: Look) => {
   const root = document.documentElement;
   root.dataset.glass = m === "match" ? "ice" : m;
   if (m === "match") root.dataset.players = "on";
@@ -67,26 +69,17 @@ const mountLens = () => {
   document.documentElement.classList.add("lg-lens");
 };
 
-/** До первой отрисовки: оформление и линза. */
-export const initGlass = () => {
-  apply(read());
+/** До первой отрисовки: оформление (из кэша настроек) и линза. */
+export const initGlass = (look: Look) => {
+  applyLook(look);
   mountPlayers();
   // backdrop-filter с SVG-фильтром умеет только Chromium; в Safari остаётся обычное размытие
   const brands = (navigator as { userAgentData?: { brands?: { brand: string }[] } }).userAgentData?.brands;
   if (brands?.some((b) => b.brand === "Chromium")) mountLens();
 };
 
-/** Текущее оформление и смена его (с запоминанием). */
+/** Текущее оформление и смена его (в общих настройках; применяет App). */
 export function useLook(): [Look, (m: Look) => void] {
-  const [look, setLook] = useState<Look>(read);
-  const set = (m: Look) => {
-    try {
-      localStorage.setItem(KEY, m);
-    } catch {
-      /* не запомнили — оформление всё равно сменится до перезагрузки */
-    }
-    apply(m);
-    setLook(m);
-  };
-  return [look, set];
+  const { settings, set } = useSettings();
+  return [settings.look, (m) => set("look", m)];
 }

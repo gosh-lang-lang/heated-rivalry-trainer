@@ -61,3 +61,6 @@ export const rememberUser = (user: string) => {
     /* не страшно */
   }
 };
+
+/** Настройки из кэша, без побочных эффектов (до первой отрисовки — чтобы сразу показать своё оформление). */
+export const peekSettings = (user: string | null) => (read(cacheKey(user)) ?? read(LEGACY) ?? emptyState()).settings;

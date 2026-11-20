@@ -1,10 +1,13 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { changeSetting, mergeStates, parseState, sameState } from "./core/state";
 import type { Finished } from "./core/session";
 import type { AppState, SessionKind } from "./core/types";
 import { DECK } from "./data";
 import { cacheKey, loadState, saveState } from "./lib/storage";
 import { applyVoice, takeLegacyVoice } from "./lib/speech";
+import { applyLook, legacyLook } from "./lib/glass";
+import { applyTheme, legacyTheme } from "./lib/theme";
+import { SettingsContext, type SettingsApi } from "./lib/settings";
 import { useServerSync } from "./lib/sync";
 import { Home } from "./screens/Home";
 import { Result } from "./screens/Result";
@@ -28,7 +31,7 @@ export type SetState = (next: AppState) => void;
  * @param user — кто вошёл; null — неизвестно (без сети и без прошлого входа): только кэш, без сервера
  */
 export default function App({ user }: { user: string | null }) {
-  const [state, setRaw] = useState<AppState>(() => withLegacyVoice(user, loadState(user)));
+  const [state, setRaw] = useState<AppState>(() => withLegacySettings(user, loadState(user)));
   const [view, setView] = useState<View>({ name: "home" });
   const wide = useWide();
   const current = useRef(state);
@@ -56,8 +59,17 @@ export default function App({ user }: { user: string | null }) {
     [adopt, schedulePush],
   );
 
-  // голос озвучки — из личных настроек (общих для всех устройств)
+  // личные настройки (общие для всех устройств) → голос, оформление, день/ночь; оформление — до отрисовки, без мигания
   useEffect(() => applyVoice(state.settings.voice), [state.settings.voice]);
+  useLayoutEffect(() => applyLook(state.settings.look), [state.settings.look]);
+  useLayoutEffect(() => applyTheme(state.settings.theme), [state.settings.theme]);
+
+  /** Настройки для любого места интерфейса: изменение пункта — его метка времени и обычная синхронизация. */
+  const settingsApi = useMemo<SettingsApi>(
+    () => ({ settings: state.settings, set: (key, value) => setState(changeSetting(current.current, key, value)) }),
+    [state.settings, setState],
+  );
+  const withSettings = (node: ReactNode) => <SettingsContext.Provider value={settingsApi}>{node}</SettingsContext.Provider>;
 
   // прогресс и настройки из другой вкладки — сливаем с нашими
   useEffect(() => {
@@ -85,7 +97,7 @@ export default function App({ user }: { user: string | null }) {
 
   switch (view.name) {
     case "session":
-      return (
+      return withSettings(
         <SessionScreen
           deck={DECK}
           kind={view.kind}
@@ -96,12 +108,12 @@ export default function App({ user }: { user: string | null }) {
         />
       );
     case "result":
-      return <Result fin={view.fin} state={state} onHome={() => go({ name: "home" })} />;
+      return withSettings(<Result fin={view.fin} state={state} onHome={() => go({ name: "home" })} />);
   }
 
   // разделы: на широком экране — верхняя навигация, на телефоне и планшете — нижняя панель вкладок
   const section = view.name;
-  return (
+  return withSettings(
     <div className={`shell is-${section}${wide ? "" : " has-tabbar"}`}>
       {wide && <TopNav current={section} go={go} />}
       {section === "words" ? (
@@ -119,13 +131,19 @@ export default function App({ user }: { user: string | null }) {
 }
 
 /**
- * Голос, выбранный в этом браузере до того, как настройки стали общими (жил в localStorage).
- * Переносим в настройки с самой ранней меткой: если на другом устройстве голос уже выбирали, победит тот выбор.
+ * Голос, оформление и день/ночь, выбранные в этом браузере до того, как настройки стали общими (жили в localStorage).
+ * Переносим в настройки с самой ранней меткой: если на другом устройстве этот пункт уже выбирали, победит тот выбор.
  */
-function withLegacyVoice(user: string | null, s: AppState): AppState {
-  const legacy = takeLegacyVoice();
-  if (!legacy || s.settingsAt.voice > 0) return s;
-  const next = { ...changeSetting(s, "voice", legacy, 1), upd: Math.max(s.upd, 1) };
+function withLegacySettings(user: string | null, s: AppState): AppState {
+  let next = s;
+  const voice = takeLegacyVoice(),
+    look = legacyLook(true),
+    theme = legacyTheme(true);
+  if (voice && s.settingsAt.voice === 0) next = changeSetting(next, "voice", voice, 1);
+  if (look && s.settingsAt.look === 0) next = changeSetting(next, "look", look, 1);
+  if (theme && s.settingsAt.theme === 0) next = changeSetting(next, "theme", theme, 1);
+  if (next === s) return s;
+  next = { ...next, upd: Math.max(s.upd, 1) };
   saveState(user, next);
   return next;
 }

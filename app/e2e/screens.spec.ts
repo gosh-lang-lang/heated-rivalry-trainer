@@ -165,3 +165,25 @@ test.describe("оформление", () => {
     await expect(page.locator("html")).toHaveAttribute("data-players", "on");
   });
 });
+
+test("оформление и день/ночь, выбранные раньше только в этом браузере, переезжают в общие настройки", async ({ page }) => {
+  const log = await setup(page);
+  await page.addInitScript(() => {
+    if (!sessionStorage.getItem("seeded")) {
+      localStorage.setItem("hr2_look", "classic");
+      localStorage.setItem("hr2_theme", "dark");
+      sessionStorage.setItem("seeded", "1");
+    }
+  });
+  await openHome(page);
+  await expect(page.locator("html")).toHaveAttribute("data-glass", "classic");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await expect
+    .poll(() => (log.server.state as { settings?: { look: string; theme: string } } | null)?.settings)
+    .toMatchObject({ look: "classic", theme: "dark" });
+  expect(await page.evaluate(() => [localStorage.getItem("hr2_look"), localStorage.getItem("hr2_theme")])).toEqual([null, null]);
+  // и после перезагрузки — из настроек
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("data-glass", "classic");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+});

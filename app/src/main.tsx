@@ -2,15 +2,17 @@ import { createRoot } from "react-dom/client";
 import { registerSW } from "virtual:pwa-register";
 import App from "./App";
 import { ensureSession } from "./lib/auth";
-import { lastUser, rememberUser } from "./lib/storage";
+import { lastUser, peekSettings, rememberUser } from "./lib/storage";
 import "./styles.css";
 import "./glass.css";
-import { initGlass } from "./lib/glass";
-import { initTheme } from "./lib/theme";
+import { initGlass, legacyLook } from "./lib/glass";
+import { applyTheme, legacyTheme } from "./lib/theme";
 
 registerSW({ immediate: true });
-initTheme();
-initGlass();
+// оформление и день/ночь — до первой отрисовки, из кэша настроек (дальше их ведёт App)
+const cached = peekSettings(lastUser());
+applyTheme(legacyTheme() ?? cached.theme);
+initGlass(legacyLook() ?? cached.look);
 
 // прогресс привязан к пользователю: сначала узнаём, кто вошёл (без сети — последний вошедший)
 void ensureSession().then((me) => {
