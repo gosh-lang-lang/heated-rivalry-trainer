@@ -1,0 +1,28 @@
+# VPS: /opt/heated-rivalry/src/deploy/compose.yaml (см. deploy/README.md)
+name: heated-rivalry
+services:
+  app:
+    image: heated-rivalry:${TAG:-latest}
+    build:
+      context: ..
+      dockerfile: app/Dockerfile
+    container_name: heated-rivalry
+    restart: unless-stopped
+    mem_limit: ${APP_MEM_LIMIT:-1536m}
+    cpus: ${APP_CPUS:-1.5}
+    environment:
+      TTS_DTYPE: ${TTS_DTYPE:-fp32}
+      TTS_RATE_LIMIT: ${TTS_RATE_LIMIT:-120}
+    volumes:
+      - tts:/data/tts
+    networks: [edge]
+
+networks:
+  # Внутренняя сеть без выхода наружу: в ней только приложение и общий Caddy (подключается bin/edge-connect.sh)
+  edge:
+    name: heated_rivalry_edge
+    internal: true
+
+volumes:
+  tts:
+    name: heated_rivalry_tts

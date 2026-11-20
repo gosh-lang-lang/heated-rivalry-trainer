@@ -13,12 +13,21 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import { dirname, extname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DEFAULT_VOICE, TTS_VOICES, ttsRequestError, VOICE_SAMPLE } from "../src/core/tts.ts";
+import { createLimiter } from "../src/core/ratelimit.ts";
 import { createEngine } from "./tts.ts";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const PORT = Number(process.env.PORT ?? 8787);
 const PROD = process.env.NODE_ENV === "production";
 const engine = createEngine(process.env.TTS_CACHE_DIR ?? join(ROOT, "server/cache/tts"), process.env.TTS_DTYPE === "q8" ? "q8" : "fp32");
+
+/** Новые фразы (не из кэша) — не больше TTS_RATE_LIMIT в час с одного адреса; из кэша — без ограничений. */
+const limiter = createLimiter(Number(process.env.TTS_RATE_LIMIT ?? 120), 60 * 60 * 1000);
+/** Очередь генерации не растёт бесконечно. */
+const MAX_QUEUE = Number(process.env.TTS_MAX_QUEUE ?? 400);
+/** Адрес клиента: за Caddy — первый в X-Forwarded-For (до сервера доходит только Caddy). */
+const clientIp = (req: IncomingMessage) =>
+  String(req.headers["x-forwarded-for"] ?? "").split(",")[0].trim() || req.socket.remoteAddress || "?";
 
 const json = (res: ServerResponse, code: number, body: unknown) => {
   res.writeHead(code, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
@@ -78,7 +87,18 @@ const server = createServer(async (req, res) => {
       }
       const err = ttsRequestError(body.text, body.voice);
       if (err) return json(res, 400, { error: err });
-      const key = await engine.ensure(body.text as string, (body.voice as string | undefined) ?? DEFAULT_VOICE, "hi");
+      const text = body.text as string,
+        voice = (body.voice as string | undefined) ?? DEFAULT_VOICE;
+      if (!engine.has(text, voice)) {
+        const ip = clientIp(req),
+          now = Date.now();
+        if (engine.stats().queued >= MAX_QUEUE) return json(res, 503, { error: "очередь озвучки переполнена" });
+        if (!limiter.take(ip, now)) {
+          res.setHeader("retry-after", Math.ceil(limiter.retryAfter(ip, now) / 1000));
+          return json(res, 429, { error: "слишком много новых фраз, попробуй позже" });
+        }
+      }
+      const key = await engine.ensure(text, voice, "hi");
       return json(res, 200, { url: `/api/tts/${key}.mp3` });
     }
 

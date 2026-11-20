@@ -1,0 +1,9 @@
+.git
+**/node_modules
+**/dist
+**/dev-dist
+**/test-results
+**/playwright-report
+app/server/cache
+.claude
+**/.DS_Store

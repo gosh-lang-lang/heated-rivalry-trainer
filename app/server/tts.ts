@@ -12,6 +12,8 @@ import { ttsCacheSource } from "../src/core/tts.ts";
 export const cacheKey = (text: string, voice: string) => createHash("sha1").update(ttsCacheSource(text, voice)).digest("hex").slice(0, 20);
 
 export interface TtsEngine {
+  /** Есть ли уже готовый файл. */
+  has(text: string, voice: string): boolean;
   /** Готовит файл (если его ещё нет) и возвращает ключ. */
   ensure(text: string, voice: string, priority?: "hi" | "lo"): Promise<string>;
   file(key: string): string;
@@ -108,5 +110,6 @@ export const createEngine = (cacheDir: string, dtype: "fp32" | "q8" = "fp32"): T
     return done;
   };
 
-  return { ensure, file, ready, stats: () => ({ queued: hi.length + lo.length, generated }) };
+  const has = (text: string, voice: string) => existsSync(file(cacheKey(text, voice))) || jobs.has(cacheKey(text, voice));
+  return { has, ensure, file, ready, stats: () => ({ queued: hi.length + lo.length, generated }) };
 };

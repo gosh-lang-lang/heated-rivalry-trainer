@@ -1,0 +1,8 @@
+[Unit]
+Description=Connect shared Caddy to heated_rivalry_edge network
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/heated-rivalry/src/deploy/edge-connect.sh
