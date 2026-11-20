@@ -8,6 +8,9 @@ export interface Session {
   /** заданий, оценённых по первой попытке */
   graded: number;
   right: number;
+  /** то же только по шагам повторения (rev) */
+  revGraded: number;
+  revRight: number;
   /** k шагов, у которых уже была первая попытка */
   first: number[];
   newIds: string[];
@@ -22,7 +25,7 @@ export interface Graded {
 }
 
 export const startSession = (kind: SessionKind, steps: Step[], now = Date.now()): Session | null =>
-  steps.length ? { kind, steps, i: 0, graded: 0, right: 0, first: [], newIds: [], written: {}, t0: now } : null;
+  steps.length ? { kind, steps, i: 0, graded: 0, right: 0, revGraded: 0, revRight: 0, first: [], newIds: [], written: {}, t0: now } : null;
 
 export const currentStep = (s: Session): Step | undefined => s.steps[s.i];
 
@@ -49,6 +52,7 @@ export const gradeCurrent = (
     st = state;
   if (!sess.first.includes(step.k)) {
     s = { ...s, first: [...s.first, step.k], graded: s.graded + 1, right: s.right + (ok ? 1 : 0) };
+    if ("rev" in step && step.rev) s = { ...s, revGraded: s.revGraded + 1, revRight: s.revRight + (ok ? 1 : 0) };
     if (wordId) {
       const ctx = { rev: "rev" in step && !!step.rev, eve: "eve" in step && !!step.eve, rare };
       st = { ...st, srs: { ...st.srs, [wordId]: applyGrade(st.srs[wordId], ok, ctx, today) } };
@@ -103,6 +107,7 @@ export const finishSession = (sess: Session, state: AppState, today: string, now
     mins: Math.max(1, Math.round((now.getTime() - sess.t0) / 60000)),
     newN: sess.newIds.length,
     at: now.toISOString(),
+    ...(sess.revGraded ? { revScore: sess.revRight, revTotal: sess.revGraded } : {}),
   };
   let prev: SessionResult | null = null;
   for (const k of Object.keys(state.days).filter((k) => k < today).sort()) {

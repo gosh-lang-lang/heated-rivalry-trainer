@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { addDays } from "./dates";
 import { validateDeck } from "./deck";
-import { eveningPlan, eveningWords, morningPlan, writeGroups } from "./plans";
+import { eveningPlan, eveningWords, MAX_REVIEW, morningPlan, newToday, QUEUE_STOP, reviewAccuracy, writeGroups } from "./plans";
 import { seeded } from "./rng";
 import { blankState } from "./srs";
 import { deck, state, TODAY } from "./fixtures";
@@ -45,15 +45,15 @@ describe("утро", () => {
     expect(st.filter((s) => s.t === "intro").map((s) => (s.t === "intro" ? s.w : ""))).toEqual(deck.words.slice(0, 6).map((w) => w.id));
   });
 
-  it("разминка: до 20 слов; lvl<3 — выбор/аудирование, lvl≥3 — вписать", () => {
+  it("разминка: чем выше уровень, тем активнее; lvl<3 — выбор/аудирование, 3 — вписать с подсказкой, 4+ — без", () => {
     const srs: Record<string, ReturnType<typeof blankState>> = {};
-    deck.words.slice(0, 25).forEach((w, i) => (srs[w.id] = { ...blankState(), lvl: i < 10 ? 1 : 3, intro: "2026-11-01", due: TODAY }));
+    deck.words.slice(0, 25).forEach((w, i) => (srs[w.id] = { ...blankState(), lvl: i < 10 ? 1 : i < 18 ? 3 : 5, intro: "2026-11-01", due: TODAY }));
     const st = morningPlan(deck, state({ srs }), TODAY, { rng: seeded(4) });
     const rev = st.filter((s) => "rev" in s && s.rev);
-    expect(rev.length).toBe(20);
+    expect(rev.length).toBe(25);
     for (const s of rev) {
       const l = srs[(s as { w: string }).w].lvl;
-      if (l >= 3) expect(s.t).toBe("type");
+      if (l >= 3) expect(s).toMatchObject({ t: "type", hint: l < 4 });
       else expect(["pick", "listen"]).toContain(s.t);
     }
   });
@@ -117,19 +117,34 @@ describe("вечер", () => {
       const srs = introToday(12);
       const ws = eveningWords(deck, srs, TODAY);
       expect(ws.some((w) => w.rare)).toBe(true); // среди первых 12 есть редкие
-      const g = writeGroups(deck, srs, ws, seeded(3));
+      const g = writeGroups(deck, state({ srs }), ws, seeded(3));
       expect(g.length).toBe(3);
       expect(flat(g).some((id) => deck.byId[id].rare)).toBe(false);
     });
 
-    it("редкое слово уровня 3+ — ровно одно предложение, и оно последнее", () => {
+    it("редкое слово уровня 3+ — ровно одно предложение", () => {
       const srs = { ...introToday(12), ...Object.fromEntries([lvl(rareIds[5], 3), lvl(rareIds[6], 2)]) };
       for (let seed = 1; seed < 20; seed++) {
-        const g = writeGroups(deck, srs, eveningWords(deck, srs, TODAY), seeded(seed));
+        const g = writeGroups(deck, state({ srs }), eveningWords(deck, srs, TODAY), seeded(seed));
         expect(g.length).toBe(3);
         expect(flat(g).filter((id) => deck.byId[id].rare)).toEqual([rareIds[5]]);
-        expect(g[2]).toEqual([rareIds[5]]);
+        expect(g).toContainEqual([rareIds[5]]);
       }
+    });
+
+    it("старое ходовое слово уровня 5+ снова идёт в своё предложение — то, с которым дольше не писали", () => {
+      const core = deck.words.filter((w) => !w.rare).slice(40, 43);
+      const srs = { ...introToday(12), ...Object.fromEntries(core.map((w) => lvl(w.id, 5))) };
+      const sent = [
+        { at: "2026-11-10T10:00:00Z", words: [core[0].en], text: "x" },
+        { at: "2026-11-01T10:00:00Z", words: [core[1].en], text: "y" },
+        { at: "2026-11-15T10:00:00Z", words: [core[2].en], text: "z" },
+      ];
+      const g = writeGroups(deck, state({ srs, sent }), eveningWords(deck, srs, TODAY), seeded(4));
+      expect(g[1]).toEqual([core[1].id]);
+      // никогда не писал — раньше всех
+      const g2 = writeGroups(deck, state({ srs, sent: sent.slice(0, 1) }), eveningWords(deck, srs, TODAY), seeded(4));
+      expect([core[1].id, core[2].id]).toContain(g2[1][0]);
     });
 
     it("сегодня только редкие и нет редких 3+ — без своих предложений, говорение по примерам", () => {
@@ -142,9 +157,48 @@ describe("вечер", () => {
     });
   });
 
+  it("не поместилось утром — до 20 повторений в начале вечера", () => {
+    const srs = { ...introToday(6) };
+    deck.words.slice(10, 40).forEach((w) => (srs[w.id] = { ...blankState(), lvl: 2, intro: "2026-11-01", due: TODAY }));
+    const st = eveningPlan(deck, state({ srs }), TODAY, seeded(5));
+    expect(st[0]).toMatchObject({ t: "section", title: "Повторение" });
+    expect(st.filter((s) => "rev" in s && s.rev).length).toBe(20);
+  });
+
   it("одно слово: всё равно один write и два speak", () => {
     const st = eveningPlan(deck, state({ srs: introToday(1) }), TODAY, seeded(8));
     expect(count(st, "write")).toBe(1);
     expect(count(st, "speak")).toBe(2);
+  });
+});
+
+describe("темп новых слов", () => {
+  const dueN = (n: number) =>
+    Object.fromEntries(deck.words.slice(0, n).map((w) => [w.id, { ...blankState(), lvl: 2, intro: "2026-11-01", due: TODAY }]));
+  const day = (revScore: number, revTotal: number) => ({ morning: { score: 0, total: 0, mins: 1, newN: 0, at: "", revScore, revTotal } });
+
+  it("по умолчанию — как в настройке", () => expect(newToday(deck, state(), TODAY)).toMatchObject({ n: 12, why: "" }));
+
+  it("очередь больше 60 — новых нет", () => {
+    expect(newToday(deck, state({ srs: dueN(QUEUE_STOP + 1) }), TODAY)).toMatchObject({ n: 0, why: "сначала разберём повторения" });
+    expect(morningPlan(deck, state({ srs: dueN(QUEUE_STOP + 1) }), TODAY, { rng: seeded(1) }).filter((s) => s.t === "intro").length).toBe(0);
+  });
+
+  it("очередь 21–60 — один блок", () => expect(newToday(deck, state({ srs: dueN(30) }), TODAY).n).toBe(6));
+
+  it("утром не больше 40 повторений", () => {
+    const st = morningPlan(deck, state({ srs: dueN(55) }), TODAY, { rng: seeded(1) });
+    expect(st.filter((s) => "rev" in s && s.rev).length).toBe(MAX_REVIEW);
+  });
+
+  it("точность на повторениях: ниже 80% — один блок, выше 95% — на блок больше", () => {
+    const low = state({ days: { [TODAY]: day(15, 25) } });
+    expect(reviewAccuracy(low, TODAY)).toMatchObject({ right: 15, total: 25 });
+    expect(newToday(deck, low, TODAY).n).toBe(6);
+    expect(newToday(deck, state({ days: { "2026-11-19": day(24, 25) } }), TODAY).n).toBe(18);
+    expect(newToday(deck, state({ days: { "2026-11-19": day(22, 25) } }), TODAY).n).toBe(12);
+    // мало данных или старше недели — не учитываем
+    expect(newToday(deck, state({ days: { "2026-11-19": day(5, 10) } }), TODAY).n).toBe(12);
+    expect(newToday(deck, state({ days: { "2026-11-10": day(5, 30) } }), TODAY).n).toBe(12);
   });
 });

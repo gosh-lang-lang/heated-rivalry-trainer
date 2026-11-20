@@ -37,7 +37,7 @@ test.describe("вечернее занятие", () => {
     await expect(page.getByText("Готово · 14/14")).toBeVisible();
   });
 
-  test("ошибка вечером сбрасывает слово на уровень 1", async ({ page }) => {
+  test("ошибка вечером снижает уровень на 2 и ставит проверку на завтра", async ({ page }) => {
     const srs = { [DECK.words[0].id]: ws({ lvl: 4, due: "2026-12-01" }) };
     await setup(page, { state: state({ srs, days: { [TODAY]: { morning: { score: 1, total: 1, mins: 1, newN: 1, at: "x" } } } }) });
     await openHome(page);
@@ -46,7 +46,7 @@ test.describe("вечернее занятие", () => {
     await page.locator("input.inp").fill("неправильно");
     await page.locator("#chk").click();
     const st = await readState(page);
-    expect(st.srs[DECK.words[0].id]).toMatchObject({ lvl: 1, due: "2026-11-21", wrong: 1 });
+    expect(st.srs[DECK.words[0].id]).toMatchObject({ lvl: 2, due: "2026-11-21", wrong: 1 });
   });
 
   test("«Скажи вслух»: проверка по доле услышанных слов", async ({ page }) => {

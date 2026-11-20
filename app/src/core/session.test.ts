@@ -28,6 +28,7 @@ describe("движок занятия", () => {
     expect(s.steps.length).toBe(5);
     expect(s.steps[4]).toMatchObject({ t: "pick", k: 1, retry: true });
     expect([s.graded, s.right]).toEqual([1, 0]);
+    expect([s.revGraded, s.revRight]).toEqual([0, 0]); // шаг блока новых — не повторение
     expect(st.srs.praise.wrong).toBe(1);
 
     s = { ...s, i: 4 };
@@ -77,5 +78,22 @@ describe("движок занятия", () => {
     st = finishSession(s, st, TODAY, new Date(60000)).state;
     st = finishSession(s, st, TODAY, new Date(60000)).state;
     expect(st.days[TODAY].extra?.length).toBe(2);
+  });
+
+  it("итог: точность только по повторениям — revScore/revTotal", () => {
+    const rs: Step[] = [
+      { k: 0, t: "pick", w: "praise", rev: true },
+      { k: 1, t: "type", w: "novel", hint: false, rev: true },
+      { k: 2, t: "pick", w: "sacred" },
+    ];
+    let s = startSession("morning", rs, 0)!;
+    let st = state();
+    ({ sess: s, state: st } = gradeCurrent(s, st, true, "praise", TODAY));
+    s = advance(s);
+    ({ sess: s, state: st } = gradeCurrent(s, st, false, "novel", TODAY));
+    s = advance(s);
+    ({ sess: s, state: st } = gradeCurrent(s, st, true, "sacred", TODAY));
+    const r = finishSession(s, st, TODAY, new Date(60000)).result;
+    expect([r.score, r.total, r.revScore, r.revTotal]).toEqual([2, 3, 1, 2]);
   });
 });

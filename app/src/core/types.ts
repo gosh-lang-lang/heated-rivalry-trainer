@@ -25,6 +25,10 @@ export interface Word {
    * Нет поля — ходовое.
    */
   rare?: boolean;
+  /** оригинальная фраза из книги, где встретилось слово (с новых партий) */
+  quote?: string;
+  /** страница этой фразы */
+  page?: string;
 }
 
 export interface BankSentence {
@@ -67,6 +71,9 @@ export interface SessionResult {
   mins: number;
   newN: number;
   at: string;
+  /** только повторения (разминка утром и вечером): верно с первой попытки / всего — главная метрика темпа */
+  revScore?: number;
+  revTotal?: number;
 }
 
 export interface DayLog {

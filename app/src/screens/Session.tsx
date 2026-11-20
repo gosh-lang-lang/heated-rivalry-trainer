@@ -307,6 +307,9 @@ function StepView({ step, api }: { step: Step; api: Api }) {
                 </div>
               )}
               <div className="exs"><SpeakBtn text={w.example} size="s" /><div><b>{w.example}</b><i>{w.exampleRu}</i></div></div>
+              {w.quote && (
+                <div className="exs book"><SpeakBtn text={w.quote} size="s" /><div><b>{w.quote}</b><i>Из книги{w.page ? `, стр. ${w.page}` : ""}</i></div></div>
+              )}
             </div>
           </div>
         </>

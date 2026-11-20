@@ -275,7 +275,11 @@ details summary{list-style:none;cursor:pointer}details summary::-webkit-details-
 .words .wrow .dots{grid-area:lv;margin:0}
 .words .wrow .spk{grid-area:sp}.words .wrow .wdue{grid-area:due}.words .wrow .det{grid-area:det;padding:6px 0 4px 44px}
 .wen b{display:inline;font-size:17px}
-.wen .rare{display:inline-block;margin-left:8px;padding:1px 7px;border:1.5px solid var(--line2);border-radius:8px;color:var(--mute);font-size:12px;font-weight:700;vertical-align:2px}
+.rare{display:inline-block;margin-left:8px;padding:1px 7px;border:1.5px solid var(--line2);border-radius:8px;color:var(--mute);font-size:12px;font-weight:700;vertical-align:2px}
+.rare.hard{border-color:#f59e0b;color:#b45309}
+.sess .why{display:block;margin-top:2px}
+.acc .acc-n{display:flex;align-items:baseline;gap:10px;margin:6px 0 4px}.acc .acc-n b{font-size:34px;font-weight:900}
+.exs.book i{font-style:normal}
 
 /* --- статистика: плитки и столбики --- */
 .stats3 .streak{background:var(--navy);border-color:var(--navy2);color:rgba(255,255,255,.75)}

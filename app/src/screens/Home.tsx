@@ -1,7 +1,7 @@
 import type { View } from "../App";
 import { addDays, todayKey } from "../core/dates";
-import { eveningWords } from "../core/plans";
-import { dueList, groups, levelGroup, streak, unseen } from "../core/srs";
+import { eveningWords, MAX_REVIEW, newToday } from "../core/plans";
+import { dueList, groups, isHard, levelGroup, streak, unseen } from "../core/srs";
 import { plural } from "../core/text";
 import type { AppState, Deck } from "../core/types";
 import { Check, Flame, Moon, Rink, Sun } from "../lib/icons";
@@ -20,9 +20,10 @@ const WD = ["вс", "пн", "вт", "ср", "чт", "пт", "сб"];
 export function Home({ deck, state, go, wide = false }: Props) {
   const t = todayKey();
   const d = state.days[t] ?? {};
-  const due = dueList(deck.words, state.srs, t).length;
+  const nt = newToday(deck, state, t);
+  const due = nt.due;
   const nu = unseen(deck.words, state.srs).length;
-  const np = Math.min(state.settings.newPerDay, nu);
+  const np = nt.n;
   const g = groups(deck.words, state.srs);
   const tot = deck.words.length;
   const sk = streak(state.days, t);
@@ -34,7 +35,12 @@ export function Home({ deck, state, go, wide = false }: Props) {
   const mSub = m ? (
     <span className="done-tag"><Check /> Готово · {m.score}/{m.total}</span>
   ) : due || np ? (
-    `${due ? `${due} на повторение · ` : ""}${np} ${plural(np, "новое", "новых", "новых")} · ~15 мин`
+    <>
+      {`${due ? `${Math.min(due, MAX_REVIEW)} на повторение · ` : ""}${np ? `${np} ${plural(np, "новое", "новых", "новых")}` : nu ? "без новых" : "новые слова закончились"} · ~15 мин`}
+      {nt.why && <span className="why">{nt.why[0].toUpperCase() + nt.why.slice(1)}</span>}
+    </>
+  ) : nu ? (
+    "На сегодня повторений нет"
   ) : (
     "Новых слов нет — пришли новую партию в чат"
   );
@@ -56,7 +62,7 @@ export function Home({ deck, state, go, wide = false }: Props) {
   const weekDone = week.reduce((n, x) => n + +x.m + +x.e, 0);
 
   const hard = deck.words
-    .filter((w) => state.srs[w.id]?.wrong)
+    .filter((w) => isHard(state.srs[w.id]))
     .sort((a, b) => state.srs[b.id].wrong - state.srs[a.id].wrong)
     .slice(0, 4);
   const today = new Date().toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" });
@@ -103,7 +109,7 @@ export function Home({ deck, state, go, wide = false }: Props) {
               <div className="stx"><h2>Утро · учим</h2><div className="mute sm">{mSub}</div></div>
               <div className="acts">
                 {!m && (due || np) ? <button className="btn wide" onClick={() => go({ name: "session", kind: "morning" })}>Начать утреннее</button> : null}
-                {m && nu ? <button className="btn ghost wide" onClick={() => go({ name: "session", kind: "extra" })}>Ещё 6 новых слов</button> : null}
+                {m && nu && !due ? <button className="btn ghost wide" onClick={() => go({ name: "session", kind: "extra" })}>Ещё 6 новых слов</button> : null}
               </div>
             </section>
             <section className={`card sess pm${now === "e" ? " now" : ""}${e ? " done" : ""}`}>

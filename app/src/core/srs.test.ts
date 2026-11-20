@@ -36,13 +36,15 @@ describe("интервальное повторение", () => {
     expect(s.due).toBe(addDays(TODAY, 60));
   });
 
-  it("повторение, ошибка: lvl=1, due=завтра", () => {
+  it("повторение, ошибка: уровень −2 (не ниже 1), проверка завтра", () => {
     const s = applyGrade({ ...blankState(), lvl: 5, due: "2027-01-01" }, false, { rev: true }, TODAY);
-    expect(s).toMatchObject({ lvl: 1, due: "2026-11-21", wrong: 1 });
+    expect(s).toMatchObject({ lvl: 3, due: "2026-11-21", wrong: 1 });
+    expect(applyGrade({ ...blankState(), lvl: 2 }, false, { rev: true }, TODAY)).toMatchObject({ lvl: 1, due: "2026-11-21" });
   });
 
-  it("вечерняя ошибка: lvl=1, due=завтра; верный ответ вечером уровень не меняет", () => {
+  it("вечерняя ошибка: уровень −2, проверка завтра; верный ответ вечером уровень не меняет", () => {
     expect(applyGrade({ ...blankState(), lvl: 3, due: "z" }, false, { eve: true }, TODAY)).toMatchObject({ lvl: 1, due: "2026-11-21" });
+    expect(applyGrade({ ...blankState(), lvl: 4, due: "z" }, false, { eve: true }, TODAY)).toMatchObject({ lvl: 2, due: "2026-11-21" });
     expect(applyGrade({ ...blankState(), lvl: 3, due: "z" }, true, { eve: true }, TODAY)).toMatchObject({ lvl: 3, due: "z", right: 1 });
   });
 
@@ -61,16 +63,27 @@ describe("интервальное повторение", () => {
       expect(applyGrade({ ...blankState(), lvl: 5 }, true, { rev: true, rare: true }, TODAY)).toMatchObject({ lvl: 6, due: addDays(TODAY, 120) });
     });
 
-    it("ошибка: уровень −2, не ниже 1; due по интервалу нового уровня", () => {
-      expect(applyGrade({ ...blankState(), lvl: 5 }, false, { rev: true, rare: true }, TODAY)).toMatchObject({ lvl: 3, due: addDays(TODAY, 14) });
+    it("ошибка: уровень −2, не ниже 1; проверка послезавтра", () => {
+      expect(applyGrade({ ...blankState(), lvl: 5 }, false, { rev: true, rare: true }, TODAY)).toMatchObject({ lvl: 3, due: addDays(TODAY, 2) });
       expect(applyGrade({ ...blankState(), lvl: 2 }, false, { rev: true, rare: true }, TODAY)).toMatchObject({ lvl: 1, due: addDays(TODAY, 2) });
-      expect(applyGrade({ ...blankState(), lvl: 4 }, false, { eve: true, rare: true }, TODAY)).toMatchObject({ lvl: 2, due: addDays(TODAY, 6) });
+      expect(applyGrade({ ...blankState(), lvl: 4 }, false, { eve: true, rare: true }, TODAY)).toMatchObject({ lvl: 2, due: addDays(TODAY, 2) });
     });
   });
 
   it("группы уровней", () => {
     expect([0, 1, 2, 3, 4, 5, 6].map(levelGroup)).toEqual([0, 1, 1, 2, 2, 3, 3]);
     expect(groups(deck.words, { praise: { ...blankState(), lvl: 5 } })).toEqual([deck.words.length - 1, 0, 0, 1]);
+  });
+
+  it("dueList: просроченные первыми (старые раньше), сегодняшние — от низкого уровня", () => {
+    const srs = {
+      praise: { ...blankState(), lvl: 4, due: TODAY, intro: "a" },
+      novel: { ...blankState(), lvl: 5, due: "2026-11-18", intro: "a" },
+      sacred: { ...blankState(), lvl: 1, due: TODAY, intro: "a" },
+      entire: { ...blankState(), lvl: 2, due: "2026-11-19", intro: "a" },
+      mix: { ...blankState(), lvl: 3, due: "2026-11-25", intro: "a" },
+    };
+    expect(dueList(deck.words, srs, TODAY).map((w) => w.id)).toEqual(["novel", "entire", "sacred", "praise"]);
   });
 
   it("dueList: только lvl≥1 с наступившей датой, старые первыми", () => {
