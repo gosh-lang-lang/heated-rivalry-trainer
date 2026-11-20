@@ -5,6 +5,7 @@ import { ensureSession } from "./lib/auth";
 import { lastUser, peekSettings, rememberUser } from "./lib/storage";
 import "./styles.css";
 import "./glass.css";
+import "./pull.css";
 import { initGlass, legacyLook } from "./lib/glass";
 import { applyTheme, legacyTheme } from "./lib/theme";
 
