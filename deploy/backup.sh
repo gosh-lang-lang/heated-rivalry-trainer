@@ -1,6 +1,8 @@
 #!/bin/bash
 # Бэкап базы с VPS на этот мак: пользователи, passkey, сессии и прогресс (/data/auth/auth.db в контейнере).
-# Хранит KEEP последних копий, более старые удаляет. Запускается раз в день (backup-install.sh), можно и руками.
+# Одна копия на день (auth-ГГГГ-ММ-ДД.db): повторный запуск в тот же день заменяет копию этого дня свежей.
+# Хранит KEEP последних дней: появилась копия за новый день — самая старая удаляется.
+# Запускается раз в день (backup-install.sh), можно и руками.
 #   deploy/backup.sh
 # Переменные: HR_HOST (root@195.133.197.130), HR_BACKUP_DIR (~/Backups/heated-rivalry), HR_BACKUP_KEEP (3).
 # Восстановить: см. deploy/README.md, раздел «Бэкапы».
@@ -17,8 +19,8 @@ fail() {
 }
 
 mkdir -p "$DIR"
-stamp=$(date +%Y-%m-%d_%H%M%S)
-part="$DIR/.auth-$stamp.db.part"
+day=$(date +%Y-%m-%d)
+part="$DIR/.auth-$day.$$.part"
 trap 'rm -f "$part"' EXIT
 
 # Согласованный снимок через VACUUM INTO внутри контейнера: база в режиме WAL, и простое копирование файла
@@ -52,13 +54,14 @@ rm -f "$part.err"
 users=$(sqlite3 "$part" 'SELECT count(*) FROM users;' 2>/dev/null) || fail "в копии нет таблицы users"
 progress=$(sqlite3 "$part" 'SELECT count(*) FROM progress;' 2>/dev/null || echo "—")
 
-final="$DIR/auth-$stamp.db"
-mv "$part" "$final"
+final="$DIR/auth-$day.db"
+[ -e "$final" ] && log "копия за $day уже была — заменяю свежей"
+mv -f "$part" "$final"
 
-# ротация: имена с датой сортируются по времени, оставляем KEEP самых новых
-ls -1 "$DIR"/auth-*.db | sort -r | tail -n +"$((KEEP + 1))" | while IFS= read -r old; do
+# ротация: имена — даты, сортируются по времени; оставляем KEEP самых новых дней
+ls -1 "$DIR"/auth-????-??-??.db | sort -r | tail -n +"$((KEEP + 1))" | while IFS= read -r old; do
   rm -f -- "$old"
   log "удалена старая копия $(basename "$old")"
 done
 
-log "готово: $(basename "$final"), $(du -h "$final" | cut -f1 | tr -d ' '), пользователей: $users, с прогрессом: $progress; копий: $(ls -1 "$DIR"/auth-*.db | wc -l | tr -d ' ')"
+log "готово: $(basename "$final"), $(du -h "$final" | cut -f1 | tr -d ' '), пользователей: $users, с прогрессом: $progress; копий: $(ls -1 "$DIR"/auth-????-??-??.db | wc -l | tr -d ' ')"
