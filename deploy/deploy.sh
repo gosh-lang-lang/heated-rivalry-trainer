@@ -65,6 +65,6 @@ done
 [[ "$p_health" == "healthy" ]] || fail "контейнер не здоров: $p_health (docker logs heated-rivalry)"
 code=$(curl -s -o /dev/null -w '%{http_code}' --resolve "${SITE#https://}:443:$IP" "$SITE/api/health")
 [[ "$code" == "200" ]] || fail "$SITE/api/health ответил $code"
-code=$(curl -s -o /dev/null -w '%{http_code}' --resolve "${SITE#https://}:443:$IP" "$SITE/")
+code=$(curl -s -o /dev/null -w '%{http_code}' -H 'Accept: text/html' --resolve "${SITE#https://}:443:$IP" "$SITE/")
 [[ "$code" == "302" ]] || fail "без входа / должен отдавать 302 на /login, а отдал $code"
 printf '\n\033[32m✓ прод на %s\033[0m\n' "${REV:0:7}"
