@@ -44,11 +44,14 @@ ssh root@195.133.197.130 'docker start heated-rivalry'
 ```
 
 ## Обновить
+**Только скриптом** и только то, что уже на GitHub:
 ```sh
-# с ноутбука, из корня репозитория
-git archive HEAD | ssh root@195.133.197.130 'rm -rf /opt/heated-rivalry/src.new && mkdir -p /opt/heated-rivalry/src.new && tar -x -C /opt/heated-rivalry/src.new && rm -rf /opt/heated-rivalry/src && mv /opt/heated-rivalry/src.new /opt/heated-rivalry/src'
-ssh root@195.133.197.130 'cd /opt/heated-rivalry/src/deploy && docker compose up -d --build'
+deploy/deploy.sh          # main чистый и = origin/main → typecheck, unit, e2e → бэкап → выкатка → проверка
+deploy/deploy.sh status   # версии: локально / GitHub / прод (метка коммита в образе)
 ```
+Скрипт откажется, если есть незакоммиченные или незапушенные изменения или падает хоть один тест.
+Образ помечен коммитом (`org.opencontainers.image.revision`); `unknown` на проде — собрали в обход скрипта.
+Руками (`git archive … | ssh …`, `docker compose up --build` на сервере) не выкатываем.
 
 ## Подключить домен
 После DNS-записи `A heated-rivalry-trainer → 195.133.197.130`: `/opt/heated-rivalry/src/deploy/caddy-install.sh`

@@ -13,6 +13,9 @@ COPY app/ ./
 RUN npm run build
 
 FROM ${NODE_IMAGE}
+# Коммит, из которого собран образ (передаёт deploy/deploy.sh); unknown — собран в обход скрипта
+ARG APP_VERSION=unknown
+LABEL org.opencontainers.image.revision=$APP_VERSION
 ENV NODE_ENV=production PORT=8787 TTS_CACHE_DIR=/data/tts AUTH_DB=/data/auth/auth.db npm_config_onnxruntime_node_install_cuda=skip
 WORKDIR /srv/app
 COPY app/package.json app/package-lock.json ./

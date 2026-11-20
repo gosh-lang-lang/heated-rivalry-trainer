@@ -6,6 +6,8 @@ services:
     build:
       context: ..
       dockerfile: app/Dockerfile
+      args:
+        APP_VERSION: ${APP_VERSION:-unknown}
     container_name: heated-rivalry
     restart: unless-stopped
     mem_limit: ${APP_MEM_LIMIT:-1536m}
