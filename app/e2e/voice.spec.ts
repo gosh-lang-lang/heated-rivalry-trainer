@@ -76,7 +76,7 @@ test.describe("голос", () => {
     const log = await setup(page, { state: state({ settings: { newPerDay: 6 } }) });
     await openHome(page);
     await page.getByRole("button", { name: "Начать часть 1" }).click();
-    const audio = page.waitForRequest((r) => r.url().endsWith(".mp3"));
+    const audio = page.waitForRequest((r) => /\.mp3(\?|$)/.test(r.url()));
     await page.getByRole("button", { name: "Поехали" }).click();
     await audio;
     const texts = log.requests.map((r) => r.text);
@@ -93,5 +93,53 @@ test.describe("голос", () => {
     await page.locator(".vsel").click();
     await page.getByRole("button", { name: "Послушать Heart" }).click();
     await expect(page.getByText(/Сервер озвучки недоступен/)).toBeVisible();
+  });
+});
+
+test.describe("кнопка «озвучить» в словаре", () => {
+  const W = DECK.words[0];
+
+  test("уже озвученное слово играет сразу — без запроса «озвучь»", async ({ page }) => {
+    const log = await setup(page, { ready: [[W.en, "af_heart"]] });
+    await openHome(page);
+    await goTab(page, "Словарь");
+    await page.locator(`.spk[data-say="${W.en}"]`).first().click();
+    await expect.poll(() => log.played.length).toBe(1);
+    expect(log.requests).toEqual([]);
+  });
+
+  test("ещё не озвученное — сервер озвучивает, второй раз — сразу файл", async ({ page }) => {
+    const log = await setup(page);
+    await openHome(page);
+    await goTab(page, "Словарь");
+    const btn = page.locator(`.spk[data-say="${W.en}"]`).first();
+    await btn.click();
+    await expect.poll(() => log.played.length).toBe(1);
+    expect(log.requests).toEqual([{ text: W.en, voice: "af_heart" }]);
+    await expect(btn).toHaveAttribute("aria-pressed", "false");
+    await btn.click();
+    await expect.poll(() => log.played.length).toBe(2);
+    expect(log.requests).toHaveLength(1);
+  });
+
+  test("пока слово готовится и звучит — кнопка нажата, потом отжимается", async ({ page }) => {
+    await setup(page, { ready: [[W.en, "af_heart"]] });
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    await page.route(/\/api\/tts\/[0-9a-f]{20}\.mp3(\?.*)?$/, async (route) => {
+      await gate; // «медленная сеть»: файл придёт, когда отпустим
+      await route.fallback();
+    });
+    await openHome(page);
+    await goTab(page, "Словарь");
+    const btn = page.locator(`.spk[data-say="${W.en}"]`).first();
+    await btn.click();
+    await expect(btn).toHaveAttribute("aria-pressed", "true");
+    await expect(btn).toHaveAttribute("aria-busy", "true");
+    await expect(btn.locator(".spin")).toBeVisible();
+    release();
+    await expect(btn).toHaveAttribute("aria-pressed", "false"); // отзвучало (0,05 с тишины)
+    // другие кнопки при этом не нажимались
+    await expect(page.locator('.spk[aria-pressed="true"]')).toHaveCount(0);
   });
 });

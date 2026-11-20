@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { DEFAULT_VOICE, MAX_TTS_CHARS, TTS_VOICES } from "../src/core/tts.ts";
 import { json } from "./http.ts";
-import { createQueue, type TtsEngine } from "./tts.ts";
+import { cacheKey, createQueue, type TtsEngine } from "./tts.ts";
 import { createTtsRoutes } from "./tts-routes.ts";
 
 const open: { server: Server; dir: string }[] = [];
@@ -106,5 +106,30 @@ describe("API озвучки", () => {
     const { base, say } = await start({ engine: () => null });
     expect((await say({ text: "hi" })).status).toBe(503);
     expect((await fetch(`${base}/api/tts/voices`)).status).toBe(503);
+  });
+
+  it("файл с текстом и голосом: нет — озвучить и отдать в том же запросе; есть — сразу, без генерации", async () => {
+    const { base, generated } = await start();
+    const url = (t: string, v: string, key = cacheKey(t, v)) => `${base}/api/tts/${key}.mp3?t=${encodeURIComponent(t)}&v=${v}`;
+    const r = await fetch(url("Hello there", "bm_lewis"));
+    expect(r.status).toBe(200);
+    expect(await r.text()).toBe("mp3:bm_lewis:Hello there");
+    expect((await fetch(url("Hello there", "bm_lewis"))).status).toBe(200);
+    expect(generated).toEqual(["bm_lewis:Hello there"]);
+    // ключ — только от этого текста и голоса: под чужим ключом ничего не озвучить
+    expect((await fetch(url("Hello there", "bm_lewis", "a".repeat(20)))).status).toBe(400);
+    expect((await fetch(url("Hello", "robot", cacheKey("Hello", "robot")))).status).toBe(400);
+    expect((await fetch(url("x".repeat(500), "af_heart"))).status).toBe(400);
+    // без текста — как раньше: нет файла — 404
+    expect((await fetch(`${base}/api/tts/${cacheKey("Nope", "af_heart")}.mp3`)).status).toBe(404);
+    expect(generated).toHaveLength(1);
+  });
+
+  it("файл с текстом подчиняется тому же лимиту новых фраз", async () => {
+    const { base } = await start({ rateLimit: 1 });
+    const get = (t: string) => fetch(`${base}/api/tts/${cacheKey(t, "af_heart")}.mp3?t=${encodeURIComponent(t)}&v=af_heart`, { headers: { "x-forwarded-for": "9.9.9.9" } });
+    expect((await get("one")).status).toBe(200);
+    expect((await get("two")).status).toBe(429);
+    expect((await get("one")).status).toBe(200); // уже есть
   });
 });

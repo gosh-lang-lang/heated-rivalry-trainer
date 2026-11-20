@@ -2,7 +2,12 @@ import { expect, type Page, type Request } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { createHash } from "node:crypto";
 import { mergeStates, parseState } from "../src/core/state.ts";
+import { ttsCacheSource } from "../src/core/tts.ts";
+
+/** Ключ файла озвучки — как server/tts.ts cacheKey. */
+export const ttsKey = (text: string, voice: string) => createHash("sha1").update(ttsCacheSource(text, voice)).digest("hex").slice(0, 20);
 
 /* ---------- данные ---------- */
 
@@ -50,7 +55,10 @@ export const MOCK_DEVICES = {
 };
 
 export interface TtsLog {
+  /** фразы, которые «сервер» озвучил (их ещё не было): через POST /api/tts или через GET файла с текстом */
   requests: { text: string; voice: string }[];
+  /** GET /api/tts/<ключ>.mp3 — какие файлы проигрывались */
+  played: string[];
   /** мок сервера прогресса: что на нём лежит и сколько раз сохраняли */
   server: { state: { upd: number } | null; puts: number };
 }
@@ -62,7 +70,16 @@ export interface TtsLog {
  */
 export const setup = async (
   page: Page,
-  opts: { state?: unknown; remote?: unknown; voice?: string; tts?: "ok" | "down"; sync?: "ok" | "down"; now?: Date } = {},
+  opts: {
+    state?: unknown;
+    remote?: unknown;
+    voice?: string;
+    tts?: "ok" | "down";
+    sync?: "ok" | "down";
+    now?: Date;
+    /** фразы, уже озвученные на сервере (прогрев): [текст, голос] */
+    ready?: [string, string][];
+  } = {},
 ): Promise<TtsLog> => {
   await page.clock.setFixedTime(opts.now ?? NOW);
   await page.addInitScript(
@@ -91,7 +108,7 @@ export const setup = async (
   await page.route("**/api/auth/device", (route) => route.fulfill({ json: { ok: true } }));
   await page.route("**/api/auth/sessions", (route) => route.fulfill({ json: MOCK_DEVICES }));
 
-  const log: TtsLog = { requests: [], server: { state: (opts.remote as { upd: number }) ?? null, puts: 0 } };
+  const log: TtsLog = { requests: [], played: [], server: { state: (opts.remote as { upd: number }) ?? null, puts: 0 } };
   // сервер прогресса — как server/progress.ts: сливает присланное с тем, что лежит (core/state.ts mergeStates)
   await page.route("**/api/state", async (route) => {
     if (opts.sync === "down") return route.abort("connectionrefused");
@@ -104,13 +121,30 @@ export const setup = async (
     await route.fulfill({ json: { state: srv.state } });
   });
 
+  // сервер озвучки — как server/tts.ts: файл с ключом sha1(ttsCacheSource) есть только у уже озвученных фраз
+  const made = new Set((opts.ready ?? []).map(([t, v]) => ttsKey(t, v)));
   await page.route("**/api/tts", async (route) => {
     if (opts.tts === "down") return route.abort("connectionrefused");
     const body = route.request().postDataJSON() as { text: string; voice: string };
     log.requests.push(body);
-    await route.fulfill({ json: { url: `/api/tts/${"0".repeat(20)}.mp3` } });
+    const key = ttsKey(body.text, body.voice ?? "af_heart");
+    made.add(key);
+    await route.fulfill({ json: { url: `/api/tts/${key}.mp3` } });
   });
-  await page.route("**/api/tts/*.mp3", (route) => route.fulfill({ body: silentWav(), contentType: "audio/wav" }));
+  await page.route(/\/api\/tts\/[0-9a-f]{20}\.mp3(\?.*)?$/, (route) => {
+    if (opts.tts === "down") return route.abort("connectionrefused");
+    const u = new URL(route.request().url());
+    const key = u.pathname.match(/([0-9a-f]{20})\.mp3$/)?.[1] ?? "";
+    const t = u.searchParams.get("t"),
+      v = u.searchParams.get("v") ?? "af_heart";
+    if (!made.has(key) && t !== null && ttsKey(t, v) === key) {
+      log.requests.push({ text: t, voice: v }); // файла не было — «сервер» озвучил его в этом же запросе
+      made.add(key);
+    }
+    if (!made.has(key)) return route.fulfill({ status: 404, json: { error: "нет такого файла" } });
+    log.played.push(key);
+    return route.fulfill({ body: silentWav(), contentType: "audio/wav" });
+  });
   return log;
 };
 

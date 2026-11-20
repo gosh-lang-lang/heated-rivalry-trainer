@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { DEFAULT_VOICE, isTtsVoice, TTS_VOICES, type TtsVoice } from "../core/tts";
+import { DEFAULT_VOICE, isTtsVoice, TTS_VOICES, ttsCacheSource, type TtsVoice } from "../core/tts";
 import { rankVoices } from "../core/voices";
 import { goLogin } from "./auth";
 
@@ -69,9 +69,13 @@ const systemSay = (text: string) => {
     if (sysVoice) u.voice = sysVoice;
     u.lang = sysVoice ? sysVoice.lang : "en-GB";
     u.rate = 0.92;
+    const done = () => playing?.text === text && setPlaying(null);
+    u.onend = done;
+    u.onerror = done;
+    setPlaying({ voice: "system", text, loading: false });
     speechSynthesis.speak(u);
   } catch {
-    /* молча: озвучка — не обязательная часть */
+    setPlaying(null); // молча: озвучка — не обязательная часть
   }
 };
 
@@ -103,6 +107,21 @@ if (audio && typeof document !== "undefined") {
 const urls = new Map<string, Promise<string>>();
 let retryAt = 0;
 
+/**
+ * Адрес файла считаем сами — так же, как сервер (core/tts.ts ttsCacheSource → sha1), и передаём текст и голос:
+ * готовый файл сервер отдаёт сразу, неготовый — озвучивает и отдаёт в том же запросе. Один запрос вместо двух.
+ * Нет WebCrypto (сайт не по https) — обычный путь через POST /api/tts.
+ */
+export const directUrl = async (text: string, voice: string): Promise<string | null> => {
+  try {
+    const d = await crypto.subtle.digest("SHA-1", new TextEncoder().encode(ttsCacheSource(text, voice)));
+    const key = [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 20);
+    return `/api/tts/${key}.mp3?t=${encodeURIComponent(text)}&v=${encodeURIComponent(voice)}`;
+  } catch {
+    return null;
+  }
+};
+
 const serverUrl = (text: string, voice: string): Promise<string> => {
   const k = voice + "|" + text;
   let p = urls.get(k);
@@ -121,8 +140,8 @@ const serverUrl = (text: string, voice: string): Promise<string> => {
 
 let seq = 0;
 
-/** Какой голос сейчас готовится или звучит — для индикатора в выборе голоса. */
-let playing: { voice: string; loading: boolean } | null = null;
+/** Что сейчас готовится или звучит — для нажатой кнопки «озвучить» и индикатора в выборе голоса. */
+let playing: { voice: string; text: string; loading: boolean } | null = null;
 const setPlaying = (p: typeof playing) => {
   playing = p;
   notify();
@@ -146,21 +165,47 @@ export const say = (text: string, voice: string = ttsVoice) => {
     setPlaying(null);
     return systemSay(text);
   }
-  setPlaying({ voice, loading: true });
-  serverUrl(text, voice)
-    .then((url) => {
-      if (id !== seq) return;
-      setServer("ok");
-      audio.src = url;
-      return audio.play();
-    })
-    .catch(() => {
-      if (id !== seq) return;
-      setServer("down");
-      setPlaying(null);
-      retryAt = Date.now() + 30_000; // сервер лежит — полминуты не пытаемся
-      systemSay(text);
-    });
+  setPlaying({ voice, text, loading: true });
+  const play = (url: string) => {
+    if (id !== seq) return;
+    audio.src = url;
+    return audio.play();
+  };
+  const viaServer = () =>
+    serverUrl(text, voice)
+      .then((url) => {
+        if (id !== seq) return;
+        setServer("ok");
+        return play(url);
+      })
+      .catch(() => {
+        if (id !== seq) return;
+        setServer("down");
+        setPlaying(null);
+        retryAt = Date.now() + 30_000; // сервер лежит — полминуты не пытаемся
+        systemSay(text);
+      });
+  void directUrl(text, voice).then((url) => {
+    if (id !== seq) return;
+    if (!url) return viaServer();
+    const p = play(url);
+    p?.then(
+      () => setServer("ok"),
+      (e: unknown) => {
+        if (id !== seq || (e as { name?: string })?.name === "AbortError") return;
+        void viaServer(); // не вышло (лимит, ошибка) — запасной путь: POST, потом системный голос
+      },
+    );
+  });
+};
+
+/** Что сейчас с этой фразой: готовится (loading), звучит (playing) или ничего. */
+export const useSpeaking = (text: string): "loading" | "playing" | null => {
+  useSyncExternalStore(
+    (l) => (listeners.add(l), () => listeners.delete(l)),
+    () => version,
+  );
+  return playing?.text === text ? (playing.loading ? "loading" : "playing") : null;
 };
 
 /** Заранее подготовить озвучку (например, следующего шага). */
@@ -183,7 +228,7 @@ export interface VoicesView {
   server: ServerState;
   /** имя системного голоса, который звучит, если сервер недоступен */
   fallback: string | null;
-  playing: { voice: string; loading: boolean } | null;
+  playing: { voice: string; text: string; loading: boolean } | null;
 }
 
 export const useVoices = (): VoicesView => {

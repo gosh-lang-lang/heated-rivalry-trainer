@@ -21,6 +21,7 @@ import { fileURLToPath } from "node:url";
 import { DEFAULT_VOICE, TTS_VOICES, VOICE_SAMPLE } from "../src/core/tts.ts";
 import { clientIp, json, readBody, sendFile } from "./http.ts";
 import { createTtsRoutes } from "./tts-routes.ts";
+import { createWarmer, deckTexts } from "./warm.ts";
 import { openAuthStore } from "./auth-store.ts";
 import { cleanPath, isPublicAsset } from "./paths.ts";
 import { openProgress, parseStateBody, STATE_MAX_BYTES } from "./progress.ts";
@@ -99,7 +100,9 @@ const server = createServer(async (req, res) => {
       }
       const s = parseStateBody(raw);
       if (typeof s === "string") return json(res, 400, { error: s });
-      return json(res, 200, { state: progress.put(who.id, s).state });
+      const saved = progress.put(who.id, s).state;
+      warm?.(saved.settings.voice); // сменил голос — озвучиваем колоду новым голосом заранее
+      return json(res, 200, { state: saved });
     }
 
     if (await tts(req, res, url.pathname)) return;
@@ -130,19 +133,14 @@ server.listen(PORT, () =>
 );
 setInterval(() => store.cleanup(), 60 * 60 * 1000).unref();
 
-// прогрев: заранее озвучить колоду голосом по умолчанию, чтобы занятия не ждали генерации
-if (engine && process.env.TTS_WARM !== "0") {
+// прогрев: заранее озвучить колоду голосами пользователей (по умолчанию + выбранные), чтобы слово звучало сразу
+const warm = engine && process.env.TTS_WARM !== "0"
+  ? createWarmer(engine, deckTexts(JSON.parse(readFileSync(join(ROOT, "../words.json"), "utf8"))))
+  : null;
+if (engine && warm) {
   void engine.ready.then(() => {
-    const deck = JSON.parse(readFileSync(join(ROOT, "../words.json"), "utf8")) as {
-      words: { en: string; example: string }[];
-      sentences: { en: string }[];
-    };
-    const texts = [...new Set([...deck.words.flatMap((w) => [w.en, w.example]), ...deck.sentences.map((s) => s.en)])];
-    const t0 = Date.now();
-    const samples = TTS_VOICES.map((v) => engine.ensure(VOICE_SAMPLE, v.id, "lo")); // образцы для выбора голоса — первыми
-    Promise.allSettled([...samples, ...texts.map((t) => engine.ensure(t, DEFAULT_VOICE, "lo"))]).then((r) => {
-      const failed = r.filter((x) => x.status === "rejected").length;
-      console.log(`прогрев: ${texts.length} фраз за ${Math.round((Date.now() - t0) / 1000)} с${failed ? `, ошибок: ${failed}` : ""}`);
-    });
+    for (const v of TTS_VOICES) void engine.ensure(VOICE_SAMPLE, v.id, "lo"); // образцы для выбора голоса — первыми
+    warm(DEFAULT_VOICE);
+    for (const v of progress.voices()) warm(v);
   });
 }

@@ -51,6 +51,12 @@ export const openProgress = (db: DatabaseSync, now: () => number = Date.now) => 
         throw e;
       }
     },
+    /** Голоса озвучки, выбранные пользователями (для прогрева). */
+    voices: (): string[] => [
+      ...new Set(
+        (db.prepare("SELECT state FROM progress").all() as { state: string }[]).map((r) => parseState(r.state).settings.voice),
+      ),
+    ],
     /** Для командной строки: кто когда сохранял. */
     summary: () =>
       db

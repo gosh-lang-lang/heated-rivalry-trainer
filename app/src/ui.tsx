@@ -1,6 +1,6 @@
 import { useEffect, useState, type MouseEvent, type ReactNode } from "react";
 import type { View } from "./App";
-import { say } from "./lib/speech";
+import { say, useSpeaking } from "./lib/speech";
 import { Moon, Speaker, Sun } from "./lib/icons";
 import { useTheme } from "./lib/theme";
 import { usePullToRefresh } from "./lib/pull";
@@ -26,21 +26,26 @@ export function ThemeToggle() {
   );
 }
 
-/** Кнопка «озвучить». Не всплывает — работает внутри <summary> и плиток. */
-export const SpeakBtn = ({ text, size = "" }: { text: string; size?: "" | "s" | "big" }) => (
-  <button
-    className={`spk ${size}`}
-    aria-label="Озвучить"
-    data-say={text}
-    onClick={(e: MouseEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      say(text);
-    }}
-  >
-    <Speaker />
-  </button>
-);
+/** Кнопка «озвучить». Не всплывает — работает внутри <summary> и плиток. Пока фраза готовится и звучит — нажата. */
+export function SpeakBtn({ text, size = "" }: { text: string; size?: "" | "s" | "big" }) {
+  const state = useSpeaking(text);
+  return (
+    <button
+      className={`spk ${size}${state ? " on" : ""}${state === "playing" ? " talking" : ""}`}
+      aria-label="Озвучить"
+      aria-pressed={!!state}
+      aria-busy={state === "loading"}
+      data-say={text}
+      onClick={(e: MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        say(text);
+      }}
+    >
+      {state === "loading" ? <span className="spin" aria-hidden="true" /> : <Speaker />}
+    </button>
+  );
+}
 
 /** Ширина, с которой включается «настольная» раскладка (верхняя навигация, дашборд). Синхронно с styles.css. */
 export const WIDE_QUERY = "(min-width: 900px)";

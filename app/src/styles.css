@@ -89,7 +89,11 @@ h1,h2,h3{margin:0;line-height:1.1;font-weight:900}
 .spk{width:48px;height:48px;border-radius:14px;border:2px solid var(--line);border-bottom-width:4px;background:var(--blueSoft);color:var(--blue);display:grid;place-items:center;flex:none}
 .spk svg{width:24px;height:24px}.spk.s{width:40px;height:40px;border-radius:12px}.spk.s svg{width:20px;height:20px}
 .spk.big{width:120px;height:120px;border-radius:32px;margin:10px auto 22px}.spk.big svg{width:56px;height:56px}
-.spk.on{background:var(--blue);color:#fff}
+.spk.on{background:var(--blue);color:#fff;border-color:var(--blue);border-bottom-width:2px;transform:translateY(2px)}
+.spk .spin{margin:0;width:20px;height:20px}.spk.big .spin{width:40px;height:40px;border-width:5px}
+.spk.talking svg{animation:talk .8s ease-in-out infinite}
+@keyframes talk{0%,100%{transform:scale(1)}50%{transform:scale(1.14)}}
+@media(prefers-reduced-motion:reduce){.spk.talking svg{animation:none}}
 .opts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .tile{border:2px solid var(--line);border-bottom-width:4px;border-radius:18px;background:var(--card);padding:14px 10px;min-height:64px;font-weight:800;font-size:17px;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px}
 .tile .em{font-size:44px;line-height:1}
