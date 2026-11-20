@@ -1,10 +1,12 @@
 import type { Look } from "../core/types";
 import { SKATER_BLACK, SKATER_RED } from "./skaters";
+import { CITIES_SVG, awaySvg } from "./scenes";
 import { useSettings } from "./settings";
 
 /**
- * Оформление: «Классика» (плотные карточки, как было), «Лёд» (каток, стеклянные карточки — glass.css)
- * или «Матч» (тот же лёд, а за стеклом катаются два хоккеиста). Атрибуты <html data-glass> и data-players.
+ * Оформление: «Классика» (плотные карточки, как было), «Лёд» (каток, стеклянные карточки — glass.css),
+ * «Матч» (тот же лёд, а за стеклом катаются два хоккеиста) и две темы по мотивам книги — «Два города»
+ * и «Выезд» (то же стекло, свой фон — lib/scenes.ts). Атрибуты <html data-glass|players|scene|side>.
  * Выбор — в личных настройках (settings.look), общих для всех устройств.
  * В Chromium у стеклянной капсулы вкладок — линза с преломлением (SVG-фильтр), в Safari — обычное размытие.
  */
@@ -14,7 +16,11 @@ export const LOOKS: [Look, string, string][] = [
   ["classic", "Классика", "Плотные карточки, как было"],
   ["ice", "Лёд", "Каток и стеклянные карточки"],
   ["match", "Матч", "Лёд, а на нём катаются соперники"],
+  ["cities-red", "Два города", "Монреаль против Бостона"],
+  ["away", "Выезд", "Билеты, табло вылетов и карта сезона"],
 ];
+/** «Два города» — одна тема в выборе, сторона — второй ступенью (красно-синие / чёрно-жёлтые). */
+export const isCities = (m: Look) => m === "cities-red" || m === "cities-black";
 
 /** Выбор, сделанный до того, как оформление стало общей настройкой (жил в localStorage). */
 const LEGACY_KEY = "hr2_look";
@@ -22,17 +28,23 @@ export const legacyLook = (take = false): Look | null => {
   try {
     const m = localStorage.getItem(LEGACY_KEY);
     if (take) localStorage.removeItem(LEGACY_KEY);
-    return LOOKS.some(([k]) => k === m) ? (m as Look) : null;
+    return LOOKS.some(([k]) => k === m) || m === "cities-black" ? (m as Look) : null;
   } catch {
     return null;
   }
 };
 
+/**
+ * data-glass — материал (classic | ice), data-players — хоккеисты «Матча»,
+ * data-scene — фон вместо разметки катка (cities | away), data-side — сторона в «Двух городах».
+ */
 export const applyLook = (m: Look) => {
   const root = document.documentElement;
-  root.dataset.glass = m === "match" ? "ice" : m;
-  if (m === "match") root.dataset.players = "on";
-  else delete root.dataset.players;
+  const set = (k: string, v: string | false) => (v ? (root.dataset[k] = v) : delete root.dataset[k]);
+  set("glass", m === "classic" ? "classic" : "ice");
+  set("players", m === "match" && "on");
+  set("scene", isCities(m) ? "cities" : m === "away" && "away");
+  set("side", isCities(m) && m.slice(7));
 };
 
 /** Слой с хоккеистами под страницей; виден только в «Матче» (glass.css). */
@@ -41,6 +53,16 @@ const mountPlayers = () => {
   layer.className = "rink-players";
   layer.setAttribute("aria-hidden", "true");
   layer.innerHTML = `<div class="skater a">${SKATER_RED}</div><div class="skater b">${SKATER_BLACK}</div>`;
+  document.body.appendChild(layer);
+};
+
+/** Слой с фонами «Двух городов» и «Выезда»; какой виден — решает data-scene (glass.css). */
+const mountScenes = () => {
+  const still = !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  const layer = document.createElement("div");
+  layer.className = "scenes";
+  layer.setAttribute("aria-hidden", "true");
+  layer.innerHTML = CITIES_SVG + awaySvg(still);
   document.body.appendChild(layer);
 };
 
@@ -73,6 +95,7 @@ const mountLens = () => {
 export const initGlass = (look: Look) => {
   applyLook(look);
   mountPlayers();
+  mountScenes();
   // backdrop-filter с SVG-фильтром умеет только Chromium; в Safari остаётся обычное размытие
   const brands = (navigator as { userAgentData?: { brands?: { brand: string }[] } }).userAgentData?.brands;
   if (brands?.some((b) => b.brand === "Chromium")) mountLens();

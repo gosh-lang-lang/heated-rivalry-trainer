@@ -8,7 +8,8 @@ import { logout, revokeDevice, revokeOtherDevices, useDevices, useMe, type Devic
 import { seenAgo, type DeviceKind } from "../core/device";
 import { plural } from "../core/text";
 import { say, useVoices } from "../lib/speech";
-import { LOOKS, useLook } from "../lib/glass";
+import { LOOKS, isCities, useLook } from "../lib/glass";
+import { CITIES_SVG, awaySvg } from "../lib/scenes";
 import { SKATER_BLACK, SKATER_RED } from "../lib/skaters";
 import { changeSetting } from "../core/state";
 
@@ -54,7 +55,7 @@ export function Settings({
   const value: Record<SettingsSection, string> = {
     lessons: `${newPerDay} ${plural(newPerDay, "новое слово", "новых слова", "новых слов")} за урок`,
     voice: (voices.find((v) => v.id === voice) ?? voices[0])?.name ?? "",
-    look: `${LOOKS.find(([id]) => id === look)?.[1] ?? ""} · ${THEME_LABEL[theme]}`,
+    look: `${LOOKS.find(([id]) => id === look || (isCities(id) && isCities(look)))?.[1] ?? ""}${look === "cities-black" ? " · Бостон" : look === "cities-red" ? " · Монреаль" : ""} · ${THEME_LABEL[theme]}`,
     account: devices.data ? `${count} ${plural(count, "устройство", "устройства", "устройств")}` : devices.failed ? "нет связи" : "…",
   };
 
@@ -124,35 +125,79 @@ export function Settings({
   );
 }
 
-/** Оформление: «Классика», «Лёд» или «Матч». У каждого — мини-превью (шапка и две карточки) в текущей теме дня / ночи. */
+/** Мини-превью «Выезда» — карта без анимации; одна строка на все карточки выбора. */
+const AWAY_MINI = awaySvg(true);
+
+/**
+ * Оформление: «Классика», «Лёд», «Матч», «Два города», «Выезд». У каждого — мини-превью (шапка и две карточки)
+ * в текущей теме дня / ночи. У «Двух городов» вторая ступень — сторона: Монреаль (красно-синие) или Бостон (чёрно-жёлтые).
+ */
 function LookPicker() {
   const [look, setLook] = useLook();
+  const cities = isCities(look);
   return (
     <section className="card">
       <h3>Тема</h3>
       <div className="looks" role="radiogroup" aria-label="Оформление">
-        {LOOKS.map(([id, name, note]) => (
-          <button key={id} className="look" role="radio" aria-checked={look === id} onClick={() => setLook(id)}>
-            <span className={`lk-prev lk-${id}`} aria-hidden="true">
-              {id === "match" && (
-                <>
-                  <i className="lk-sk a" dangerouslySetInnerHTML={{ __html: SKATER_RED }} />
-                  <i className="lk-sk b" dangerouslySetInnerHTML={{ __html: SKATER_BLACK }} />
-                </>
-              )}
-              <i className="lk-hero" />
-              <i className="lk-c1" />
-              <i className="lk-c2" />
-            </span>
-            <span className="lk-name"><b>{name}</b>{look === id && <Check />}</span>
-            <small>{note}</small>
-          </button>
-        ))}
+        {LOOKS.map(([id, name, note]) => {
+          const two = isCities(id);
+          const on = look === id || (two && cities);
+          const pick = (
+            <button
+              key={id}
+              className={two ? "look-pick" : "look"}
+              role="radio"
+              aria-checked={on}
+              onClick={() => !on && setLook(id)}
+            >
+              <span
+                className={`lk-prev lk-${two ? "cities" : id}`}
+                data-side={two && cities ? look.slice(7) : undefined}
+                aria-hidden="true"
+              >
+                {id === "match" && (
+                  <>
+                    <i className="lk-sk a" dangerouslySetInnerHTML={{ __html: SKATER_RED }} />
+                    <i className="lk-sk b" dangerouslySetInnerHTML={{ __html: SKATER_BLACK }} />
+                  </>
+                )}
+                {two && <i className="lk-scene" dangerouslySetInnerHTML={{ __html: CITIES_SVG }} />}
+                {id === "away" && <i className="lk-scene" dangerouslySetInnerHTML={{ __html: AWAY_MINI }} />}
+                <i className="lk-hero" />
+                <i className="lk-c1" />
+                <i className="lk-c2" />
+              </span>
+              <span className="lk-name"><b>{name}</b>{on && <Check />}</span>
+              <small>{note}</small>
+            </button>
+          );
+          if (!two) return pick;
+          // «Два города» — одна карточка: сторона переключается прямо в ней (нажатие сразу включает и тему)
+          return (
+            <div key={id} className={`look look-cities${on ? " on" : ""}`}>
+              {pick}
+              <div className="lk-side" role="group" aria-label="За кого болеешь">
+                {SIDES.map(([sid, city]) => (
+                  <button key={sid} aria-pressed={look === sid} onClick={() => setLook(sid)}>
+                    <i className={`sw ${sid}`} aria-hidden="true" />
+                    {city}
+                  </button>
+                ))}
+              </div>
+            </div>
+          );
+        })}
       </div>
       <p className="mute sm" style={{ margin: "12px 0 0" }}>День или ночь — тумблером в шапке главной.</p>
     </section>
   );
 }
+
+/** Стороны в «Двух городах»: Монреаль — красно-синие, Бостон — чёрно-жёлтые. */
+const SIDES = [
+  ["cities-red", "Монреаль"],
+  ["cities-black", "Бостон"],
+] as const;
 
 const KIND_ICON: Record<DeviceKind, typeof Phone> = { phone: Phone, tablet: Tablet, computer: Laptop };
 

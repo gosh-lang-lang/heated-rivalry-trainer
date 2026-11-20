@@ -104,7 +104,7 @@ export interface Settings {
   /** день / ночь; system — как в системе устройства */
   theme: ThemePref;
 }
-export type Look = "classic" | "ice" | "match";
+export type Look = "classic" | "ice" | "match" | "cities-red" | "cities-black" | "away";
 export type ThemePref = "system" | "light" | "dark";
 /** Когда менялся каждый пункт настроек (ms; 0 — ни разу). Слияние — по пунктам, см. core/state.ts mergeStates. */
 export type SettingsAt = Record<keyof Settings, number>;

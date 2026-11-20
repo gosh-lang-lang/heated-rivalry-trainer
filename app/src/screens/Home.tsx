@@ -7,6 +7,7 @@ import { dueList, groups, isHard, levelGroup, streak, unseen } from "../core/srs
 import { plural } from "../core/text";
 import type { AppState, Deck, SessionResult } from "../core/types";
 import { Check, Flame, Rink } from "../lib/icons";
+import { AWAY_CITIES, CITIES_SVG } from "../lib/scenes";
 import { useVoices } from "../lib/speech";
 import { ThemeToggle } from "../ui";
 
@@ -132,6 +133,29 @@ export function Home({ deck, state, go, wide = false, name = null }: Props) {
     .slice(0, 4);
   const today = clock.toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" });
 
+  /** «Выезд»: урок — рейс на табло вылетов. Часть 1 — посадка, пауза до части 2 — пересадка, поздно — задержан. */
+  const board = (() => {
+    if (state.settings.look !== "away") return null;
+    const cur = ls.cards.find((c) => c.part === ls.focus) ?? ls.cards.find((c) => c.can) ?? ls.cards[0];
+    const late = !ls.focus && ls.cards.some((c) => c.can && c.advice === "late");
+    const [st, cls] =
+      ls.focus === 2 && cur.advice === "wait"
+        ? [cur.after ? `Пересадка до ${hhmm(cur.after)}` : "Пересадка", "wait"]
+        : ls.focus
+          ? ["Посадка", "go"]
+          : late
+            ? ["Задержан до утра", "late"]
+            : ["Прибыл", "done"];
+    return (
+      <dl className="hero-board" aria-label="Табло вылетов">
+        <div><dt>Рейс</dt><dd>HR {String(cur.n).padStart(3, "0")}</dd></div>
+        <div className="to"><dt>Куда</dt><dd>{AWAY_CITIES[(cur.n - 1) % AWAY_CITIES.length]}</dd></div>
+        <div><dt>Выход</dt><dd>{cur.part}</dd></div>
+        <div className="st"><dt>Статус</dt><dd className={cls}>{st}</dd></div>
+      </dl>
+    );
+  })();
+
   const weekCard = (
     <section className="card week">
       <div className="wk-head">
@@ -155,7 +179,7 @@ export function Home({ deck, state, go, wide = false, name = null }: Props) {
   return (
     <>
       <header className="hero">
-        <Rink />
+        {state.settings.look.startsWith("cities") ? <i className="hero-city" aria-hidden="true" dangerouslySetInnerHTML={{ __html: CITIES_SVG }} /> : <Rink />}
         <div className="hero-in">
           <div className="top">
             <span className="kick">Heated Rivalry · английский</span>
@@ -165,6 +189,7 @@ export function Home({ deck, state, go, wide = false, name = null }: Props) {
           </div>
           <h1>{clock.getHours() < 16 ? "Доброе утро" : "Добрый вечер"}{name ? `, ${name}` : ""}</h1>
           <p>{ls.focus ? "Урок из двух частей по ~15 минут: сначала учим, потом применяем." : "На сегодня всё — отличная смена. До завтра!"}</p>
+          {board}
         </div>
       </header>
       <div className={`wrap home${ls.focus ? "" : " all-done"}`}>
