@@ -35,12 +35,15 @@ export interface AuthConfig {
   rpName: string;
   /** https → cookie с префиксом __Host- и флагом Secure */
   secure: boolean;
+  /** ещё адреса, с которых можно писать (AUTH_DEV_ORIGINS, только не в production): локальная сборка с мака и с телефона по Wi-Fi */
+  devOrigins: string[];
 }
 
 export const authConfigFromEnv = (env = process.env): AuthConfig => {
   const origin = (env.AUTH_ORIGIN ?? "http://localhost:5173").replace(/\/$/, "");
   const u = new URL(origin);
-  return { origin, rpID: env.AUTH_RP_ID ?? u.hostname, rpName: "Heated Rivalry", secure: u.protocol === "https:" };
+  const devOrigins = env.NODE_ENV === "production" ? [] : (env.AUTH_DEV_ORIGINS ?? "").split(",").map((o) => o.trim().replace(/\/$/, "")).filter(Boolean);
+  return { origin, rpID: env.AUTH_RP_ID ?? u.hostname, rpName: "Heated Rivalry", secure: u.protocol === "https:", devOrigins };
 };
 
 type Json = (res: ServerResponse, code: number, body: unknown) => void;
@@ -85,7 +88,7 @@ export const createAuth = (store: AuthStore, cfg: AuthConfig, deps: { json: Json
   /** Запрос пришёл с нашей страницы (защита от CSRF для POST). Без Origin — не браузер, пропускаем. */
   const sameOrigin = (req: IncomingMessage) => {
     const o = req.headers.origin;
-    return !o || o === cfg.origin;
+    return !o || o === cfg.origin || cfg.devOrigins.includes(o);
   };
 
   const body = async <T>(req: IncomingMessage): Promise<T | null> => {
@@ -265,7 +268,10 @@ export const createAuth = (store: AuthStore, cfg: AuthConfig, deps: { json: Json
     return json(res, 404, { error: "нет такого метода" }), true;
   };
 
-  return { handle, sessionUser, sameOrigin, cookieNames: { SESSION, CHALLENGE } };
+  /** Только для локальной разработки (AUTH_DEV_BYPASS, не production): войти как этот пользователь без passkey. */
+  const startDevSession = (req: IncomingMessage, res: ServerResponse, user: User) => startSession(res, req, user);
+
+  return { handle, sessionUser, sameOrigin, startDevSession, cookieNames: { SESSION, CHALLENGE } };
 };
 
 export type Auth = ReturnType<typeof createAuth>;

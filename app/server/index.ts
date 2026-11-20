@@ -11,7 +11,8 @@
  *
  * Переменные: PORT (8787), AUTH_ORIGIN (https://домен), AUTH_DB (server/cache/auth.db),
  * TTS_CACHE_DIR (server/cache/tts), TTS_DTYPE (fp32 | q8), TTS_WARM=0 — не прогревать колоду,
- * TTS_DISABLED=1 — без озвучки (тесты входа), AUTH_DEV_BYPASS=1 — без входа (только не в production).
+ * TTS_DISABLED=1 — без озвучки (тесты входа), AUTH_DEV_BYPASS=1 — без passkey: сервер сам заводит сессию
+ * пользователю dev (только не в production; для локальной сборки и проверки с телефона по Wi-Fi).
  */
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { createServer } from "node:http";
@@ -61,6 +62,13 @@ const server = createServer(async (req, res) => {
   const url = new URL(req.url ?? "/", "http://x");
   try {
     if (url.pathname === "/api/health") return json(res, 200, { ok: true });
+
+    // локальная разработка без passkey: нет сессии — заводим её пользователю dev и повторяем запрос уже с ней
+    if (DEV_BYPASS && !auth.sessionUser(req, res)) {
+      auth.startDevSession(req, res, devUser());
+      res.writeHead(307, { location: req.url ?? "/", "cache-control": "no-store" });
+      return res.end();
+    }
 
     if (await auth.handle(req, res, url.pathname)) return;
 

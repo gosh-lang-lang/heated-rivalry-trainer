@@ -51,6 +51,6 @@ export default defineConfig({
     }),
   ],
   // words.json лежит в корне репозитория (один источник слов для прототипа и приложения)
-  server: { fs: { allow: [".."] }, proxy: { "/api": "http://localhost:8787" } },
+  server: { fs: { allow: [".."] }, proxy: { "/api": `http://localhost:${process.env.API_PORT ?? 8787}` } },
   test: { include: ["src/**/*.test.ts", "server/**/*.test.ts"], environment: "node" },
 });
