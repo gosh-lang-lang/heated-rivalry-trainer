@@ -3,6 +3,8 @@
 ARG NODE_IMAGE=node:22-bookworm-slim
 
 FROM ${NODE_IMAGE} AS build
+# GPU нет: onnxruntime-node не должен качать CUDA-сборку
+ENV npm_config_onnxruntime_node_install_cuda=skip
 WORKDIR /srv/app
 COPY app/package.json app/package-lock.json ./
 RUN npm ci --no-audit --no-fund
@@ -11,7 +13,7 @@ COPY app/ ./
 RUN npm run build
 
 FROM ${NODE_IMAGE}
-ENV NODE_ENV=production PORT=8787 TTS_CACHE_DIR=/data/tts
+ENV NODE_ENV=production PORT=8787 TTS_CACHE_DIR=/data/tts npm_config_onnxruntime_node_install_cuda=skip
 WORKDIR /srv/app
 COPY app/package.json app/package-lock.json ./
 RUN npm ci --omit=dev --no-audit --no-fund && npm cache clean --force
