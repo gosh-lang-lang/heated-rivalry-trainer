@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="app/styles.css"><link rel="stylesheet" href="app/glass.css"><link rel="stylesheet" href="mock.css"><link rel="stylesheet" href="screens.css"><link rel="stylesheet" href="path.css">
+<script src="data.js"></script><script src="common.js"></script></head>
+<body class="pathpage"><div class="app"><div id="root"></div></div>
+<script>
+const v = MQ.get("v") || "a";
+const W = 390, CUR = 5;
+const XS = [195, 292, 195, 98, 195, 292, 195, 98, 195, 195];
+// снизу вверх: урок 1 внизу, финал сезона — у ворот наверху
+const GAP = 112, BUBBLE = 372, TOP = 250, BOTTOM = 440;
+const ys = []; let y = TOP;
+for (let n = 10; n >= 1; n--) { ys[n] = y; y += n === CUR + 1 ? GAP : n === CUR ? BUBBLE : GAP; }
+const H = ys[1] + BOTTOM;
+const P = (n) => [XS[n - 1], ys[n]];
+
+// плавная кривая через центры (Catmull-Rom → Безье)
+function curve(from, to) {
+  const pts = []; for (let n = from; n <= to; n++) pts.push(P(n));
+  let d = `M${pts[0][0]} ${pts[0][1]}`;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[i - 1] || pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] || p2;
+    const c1 = [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6], c2 = [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6];
+    d += ` C${c1} ${c2} ${p2}`;
+  }
+  return d;
+}
+const mid = (a, b) => (ys[a] + ys[b]) / 2;
+const redY = mid(5, 6), blueA = mid(7, 8), blueB = mid(3, 4);
+const topGoal = 132, botGoal = H - 92;
+const circle = (cx, cy, r = 54) => `<g class="fo"><circle cx="${cx}" cy="${cy}" r="${r}"/><path d="M${cx - r - 10} ${cy - 8}h10M${cx - r - 10} ${cy + 8}h10M${cx + r} ${cy - 8}h10M${cx + r} ${cy + 8}h10"/></g><circle class="fod" cx="${cx}" cy="${cy}" r="7"/>`;
+const rink = `<svg class="rink-svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" aria-hidden="true">
+  <rect class="ice" x="8" y="24" width="${W - 16}" height="${H - 48}" rx="132"/>
+  <rect class="bl" x="8" y="${blueA - 7}" width="${W - 16}" height="14"/><rect class="bl" x="8" y="${blueB - 7}" width="${W - 16}" height="14"/>
+  <rect class="rl" x="8" y="${redY - 4}" width="${W - 16}" height="8"/>
+  <circle class="cc" cx="195" cy="${redY}" r="74"/><text class="cct" x="195" y="${redY - 30}" text-anchor="middle">СЕЗОН 1</text>
+  <path class="gl" d="M40 ${topGoal}H350M40 ${botGoal}H350"/>
+  <path class="crease" d="M160 ${topGoal}a35 35 0 0 0 70 0z"/><path class="crease" d="M160 ${botGoal}a35 35 0 0 1 70 0z"/>
+  <g class="net"><rect x="167" y="${topGoal - 30}" width="56" height="30" rx="8"/><path d="M175 ${topGoal - 30}v30M187 ${topGoal - 30}v30M199 ${topGoal - 30}v30M211 ${topGoal - 30}v30M167 ${topGoal - 20}h56M167 ${topGoal - 10}h56"/></g>
+  <g class="net"><rect x="167" y="${botGoal}" width="56" height="30" rx="8"/><path d="M175 ${botGoal}v30M187 ${botGoal}v30M199 ${botGoal}v30M211 ${botGoal}v30M167 ${botGoal + 10}h56M167 ${botGoal + 20}h56"/></g>
+  ${circle(98, ys[9] - 20)}${circle(292, ys[9] - 20)}${circle(98, ys[2] + 20)}${circle(292, ys[2] + 20)}
+  <circle class="fod" cx="98" cy="${blueA + 44}" r="6"/><circle class="fod" cx="292" cy="${blueA + 44}" r="6"/>
+  <circle class="fod" cx="98" cy="${blueB - 44}" r="6"/><circle class="fod" cx="292" cy="${blueB - 44}" r="6"/>
+  <path class="trail-ahead" d="${curve(CUR, 10)}"/>
+  <path class="trail" d="${curve(1, CUR)}"/><path class="trail-in" d="${curve(1, CUR)}"/>
+</svg>`;
+
+// узлы
+let nodes = "";
+for (let n = 1; n <= 10; n++) {
+  const [x, yy] = P(n);
+  const st = n < CUR ? "done" : n === CUR ? "cur" : n === 10 ? "final" : "lock";
+  const inner = st === "done" ? `<b>${n}</b><i class="ok">${ICON.check}</i>` : st === "cur" ? `<b>${n}</b>` : st === "final" ? `<span class="cup">🏆</span>` : `<b>${n}</b><i class="lk">${ICON.lock}</i>`;
+  nodes += `<button class="node ${st}${v === "b" && n === 1 ? " sel" : ""}" style="left:${x}px;top:${yy}px" aria-label="Урок ${n}">${inner}</button>`;
+  if (st === "final") nodes += `<span class="nlabel gold" style="left:${x}px;top:${yy + 48}px">Финал сезона</span>`;
+}
+// карточки-награды между уроками
+for (let n = 1; n <= 9; n++) {
+  const [x1, y1] = P(n), [x2, y2] = P(n + 1);
+  const mx = (x1 + x2) / 2, my = n === CUR ? y1 - 22 : (y1 + y2) / 2;
+  const side = n === CUR ? 1.15 : mx > 195 ? -1 : mx < 195 ? 1 : (n % 2 ? 1 : -1);
+  const cx = n === CUR ? 336 : mx + side * 100, rot = Math.sign(side) * 7;
+  const c = CARDS[n - 1];
+  const html = n < CUR ? cardFront(c, 3.6) : cardLocked(c, 3.6, n === CUR ? "next" : "far");
+  nodes += `<div class="cmark${n < CUR ? " got" : n === CUR ? " nextc" : " far"}" style="left:${cx}px;top:${my}px;--r:${rot}deg">${html}${n === CUR ? '<span class="cm-tag">после части 2</span>' : ""}</div>`;
+}
+// игрок у текущего урока
+const [cx5, cy5] = P(CUR);
+nodes += `<div class="me-sk" style="left:${cx5 - 150}px;top:${cy5 - 74}px">${SKATER()}</div>`;
+
+// пузырь текущего урока
+const bubble = `<section class="card lesson-pop" style="top:${cy5 + 62}px">
+  <div class="lp-head"><div><b>Урок 5 · сегодня</b><span>12 новых слов · 2 части по ~15 мин</span></div></div>
+  <ol class="parts">
+    <li class="done"><i>${ICON.check}</i><div><b>Часть 1 — учим</b><small>Готово · 34 из 38 · 16 мин</small></div></li>
+    <li class="next"><i>2</i><div><b>Часть 2 — применяем</b><small>Лучше после 10:40 · можно и сейчас</small></div></li>
+  </ol>
+  <button class="btn wide">Начать часть 2</button>
+</section>`;
+
+// v=b: нажали пройденный урок 1
+const [x3, y3] = P(1);
+const pop3 = `<section class="card lesson-pop done-pop" style="top:${y3 + 52}px">
+  <div class="lp-head"><div><b>Урок 1 · пройден</b><span>пт, 20 ноября · 12 слов · 88% верно</span></div></div>
+  <div class="dp-row">${cardFront(CARDS[0], 3.4)}<div class="dp-tx"><small>Карточка №&thinsp;01 · Герой</small><b>Шейн Холландер</b><span>Звезда «Вояжёров»</span></div></div>
+  <div class="dp-btns"><button class="btn ghost">Слова урока</button><button class="btn ghost">Карточка</button></div>
+</section>`;
+
+const start = v === "b" ? "" : `<div class="start-tag" style="top:${botGoal - 44}px">Старт · 20 ноября</div>`;
+
+document.getElementById("root").innerHTML = `
+  <header class="hud">
+    <div><h1>Путь</h1><span>Сезон 1 · урок 5 из 10</span></div>
+    <span class="hchip">${ICON.flame}4</span>
+    <span class="hchip">${ICON.cards}4/10</span>
+  </header>
+  <div class="rinkwrap" style="height:${H}px">${rink}${nodes}${v === "a" ? bubble : pop3}${start}</div>`;
+chrome({ tab: "path" });
+document.body.classList.add("scrolled");
+const target = v === "a" ? cy5 + 14 - 380 : y3 + 14 - 410;
+requestAnimationFrame(() => window.scrollTo(0, target));
+</script></body></html>

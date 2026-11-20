@@ -1,0 +1,34 @@
+/* ============ 1. Словарь по урокам ============ */
+.words .filters{gap:8px;padding-bottom:10px}
+.fl.lvl button{min-height:38px;font-size:14px;padding:4px 12px;border-width:1.5px}
+.wlist{gap:12px}
+.lesson{padding:14px 16px 14px}
+.lesson.open{padding-bottom:6px}
+.lhead{display:grid;grid-template-columns:36px minmax(0,1fr) auto 24px;gap:12px;align-items:center}
+.lno{width:36px;height:36px;border-radius:12px;background:var(--navy);color:#fff;display:grid;place-items:center;font-weight:900;font-size:17px;box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 3px 0 var(--navy2)}
+.lno svg{width:20px;height:20px}
+.is-today .lno{background:var(--blue);box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 3px 0 var(--blueD);color:light-dark(#fff,#08142b)}
+.ahead .lno{background:var(--blueSoft);color:var(--blue);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--blue) 30%,transparent)}
+.lt b{display:flex;align-items:center;gap:8px;font-size:19px;font-weight:900;line-height:1.2}
+.lt small{display:block;color:var(--mute);font-weight:700;font-size:14px;margin-top:1px}
+.pill{font-style:normal;font-size:11px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:999px;background:var(--blueSoft);color:var(--blue)}
+.lthumb{display:block;width:44px;height:62px;position:relative}
+.lthumb .tc{position:absolute;left:-1px;top:-1px;transform:rotate(4deg);box-shadow:inset 0 0 0 .05em rgba(18,48,107,.18),0 4px 10px -4px rgba(6,20,52,.45)}
+.lthumb .tc.locked{box-shadow:none;transform:rotate(4deg)}
+.lthumb .tc.locked .tc-no{display:none}.lthumb .tc-q{font-size:5em}
+.lchev{color:var(--mute);display:grid;place-items:center;transform:rotate(-90deg)}
+.lchev svg{width:20px;height:20px}
+.open .lchev{transform:none;color:var(--blue)}
+.lprog{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;margin:12px 0 0 48px;font-size:13px;font-weight:800;color:var(--mute)}
+.lprog .lv.mini{height:8px}
+.lnote{margin:10px 0 0 48px;font-size:14px;color:var(--gold);font-weight:700}
+.lrows{margin-top:8px;border-top:2px solid var(--line)}
+.lrows .wrow:last-child{border-bottom:0}
+.dots.ahead i{background:transparent;border:1.5px dashed var(--line2)}
+.ahead .wrow .em{opacity:.55}.ahead .wen b{color:var(--mute)}
+.lcard{display:grid;grid-template-columns:auto minmax(0,1fr) 20px;gap:14px;align-items:center;margin:12px 0 4px;padding:10px 12px;border-radius:16px;background:light-dark(rgba(31,95,209,.06),rgba(120,166,255,.08));box-shadow:inset 0 0 0 1.5px var(--line)}
+.lcard .tc{transform:rotate(-4deg)}
+.lc-tx small{display:block;font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}
+.lc-tx b{display:block;font-size:17px;font-weight:900;margin-top:2px}
+.lc-tx span{display:block;font-size:14px;color:var(--mute);line-height:1.35;margin-top:2px}
+.lcard>svg{width:20px;height:20px;color:var(--mute)}

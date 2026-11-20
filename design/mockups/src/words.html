@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="app/styles.css"><link rel="stylesheet" href="app/glass.css"><link rel="stylesheet" href="mock.css"><link rel="stylesheet" href="screens.css">
+<script src="data.js"></script><script src="common.js"></script></head>
+<body><div class="app"><div id="root"></div></div>
+<script>
+const v = MQ.get("v") || "a";
+const LV = ["Новые", "Учу", "Знакомо", "Выучено"];
+const grp = (l) => (l === 0 ? 0 : l <= 2 ? 1 : l <= 4 ? 2 : 3);
+const sel = v === "c" ? 1 : 0;
+const chips = `<button aria-pressed="${!sel}">Все<em>62</em></button>` +
+  [5, 4, 3, 2, 1].map((n) => `<button aria-pressed="${sel === n}">Урок ${n}</button>`).join("") +
+  `<button>Впереди<em>8</em></button>`;
+const lvChips = `<button aria-pressed="true">Все уровни</button>` + LV.map((n, i) => `<button><span class="sw c${i}"></span>${n}<em>${WORDS.filter((w) => (v === "c" ? w.lesson === 1 : 1) && grp(w.lvl) === i).length}</em></button>`).join("");
+
+function lesson(n, open, opts = {}) {
+  const ws = WORDS.filter((w) => w.lesson === n);
+  const L = LESSONS[n - 1];
+  const g = [0, 0, 0, 0]; ws.forEach((w) => g[grp(w.lvl)]++);
+  const card = CARDS[n - 1];
+  const thumb = L.today ? cardLocked(card, 3.1, "next") : cardFront(card, 3.1);
+  const bar = `<span class="lv mini">${g.map((x, i) => `<i class="c${i}" style="width:${(x / ws.length) * 100}%"></i>`).join("")}</span>`;
+  return `<section class="card lesson${open ? " open" : ""}${L.today ? " is-today" : ""}">
+    <div class="lhead">
+      <span class="lno">${n}</span>
+      <span class="lt"><b>Урок ${n}${L.today ? '<em class="pill">сегодня</em>' : ""}</b><small>${L.today ? "вт, 24 ноября" : L.wd + ", " + L.date} · ${ws.length} слов</small></span>
+      <span class="lthumb">${opts.card && open ? "" : thumb}</span>
+      <span class="lchev">${ICON.chev}</span>
+    </div>
+    <div class="lprog">${bar}<span>${L.today ? "часть 1 пройдена · часть 2 впереди" : g.map((x, i) => (x && i ? LV[i].toLowerCase() + " " + x : "")).filter(Boolean).join(" · ")}</span></div>
+    ${L.why && open ? `<p class="lnote">${L.why}</p>` : ""}
+    ${opts.card && open ? `<div class="lcard">${cardFront(card, 4.2)}<div class="lc-tx"><small>Карточка урока · №&thinsp;0${n}</small><b>${card.name}</b><span>${card.line}</span></div>${ICON.right}</div>` : ""}
+    ${open ? `<div class="lrows">${ws.map((w) => wordRow(w, opts.openWord === w.en, opts.say === w.en)).join("")}</div>` : ""}
+  </section>`;
+}
+function ahead(open) {
+  const ws = WORDS.filter((w) => !w.lesson);
+  return `<section class="card lesson ahead${open ? " open" : ""}">
+    <div class="lhead">
+      <span class="lno">${ICON.path}</span>
+      <span class="lt"><b>Впереди</b><small>${ws.length} слов · в следующих уроках</small></span>
+      <span class="lchev">${ICON.chev}</span>
+    </div>
+    ${open ? `<div class="lrows">${ws.map((w) => wordRow(w)).join("")}</div>` : ""}
+  </section>`;
+}
+let list = "";
+if (v === "a") list = lesson(5, true, { openWord: "face-off", say: "face-off" }) + lesson(4, true);
+if (v === "b") list = lesson(5, false) + lesson(4, false) + lesson(3, false) + lesson(2, false) + lesson(1, false) + ahead(true);
+if (v === "c") list = lesson(1, true, { openWord: "rambunctious", card: true });
+
+document.getElementById("root").innerHTML = `
+  <div class="pagehead"><h1>Словарь</h1><span class="ph-meta">62 слова · 5 уроков</span></div>
+  <div class="wrap words">
+    <aside class="filters">
+      <input class="inp find" type="search" placeholder="Найти слово">
+      <div class="fl">${chips}</div>
+      <div class="fl lvl">${lvChips}</div>
+    </aside>
+    <div class="wlist">${list}</div>
+  </div>`;
+chrome({ tab: "words" });
+if (v === "c") document.querySelector(".fl").scrollLeft = 260;
+</script></body></html>

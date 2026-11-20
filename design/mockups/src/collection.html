@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="app/styles.css"><link rel="stylesheet" href="app/glass.css"><link rel="stylesheet" href="mock.css"><link rel="stylesheet" href="screens.css"><link rel="stylesheet" href="rewards.css">
+<script src="data.js"></script><script src="common.js"></script></head>
+<body><div class="app"><div id="root"></div></div>
+<script>
+const modal = MQ.get("modal");
+const cell = (c) => {
+  if (c.no <= 4) return `<li>${cardFront(c, 7.4)}<b>${c.name}</b><small>Урок ${c.lesson} · ${c.cat}</small></li>`;
+  if (c.no === 5) return `<li class="nx">${cardLocked(c, 7.4, "next")}<b>Сегодня</b><small>после части 2</small></li>`;
+  if (c.gold) return `<li class="lk">${cardLocked(c, 7.4)}<b>Финал сезона</b><small>Урок 10</small></li>`;
+  return `<li class="lk">${cardLocked(c, 7.4)}<b>Урок ${c.lesson}</b><small>закрыта</small></li>`;
+};
+document.getElementById("root").innerHTML = `
+  <div class="crumb">${ICON.back}Я</div>
+  <div class="pagehead"><h1>Коллекция</h1><span class="ph-meta">4 из 10</span></div>
+  <div class="wrap coll">
+    <div class="seg2"><button aria-pressed="true">Сезон 1 <em>4/10</em></button><button>Сезон 2 ${ICON.lock}</button></div>
+    <section class="card cprog">
+      <div class="cp-top"><b>Карточка за каждый урок</b><span>40%</span></div>
+      <div class="seasonbar"><i style="width:40%"></i></div>
+      <p>Следующая — №&thinsp;05, после части 2 урока 5. На обороте каждой — слова её урока.</p>
+    </section>
+    <ol class="cgrid">${CARDS.map(cell).join("")}</ol>
+  </div>
+  ${modal ? `<div class="scrim"></div>
+  <div class="cmodal">
+    <div class="cm-bar"><button class="glassbtn">${ICON.close}</button><span>№&thinsp;02 из 10</span><i style="width:44px"></i></div>
+    <div class="cm-card">${modal === "back" ? cardBack(CARDS[1], 22.4) : cardFront(CARDS[1], 22.4)}</div>
+    <p class="cm-cap">${modal === "back" ? "Слова урока 2 — нажми, чтобы услышать" : "Получена 21 ноября · за урок 2"}</p>
+    <div class="cm-nav"><button class="glassbtn">${ICON.back}</button><button class="btn cm-flip">${ICON.flip}${modal === "back" ? "Лицевая сторона" : "Перевернуть"}</button><button class="glassbtn r">${ICON.back}</button></div>
+  </div>` : ""}`;
+chrome({ tab: "me", sbDark: !!modal });
+</script></body></html>

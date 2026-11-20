@@ -1,0 +1,58 @@
+/* Словарь, вариант C — в стиле текущего экрана (styles.css + glass.css, тема «Матч») */
+/* игроки «Матча» стоят на местах (в живом приложении катаются) */
+.skater{animation:none!important}.skater svg{animation:none!important}
+.skater.a{top:24%;transform:translateX(-46%)}
+.skater.b{top:62%;transform:translateX(calc(100vw - 52%)) scaleX(-1)}
+.is-desk .skater.a{top:93%;transform:translateX(-120px)}
+.is-desk .skater.b{top:58%;transform:translateX(calc(100vw - 250px)) scaleX(-1)}
+.is-desk .pagehead{padding-top:36px}
+
+/* телефон: строка — слово + транскрипция, перевод; справа полоска уровня и дата повтора */
+.w3 .lsec{padding:14px 16px 6px}
+.w3 .bhead{margin-bottom:2px}
+.bno.ahead{background:var(--blueSoft);color:var(--blue)}
+.wrow3{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"en lv" "ru due";column-gap:14px;row-gap:2px;align-items:center;padding:10px 0;border-bottom:2px solid var(--line);color:inherit;text-decoration:none}
+.wrow3:last-child{border-bottom:0}
+.w3en{grid-area:en;display:flex;align-items:baseline;gap:8px;min-width:0}
+.w3en b{font-size:17px;font-weight:800;white-space:nowrap}
+.w3en .ipa{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.w3ru{grid-area:ru;color:var(--mute);font-size:15px;font-weight:600;line-height:1.3}
+.wrow3 .dots{grid-area:lv;justify-self:end;margin:0;gap:2px}
+.wrow3 .dots i{width:7px}
+.w3due{grid-area:due;justify-self:end;font-size:13px;font-weight:800;color:var(--mute);white-space:nowrap;font-variant-numeric:tabular-nums}
+@media(max-width:899px){.w3 .whead{display:none}}
+
+/* десктоп: таблица как сейчас, без столбца картинки */
+@media(min-width:900px){
+  .w3 .whead,.w3 .wrow{grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) 108px 110px 40px}
+  .w3 .wrow{grid-template-areas:"en ru lv due sp" "det det det det det"}
+  .w3 .wrow .det{padding:4px 0 12px 0}
+  .w3 .wdue{font-size:15px}
+  .w3 .lsec .whead{padding-left:0}
+  .tday{margin-left:8px;font-size:11px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;padding:1px 7px;border-radius:999px;background:var(--blueSoft);color:var(--blue)}
+  .w3 .fgroup{display:block}
+}
+@media(max-width:899px){.tday{display:none}}
+
+/* страница слова: как карточка знакомства в занятии */
+.wph{align-items:center!important}
+.has-tabbar .wph .x{display:grid!important;border:2px solid var(--line);background:var(--card);border-radius:14px;color:var(--ink)}
+.wph h1{font-size:28px!important}
+.w3word{gap:14px;padding-top:16px}
+.wcard{padding:22px 20px 18px}
+.wcard .word{justify-content:space-between;flex-wrap:nowrap}
+.wcard .word h2{font-size:44px;letter-spacing:-.01em;line-height:1.05}
+.wcard .ipa{margin-top:6px}
+.wcard .ru{font-size:22px;margin-top:6px}
+.wcard .exs{align-items:center}
+.wcard .exs b{display:block;font-size:18px;line-height:1.35}
+.wcard .exs i{margin-top:2px}
+.wmeta{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:16px 18px}
+.wmeta>div{display:flex;flex-direction:column;gap:6px}
+.wmeta .k{font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}
+.wmeta .dots{margin:2px 0 0}.wmeta .dots i{width:20px;height:7px}
+.wmeta b{font-size:17px;font-weight:800}
+.wmeta b.big{font-size:22px;font-weight:900;line-height:1}
+.wmeta small{color:var(--mute);font-weight:700;font-size:14px;margin-top:-4px}
+.wnav{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.wnav .btn{min-height:52px;font-size:16px}

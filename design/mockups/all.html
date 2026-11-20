@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Макеты: уроки и награды</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#eef3f9;--card:#fff;--ink:#0f1b2d;--mute:#5a6a80;--line:#d6e0ec;--blue:#1f5fd1;--navy:#12306b}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#0a111d;--card:#131d2e;--ink:#eaf0f8;--mute:#94a5bb;--line:#24344b;--blue:#78a6ff}}
+:root[data-theme=dark]{--bg:#0a111d;--card:#131d2e;--ink:#eaf0f8;--mute:#94a5bb;--line:#24344b;--blue:#78a6ff}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.5 Nunito,system-ui,sans-serif}
+main{max-width:1240px;margin:0 auto;padding:40px 16px 80px}
+h1{font-size:clamp(30px,5vw,44px);line-height:1.1;margin:0 0 8px;letter-spacing:-.02em}
+.lead{color:var(--mute);font-weight:700;margin:0 0 20px;max-width:760px}
+nav{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:36px}
+nav a{padding:8px 14px;border-radius:999px;background:var(--card);border:2px solid var(--line);color:var(--ink);text-decoration:none;font-weight:800;font-size:15px}
+section{margin-bottom:48px}
+h2{font-size:26px;margin:0 0 6px;display:flex;gap:12px;align-items:center}
+h2 span{width:36px;height:36px;border-radius:11px;background:var(--navy);color:#fff;display:grid;place-items:center;font-size:18px;flex:none}
+section>p{color:var(--mute);font-weight:700;margin:0 0 16px}
+figure{margin:0;border-radius:20px;overflow:hidden;border:2px solid var(--line);background:var(--card)}
+figure img{display:block;width:100%;height:auto}
+.q{background:var(--card);border:2px solid var(--line);border-radius:20px;padding:20px 24px}
+.q li{margin:6px 0}
+</style></head>
+<body><main>
+<h1>Уроки, путь и награды — макеты</h1>
+<p class="lead">Оформление «Лёд», iPhone 13 (390×844), день и ночь, плюс десктоп страницы «Путь». Слова — из words.json; сценарий: вторник, 24 ноября, уроки 1–4 пройдены, у урока 5 пройдена часть 1.</p>
+<nav><a href="#f1c">1 · Словарь C (выбран)</a><a href="#f1v2">1 · Словарь v2</a><a href="#f1">1 · Словарь (v1)</a><a href="#f2">2 · Путь</a><a href="#f3">3 · Награды</a><a href="#f4">4 · «Я»</a><a href="#q">Вопросы</a></nav>
+<section id="f1c"><h2><span>1</span>Словарь — вариант C в стиле приложения</h2><p>«Матч» ночью и днём, слева — текущий словарь для сравнения; десктоп — таблица СЛОВО · ПЕРЕВОД · УРОВЕНЬ · ПОВТОР.</p><figure><img src="1-words-c.png" alt="Словарь, вариант C"></figure></section>
+<section id="f1v2"><h2><span>1</span>Словарь — три простых варианта</h2><p>A — два уровня как «Настройки» (рекомендую), B — один список с липкими уроками, C — поиск первым и страница слова.</p><figure><img src="1-words-v2.png" alt="Словарь: варианты A, B, C"></figure></section>
+<section id="f1"><h2><span>1</span>Словарь по урокам</h2><p>Группы «Урок N · дата · слов», «Впереди» — в конце; чипы уроков + прежний фильтр уровней; у урока — его карточка.</p><figure><img src="1-words.png" alt="Словарь по урокам: три экрана"></figure></section>
+<section id="f2"><h2><span>2</span>Путь — каток сезона</h2><p>Сезон из 10 уроков — каток от старта до ворот; у текущего урока обе части и кнопка; карточки у дорожки; день, ночь и десктоп.</p><figure><img src="2-path.png" alt="Путь: телефон и десктоп"></figure></section>
+<section id="f3"><h2><span>3</span>Награды — карточка за урок</h2><p>Карточка на итоге урока, коллекция (день и ночь), карточка во весь экран — лицо и оборот со словами урока.</p><figure><img src="3-rewards.png" alt="Награды: итог, коллекция, карточка"></figure></section>
+<section id="f4"><h2><span>4</span>«Я» — достижения и статистика</h2><p>Один экран: коллекция, достижения-баннеры, затем нынешняя статистика. Шестерёнка — настройки.</p><figure><img src="4-progress.png" alt="Вкладка Я"></figure></section>
+<section id="q" class="q"><h2>Что решить</h2><ul>
+<li>Сколько уроков в сезоне (в макете 10 = 10 карточек, 10-я — золотая)?</li>
+<li>Редкость карточек: обычные / «золотые» за 10-й урок / особые за 100% или серию?</li>
+<li>Карточка приходит только после части 2. Если часть 2 так и не пройдена (перенос пропал через 2 дня) — карточки нет, или она приходит урезанной?</li>
+<li>Порядок в словаре: новые уроки сверху (как в макете) или от урока 1?</li>
+<li>«50 слов» в достижениях — слов, пройденных в уроках, или «выучено» (уровень 5–6)?</li>
+<li>Итог урока без панели вкладок (как сейчас в приложении) — оставить так?</li>
+</ul></section>
+</main></body></html>

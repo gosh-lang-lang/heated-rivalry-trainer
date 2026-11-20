@@ -1,0 +1,51 @@
+/* ============ 4. Я: коллекция, достижения, статистика ============ */
+.mehead{display:grid!important;grid-template-columns:52px minmax(0,1fr) 44px;align-items:center!important;gap:12px!important;padding-bottom:6px}
+.mehead h1{font-size:30px!important}
+.mehead .mute{font-size:14px;font-weight:700}
+.ava{width:52px;height:52px;border-radius:50%;display:grid;place-items:center;background:var(--navy);color:#fff;font-weight:900;font-size:24px;box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 0 0 3px light-dark(#fff,#131d2e),0 0 0 5px var(--goal)}
+.wrap.me{gap:14px;padding-top:14px}
+.sec-h{display:flex;justify-content:space-between;align-items:center}
+.more{display:inline-flex;align-items:center;gap:2px;color:var(--blue);font-weight:800;font-size:15px}
+.more svg{width:18px;height:18px}
+.mecoll{padding:16px 18px}
+.fan{display:flex;margin:14px 0 14px;padding-left:4px}
+.fan .fc{margin-left:-20px;transform:rotate(var(--r));display:block}
+.fan .fc:first-child{margin-left:0}
+.fan .tc{box-shadow:inset 0 .06em 0 #fff,inset 0 0 0 .05em rgba(18,48,107,.18),0 8px 14px -8px rgba(6,20,52,.5)}
+.fan .tc.locked{background:light-dark(#f3f7fd,#16223a)}
+.fan .tc.locked .tc-no{display:none}.fan .tc-q{font-size:5em}
+.cnote{margin:8px 0 0}
+.sec-title{display:flex;justify-content:space-between;align-items:baseline;margin:14px 4px -2px}
+.sec-title h2{font-size:24px;letter-spacing:-.01em}
+.sec-title span{color:var(--mute);font-weight:800;font-size:15px}
+.achrow h4{margin:0 4px 8px;font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}
+.bans{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.achrow+.achrow{margin-top:2px}
+.ban{display:flex;flex-direction:column;align-items:center;text-align:center}
+.ban-f{position:relative;width:100%;height:100px;padding:12px 6px 22px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  clip-path:polygon(0 0,100% 0,100% 100%,50% 86%,0 100%);background:light-dark(rgba(255,255,255,.78),rgba(19,29,46,.7));-webkit-backdrop-filter:var(--g-blur);backdrop-filter:var(--g-blur);
+  box-shadow:inset 0 0 0 2px var(--line)}
+.rod{position:absolute;left:-2px;right:-2px;top:0;height:6px;background:light-dark(#c2cfde,#33455f)}
+.ban-f b{font-size:30px;font-weight:900;line-height:1;letter-spacing:-.02em;color:var(--mute);font-variant-numeric:tabular-nums}
+.ban-f b.emo{font-size:26px;filter:grayscale(1);opacity:.45}.ban-f b svg{width:30px;height:30px;display:block}
+.ban-f>span{margin-top:3px;font-size:10.5px;font-weight:900;letter-spacing:.04em;text-transform:uppercase;color:var(--mute);line-height:1.15}
+.bp{display:block;width:70%;height:6px;border-radius:4px;background:var(--line);overflow:hidden;margin-top:8px}
+.bp i{display:block;height:100%;border-radius:4px;background:var(--mute)}
+.ban.streak .bp i{background:var(--red)}.ban.words .bp i{background:var(--blue)}.ban.lessons .bp i{background:var(--navy)}.ban.special .bp i{background:var(--gold)}
+.ban small{margin-top:4px;font-size:12px;font-weight:800;color:var(--mute);display:inline-flex;align-items:center;gap:3px;white-space:nowrap}.ban small svg{width:13px;height:13px;color:var(--ok)}
+/* получено — баннер в цветах команды, под сводами арены */
+.ban.got .ban-f{background:var(--bc);box-shadow:inset 0 2px 0 rgba(255,255,255,.3)}
+.ban.got .ban-f::after{border:0}
+.ban.got .rod{background:light-dark(#8a99ad,#5b6d86)}
+.ban.got b,.ban.got .ban-f>span{color:#fff}
+.ban.got b.emo{filter:none;opacity:1}
+.ban.got small{color:var(--ink)}
+.stripes{position:absolute;left:0;right:0;bottom:19px;height:12px;background:linear-gradient(180deg,rgba(255,255,255,.85) 0 3px,transparent 3px 6px,var(--goal) 6px 9px,transparent 9px)}
+.ban.words{--bc:linear-gradient(180deg,#2f6fe0,#1747a0)}
+.ban.lessons{--bc:linear-gradient(180deg,#1b3f86,#0b2152)}
+.ban.special{--bc:linear-gradient(180deg,#f5b324,#c47a00)}
+.ban.streak{--bc:linear-gradient(180deg,#ff4a5e,#a8162a)}
+.ban.special.got .stripes{background:linear-gradient(180deg,rgba(255,255,255,.85) 0 3px,transparent 3px 6px,#12306b 6px 9px,transparent 9px)}
+.me .stats3{margin:0;gap:8px}
+.me .stats3 div{text-align:left;padding:12px 14px;font-weight:700}
+.me .stats3 b{font-size:30px;line-height:1.1}

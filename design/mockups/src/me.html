@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="app/styles.css"><link rel="stylesheet" href="app/glass.css"><link rel="stylesheet" href="mock.css"><link rel="stylesheet" href="screens.css"><link rel="stylesheet" href="rewards.css"><link rel="stylesheet" href="me.css">
+<script src="data.js"></script><script src="common.js"></script></head>
+<body><div class="app"><div id="root"></div></div>
+<script>
+// [категория, число, подпись, получено (дата) или прогресс [есть, нужно]]
+const ACH = [
+  ["Серия дней", [
+    ["streak", "7", "дней подряд", [4, 7]],
+    ["streak", "30", "дней подряд", [4, 30]],
+    ["streak", "100", "дней подряд", [4, 100]],
+  ]],
+  ["Слова", [
+    ["words", "50", "слов", "23 ноября"],
+    ["words", "100", "слов", [54, 100]],
+    ["words", "500", "слов", [54, 500]],
+  ]],
+  ["Уроки", [
+    ["lessons", "1", "первый урок", "20 ноября"],
+    ["lessons", "10", "уроков", [4, 10]],
+    ["lessons", "50", "уроков", [4, 50]],
+  ]],
+  ["Особые", [
+    ["special", "CARD", "1-я карточка", "20 ноября"],
+    ["special", "✍️", "своя фраза", "20 ноября"],
+    ["special", "🏆", "сезон 1", [4, 10]],
+  ]],
+];
+const banner = ([cat, big, label, st]) => {
+  const got = typeof st === "string";
+  const emo = /\p{Extended_Pictographic}/u.test(big) || big === "CARD";
+  if (big === "CARD") big = ICON.cards;
+  return `<li class="ban ${cat}${got ? " got" : ""}">
+    <div class="ban-f"><i class="rod"></i><b class="${emo ? "emo" : ""}">${big}</b><span>${label}</span>
+      ${got ? `<i class="stripes"></i>` : `<span class="bp"><i style="width:${Math.max(4, (st[0] / st[1]) * 100)}%"></i></span>`}</div>
+    <small>${got ? ICON.check + st : `${st[0]} из ${st[1]}`}</small></li>`;
+};
+const days = []; for (let d = 11; d <= 24; d++) days.push(d);
+const DATA = { 20: [82, 75], 21: [85, 80], 22: [74, 83], 23: [91, 88], 24: [89, 0] };
+const chart = days.map((d) => { const [m, e] = DATA[d] || [0, 0]; return `<div class="hrow"${d === 24 ? " data-today" : ""}><span>${d}</span><div class="hb"><i class="m" style="--p:${m}%"></i></div><div class="hb"><i class="e" style="--p:${e}%"></i></div></div>`; }).join("");
+const hard = [["🛋️", "firmly ensconced", "прочно обосновавшийся", 4], ["🐶", "rambunctious", "буйный, неугомонный", 3], ["😡", "animosity", "враждебность, неприязнь", 2], ["😾", "grumpy", "ворчливый, сердитый", 2]];
+const fan = CARDS.slice(0, 4).map((c, i) => `<span class="fc" style="--r:${[-8, -3, 2, 7][i]}deg">${cardFront(c, 5.2)}</span>`).join("") + `<span class="fc" style="--r:11deg">${cardLocked(CARDS[4], 5.2, "next")}</span>`;
+
+document.getElementById("root").innerHTML = `
+  <div class="pagehead mehead"><span class="ava">Е</span><div><h1>Евгений</h1><span class="mute">учится с 20 ноября · урок 5</span></div><button class="hbtn" aria-label="Настройки">${ICON.gear}</button></div>
+  <div class="wrap me">
+    <section class="card mecoll">
+      <div class="sec-h"><h3>Коллекция</h3><span class="more">4 из 10 ${ICON.right}</span></div>
+      <div class="fan">${fan}</div>
+      <div class="seasonbar"><i style="width:40%"></i></div>
+      <p class="mute sm cnote">Сезон 1 · следующая карточка — после части 2 урока 5</p>
+    </section>
+    <div class="sec-title"><h2>Достижения</h2><span>4 из 12</span></div>
+    ${ACH.map(([t, list]) => `<section class="achrow"><h4>${t}</h4><ol class="bans">${list.map(banner).join("")}</ol></section>`).join("")}
+    <div class="sec-title"><h2>Статистика</h2></div>
+    <div class="stats3">
+      <div class="streak"><b>4</b>дня подряд</div>
+      <div><b>54</b>в работе</div>
+      <div><b>0</b>выучено</div>
+    </div>
+    <section class="card acc">
+      <h3>Верно на повторениях</h3>
+      <p class="acc-n"><b>86%</b><span class="mute sm">за 7 дней · 141/164</span></p>
+      <p class="mute sm" style="margin:0">В цели 80–95% — темп как в настройке. Цель — 85–90%: по этой цифре приложение само решает, сколько давать новых слов.</p>
+    </section>
+    <section class="card chart">
+      <h3>Последние 2 недели</h3>
+      <p class="mute sm" style="margin:4px 0">Жёлтый — часть 1, синий — часть 2, % верно с первой попытки</p>
+      <div class="hchart">${chart}</div>
+    </section>
+    <section class="card hard">
+      <h3>Где ошибаюсь чаще</h3>
+      <p class="mute sm" style="margin:4px 0 8px">«Трудное» — 4+ ошибок: к нему я добавлю новый пример или ассоциацию.</p>
+      ${hard.map(([em, en, ru, n]) => `<div class="wrow"><div class="em">${em}</div><div><b>${en}</b><span class="mute sm">${ru}</span></div><span class="mute">${n >= 4 ? '<span class="rare hard">трудное</span> ' : ""}${n}×</span></div>`).join("")}
+    </section>
+    <section class="card mysent">
+      <h3>Мои предложения</h3>
+      <div class="sline"><b>I devoured the entire novel in one weekend.</b></div>
+      <div class="sline"><s>He is passionate about hockey and he love banter.</s><br><b>He is passionate about hockey, and he loves banter.</b><div class="mute sm">После he глагол с -s: loves.</div></div>
+      <div class="sline"><b>For me, Sunday morning is sacred.</b></div>
+      <div class="sline"><b>There is no animosity between me and my old coach.</b><div class="mute sm">Ждёт проверки</div></div>
+    </section>
+  </div>`;
+chrome({ tab: "me" });
+</script></body></html>

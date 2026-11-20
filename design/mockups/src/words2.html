@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="app/styles.css"><link rel="stylesheet" href="app/glass.css"><link rel="stylesheet" href="mock.css"><link rel="stylesheet" href="words2.css">
+<script src="data.js"></script><script src="common.js"></script></head>
+<body><div class="app"><div id="root"></div></div>
+<script>
+const v = MQ.get("v");
+const grp = (l) => (l === 0 ? 0 : l <= 2 ? 1 : l <= 4 ? 2 : 3);
+const LV = ["новое", "учу", "знакомо", "выучено"];
+const of = (n) => WORDS.filter((w) => w.lesson === n);
+const known = (n) => of(n).filter((w) => w.lvl >= 3).length;
+const HARD = ["firmly ensconced", "rambunctious", "animosity"];
+const due = (w) => w.due.replace("ноя", "ноября").replace("дек", "декабря");
+const ring = (k, t) => {
+  const r = 12, c = 2 * Math.PI * r, p = t ? k / t : 0;
+  return `<svg class="ring" viewBox="0 0 32 32"><circle cx="16" cy="16" r="${r}" class="rt"/><circle cx="16" cy="16" r="${r}" class="rv" stroke-dasharray="${p * c} ${c}"/></svg>`;
+};
+const dot = (w) => `<i class="ldot l${grp(w.lvl)}"></i>`;
+const row = (w, open) => `<div class="wl${open ? " open" : ""}">
+  <div class="wl-t"><b>${w.en}</b><span>${w.ru}</span></div>${dot(w)}
+  ${open ? `<div class="wl-x"><p class="ex">${w.ex}</p><p class="exr">${w.exRu}</p>
+    <div class="wl-f"><button class="spk s">${SPK}</button><span>${LV[grp(w.lvl)][0].toUpperCase() + LV[grp(w.lvl)].slice(1)} · повтор ${due(w)}</span></div></div>` : ""}
+</div>`;
+const head = (t, meta, search = true) => `<div class="pagehead"><h1>${t}</h1>${search ? `<button class="hbtn" aria-label="Поиск">${ICON.search}</button>` : ""}</div>${meta ? `<p class="phsub">${meta}</p>` : ""}`;
+let html = "";
+
+if (v === "A1") {
+  const L = [5, 4, 3, 2, 1].map((n) => {
+    const t = of(n).length, k = known(n), Ls = LESSONS[n - 1];
+    return `<div class="li">${ring(k, t)}<div class="li-t"><b>Урок ${n}${Ls.today ? ' <em class="pill">сегодня</em>' : ""}</b><span>${Ls.today ? "24 ноября" : Ls.date} · знакомо ${k} из ${t}</span></div><span></span><span class="chev">${ICON.right}</span></div>`;
+  }).join("");
+  html = head("Слова", "62 слова · знакомо 11") + `<div class="wrap w2">
+    <div class="sgroup">Уроки</div><section class="card list">${L}</section>
+    <section class="card list">
+      <div class="li"><span class="ic ahead">${ICON.path}</span><div class="li-t"><b>Впереди</b><span>придут в следующих уроках</span></div><span class="li-n">8</span><span class="chev">${ICON.right}</span></div>
+      <div class="li"><span class="ic hard">!</span><div class="li-t"><b>Трудные</b><span>4+ ошибок</span></div><span class="li-n">3</span><span class="chev">${ICON.right}</span></div>
+    </section>
+</div>`;
+}
+if (v === "A2") {
+  html = `<div class="crumb">${ICON.back}Слова</div>` + head("Урок 4", "пн, 23 ноября · 12 слов") + `<div class="wrap w2">
+    <section class="card list words2">${of(4).map((w) => row(w, w.en === "archrival")).join("")}</section></div>`;
+}
+if (v === "B1" || v === "B2") {
+  const sec = (n, open) => `<div class="sh"><b>${n ? "Урок " + n : "Впереди"}</b><span>${n ? (LESSONS[n - 1].today ? "сегодня" : LESSONS[n - 1].date) + " · " : ""}${n ? of(n).length : 8} слов</span></div>
+    <div class="plain">${(n ? of(n) : WORDS.filter((w) => !w.lesson)).map((w) => row(w, w.en === open)).join("")}</div>`;
+  html = head("Слова", "") + `<div class="wrap w2 bl">
+    <div class="seg3"><button aria-pressed="true">Уроки</button><button>Трудные</button><button>А–Я</button></div>
+    ${sec(5, "")}${sec(4, v === "B2" ? "archrival" : "")}${sec(3, "")}</div>`;
+}
+if (v === "C1") {
+  const pills = [["Урок 5", 1], ["Урок 4"], ["Урок 3"], ["Урок 2"], ["Урок 1"], ["Впереди"]].map(([t, on]) => `<button${on ? ' aria-pressed="true"' : ""}>${t}</button>`).join("");
+  html = `<div class="pagehead"><h1>Слова</h1></div><div class="wrap w2 cl">
+    <label class="bigsearch">${ICON.search}<span>Найти слово или перевод</span></label>
+    <div class="pills">${pills}</div>
+    <div class="ch"><b>Урок 5</b><span>сегодня · 12 слов</span></div>
+    <section class="card list words2 tight">${of(5).map((w) => row(w)).join("")}</section></div>`;
+}
+if (v === "C2") {
+  const w = WORDS.find((x) => x.en === "face-off");
+  html = `<div class="crumb">${ICON.back}Урок 5</div><div class="wrap w2 wp">
+    <div class="wp-hero"><h2>${w.en}</h2><p class="ipa">/ˈfeɪs ɒf/</p><p class="ru">${w.ru}</p>
+      <button class="spk big">${SPK}</button></div>
+    <section class="card wp-ex"><span class="k">Пример</span><p class="ex">${w.ex}</p><p class="exr">${w.exRu}</p></section>
+    <section class="card wp-lv"><div><span class="k">Уровень</span><b>${dot(w)} Учу · 1 из 6</b></div><div><span class="k">Повтор</span><b>завтра</b></div></section>
+    <div class="wp-nav"><span>‹ bend — bent</span><span>4 из 12</span><span>puck ›</span></div></div>`;
+}
+document.getElementById("root").innerHTML = html;
+chrome({ tab: "words" });
+if (v === "C2") document.body.classList.add("focus");
+</script></body></html>

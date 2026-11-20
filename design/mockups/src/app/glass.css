@@ -1,0 +1,163 @@
+/* ================= Оформление «Лёд» (жидкое стекло) =================
+   Режим — атрибут data-glass на <html> (lib/glass.ts, выбирается в настройках):
+     ice     — «Лёд»: под страницей разметка катка, карточки — ледяное стекло, разметка просвечивает и плывёт при прокрутке;
+     classic — «Классика»: прежний дизайн без стекла.
+   Форма прежняя: толстая нижняя кромка у карточек, «пухлые» кнопки. Стекло меняет только материал.
+   Чтобы не перебивать состояния (выбрано / верно / «Сейчас»), правила для поверхностей — со специфичностью
+   одного класса: префикс обёрнут в :where(). */
+
+:root{
+  --g-hi:light-dark(rgba(255,255,255,.95),rgba(255,255,255,.16));
+  --g-sheen:linear-gradient(180deg,light-dark(rgba(255,255,255,.6),rgba(255,255,255,.07)),rgba(255,255,255,0) 60%);
+  --g-ring:inset 0 1px 0 var(--g-hi),inset 0 0 0 1px light-dark(rgba(255,255,255,.9),rgba(255,255,255,.1));
+  --g-blur:blur(16px) saturate(170%);
+  --g-nav:light-dark(rgba(255,255,255,.62),rgba(19,29,46,.62));
+  --g-bar:light-dark(rgba(238,243,249,.7),rgba(10,17,29,.64));
+  /* разметка катка */
+  --rk-red:light-dark(rgba(217,35,58,.2),rgba(255,105,125,.62));
+  --rk-blue:light-dark(rgba(31,95,209,.17),rgba(130,175,255,.5));
+}
+/* лёд — белый: фон страницы почти белый с холодным отливом (раньше был серо-голубой #eef3f9) */
+/* фон чуть холоднее карточек: каток белый, но карточки на нём читаются */
+:root[data-glass=ice]{--bg:light-dark(#f2f6fc,#0a1220)}
+:root[data-glass=ice]{
+  --card:light-dark(rgba(255,255,255,.86),rgba(19,29,46,.74));
+  --line:light-dark(rgba(20,50,95,.15),rgba(255,255,255,.09));
+  --line2:light-dark(rgba(20,50,95,.2),rgba(255,255,255,.06));
+}
+
+/* ---------- «Лёд»: каток под страницей ---------- */
+:root[data-glass=ice] body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background:
+    radial-gradient(circle at 50% 50%,transparent 0 118px,var(--rk-blue) 118px 121px,transparent 121.5px),
+    radial-gradient(circle at 50% 50%,var(--rk-blue) 0 7px,transparent 7.5px),
+    linear-gradient(180deg,transparent calc(50% - var(--rk-r)),var(--rk-red) calc(50% - var(--rk-r)) calc(50% + var(--rk-r)),transparent calc(50% + var(--rk-r))),
+    linear-gradient(180deg,transparent calc(22% - var(--rk-b)),var(--rk-blue) calc(22% - var(--rk-b)) calc(22% + var(--rk-b)),transparent calc(22% + var(--rk-b))),
+    linear-gradient(180deg,transparent calc(78% - var(--rk-b)),var(--rk-blue) calc(78% - var(--rk-b)) calc(78% + var(--rk-b)),transparent calc(78% + var(--rk-b))),
+    /* ночью у линий мягкое свечение, как подо льдом под прожекторами */
+    linear-gradient(180deg,transparent calc(50% - 22px),var(--rk-red-h) 50%,transparent calc(50% + 22px)),
+    linear-gradient(180deg,transparent calc(22% - 24px),var(--rk-blue-h) 22%,transparent calc(22% + 24px)),
+    linear-gradient(180deg,transparent calc(78% - 24px),var(--rk-blue-h) 78%,transparent calc(78% + 24px)),
+    radial-gradient(circle at 50% 50%,transparent 0 104px,var(--rk-blue-h) 119.5px,transparent 136px),
+    radial-gradient(90% 55% at 50% 0%,light-dark(rgba(255,255,255,.9),rgba(60,100,180,.22)),transparent 70%)}
+/* толщина линий: днём — широкие полосы краски, ночью — тонкие светящиеся */
+:root{--rk-b:7px;--rk-r:4px;--rk-blue-h:light-dark(transparent,rgba(90,140,255,.09));--rk-red-h:light-dark(transparent,rgba(255,80,105,.11))}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]){--rk-b:1.5px;--rk-r:1.5px}}
+:root[data-theme=dark]{--rk-b:1.5px;--rk-r:1.5px}
+
+/* ледяное стекло: материал прежних поверхностей (фон — через --card выше) */
+:where(:root[data-glass=ice]) .card,
+:where(:root[data-glass=ice]) .tile,
+:where(:root[data-glass=ice]) .wt,
+:where(:root[data-glass=ice]) .wchip,
+:where(:root[data-glass=ice]) .inp,
+:where(:root[data-glass=ice]) .vsel,
+:where(:root[data-glass=ice]) .vrow,
+:where(:root[data-glass=ice]) .vplay,
+:where(:root[data-glass=ice]) .spk,
+:where(:root[data-glass=ice]) .stats3 div,
+:where(:root[data-glass=ice]) .seg button{
+  box-shadow:inset 0 1px 0 var(--g-hi);
+  -webkit-backdrop-filter:var(--g-blur);backdrop-filter:var(--g-blur)}
+:where(:root[data-glass=ice]) .card,
+:where(:root[data-glass=ice]) .stats3 div{box-shadow:inset 0 1px 0 var(--g-hi),0 12px 28px -18px light-dark(rgba(20,60,140,.32),rgba(0,0,0,.6))}
+:where(:root[data-glass=ice]) .btn.ghost{-webkit-backdrop-filter:var(--g-blur);backdrop-filter:var(--g-blur)}
+/* выбранное и ответы — тот же цвет, но со стеклом */
+:where(:root[data-glass=ice]) .tile[aria-pressed=true],
+:where(:root[data-glass=ice]) .seg button[aria-pressed=true],
+:where(:root[data-glass=ice]) .vrow[data-on=true]{background:color-mix(in srgb,var(--blueSoft) 82%,transparent)}
+:where(:root[data-glass=ice]) .tile.good{background:color-mix(in srgb,var(--okSoft) 82%,transparent)}
+:where(:root[data-glass=ice]) .tile.badt{background:color-mix(in srgb,var(--redSoft) 82%,transparent)}
+:where(:root[data-glass=ice]) .pic{-webkit-backdrop-filter:var(--g-blur);backdrop-filter:var(--g-blur);box-shadow:inset 0 1px 0 var(--g-hi)}
+:where(:root[data-glass=ice]) .p0{background:light-dark(rgba(214,229,255,.72),rgba(22,40,74,.72))}
+:where(:root[data-glass=ice]) .p1{background:light-dark(rgba(253,226,226,.72),rgba(58,28,34,.72))}
+:where(:root[data-glass=ice]) .p2{background:light-dark(rgba(220,244,231,.72),rgba(20,48,31,.72))}
+:where(:root[data-glass=ice]) .p3{background:light-dark(rgba(255,240,212,.72),rgba(56,43,18,.72))}
+:where(:root[data-glass=ice]) .p4{background:light-dark(rgba(234,226,253,.72),rgba(38,29,69,.72))}
+:where(:root[data-glass=ice]) .p5{background:light-dark(rgba(218,243,247,.72),rgba(17,48,58,.72))}
+/* на телефоне «Мои слова» были без карточки — на катке им нужна ледяная подложка, иначе линии идут по тексту */
+@media(max-width:899px){
+  :where(:root[data-glass=ice]) .mywords{background:var(--card);border:2px solid var(--line);border-bottom-width:4px;border-radius:22px;padding:16px 18px}
+}
+/* занятие и итог — экран сосредоточенности: разметку катка не показываем, текст идёт по чистому фону */
+:root[data-glass=ice] body:has(.stage)::before{display:none}
+
+/* ---------- слой навигации: во всех режимах со стеклом ---------- */
+:where(:root:not([data-glass=classic])) .has-tabbar{padding-bottom:calc(96px + env(safe-area-inset-bottom))}
+:where(:root:not([data-glass=classic])) .tabbar{left:12px;right:12px;bottom:calc(10px + env(safe-area-inset-bottom));padding:6px;gap:4px;border:0;border-radius:30px;
+  background:var(--g-sheen),var(--g-nav);
+  box-shadow:var(--g-ring),0 1px 2px light-dark(rgba(15,27,45,.08),rgba(0,0,0,.3)),0 16px 36px -14px light-dark(rgba(18,48,107,.35),rgba(0,0,0,.75));
+  -webkit-backdrop-filter:blur(18px) saturate(180%);backdrop-filter:blur(18px) saturate(180%)}
+:where(:root:not([data-glass=classic])) .tabbar button{min-height:56px;border-radius:24px;transition:background-color .25s,color .25s}
+:where(:root:not([data-glass=classic])) .tabbar button[aria-current=page]{background:light-dark(rgba(31,95,209,.1),rgba(120,166,255,.14));box-shadow:var(--g-ring)}
+:where(:root:not([data-glass=classic])) .tabbar button[aria-current=page]::before{display:none}
+/* живая линза: края капсулы преломляют то, что под ней (SVG-фильтр, только Chromium — класс lg-lens) */
+:where(:root.lg-lens:not([data-glass=classic])) .tabbar{-webkit-backdrop-filter:none;backdrop-filter:url(#lg-lens) blur(3px) saturate(180%)}
+
+:where(:root:not([data-glass=classic])) .bar,:where(:root:not([data-glass=classic])) .filters{background:var(--g-bar);-webkit-backdrop-filter:var(--g-blur);backdrop-filter:var(--g-blur)}
+:where(:root:not([data-glass=classic])) .filters{border-bottom:0;box-shadow:inset 0 -1px 0 var(--line)}
+:where(:root:not([data-glass=classic])) .foot{border-top:0;background:var(--g-sheen),var(--g-nav);
+  box-shadow:inset 0 1px 0 var(--g-hi),0 -1px 0 var(--line),0 -14px 32px -20px light-dark(rgba(18,48,107,.3),rgba(0,0,0,.7));
+  -webkit-backdrop-filter:var(--g-blur);backdrop-filter:var(--g-blur)}
+:where(:root:not([data-glass=classic])) .foot.good{background:var(--g-sheen),color-mix(in srgb,var(--okSoft) 84%,transparent)}
+:where(:root:not([data-glass=classic])) .foot.badf{background:var(--g-sheen),color-mix(in srgb,var(--redSoft) 84%,transparent)}
+:where(:root:not([data-glass=classic])) .chip{background:linear-gradient(180deg,rgba(255,255,255,.26),rgba(255,255,255,.08));box-shadow:inset 0 1px 0 rgba(255,255,255,.4),inset 0 0 0 1px rgba(255,255,255,.14);
+  -webkit-backdrop-filter:blur(12px) saturate(180%);backdrop-filter:blur(12px) saturate(180%)}
+/* кнопки: прежняя форма и нажатие + глянец сверху */
+.btn{--bd:var(--blueD)}.btn.okb{--bd:var(--okD)}.btn.bad{--bd:var(--redD)}
+:where(:root:not([data-glass=classic])) .btn:not(.ghost):not(:disabled){
+  background-image:linear-gradient(180deg,rgba(255,255,255,.24) 0%,rgba(255,255,255,.06) 50%,rgba(255,255,255,0) 51%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 4px 0 var(--bd)}
+:where(:root:not([data-glass=classic])) .btn:not(.ghost):not(:disabled):active{box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 1px 0 var(--bd)}
+
+@media(min-width:720px){
+  :where(:root:not([data-glass=classic])) .tabbar{left:50%;right:auto;width:min(560px,calc(100% - 24px));transform:translateX(-50%);padding-inline:6px}
+}
+@media(min-width:900px){
+  :where(:root:not([data-glass=classic])) .topnav{position:sticky;top:0;background:rgba(18,48,107,.8);box-shadow:inset 0 -1px 0 rgba(255,255,255,.1);
+    -webkit-backdrop-filter:var(--g-blur);backdrop-filter:var(--g-blur)}
+  :where(:root:not([data-glass=classic])) .is-home .topnav{background:var(--navy)}
+  :where(:root:not([data-glass=classic])) .filters{background:none;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none}
+}
+
+/* ---------- запасной вариант и доступность ---------- */
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+  :root[data-glass]{--card:light-dark(#fff,#131d2e);--g-nav:var(--card);--g-bar:var(--bg)}
+}
+@media(prefers-reduced-transparency:reduce){
+  :root[data-glass]{--card:light-dark(#fff,#131d2e);--g-nav:var(--card);--g-bar:var(--bg);--g-blur:none}
+}
+@media(prefers-reduced-motion:reduce){.tabbar button{transition:none}}
+
+/* ---------- «Матч»: по льду катаются два хоккеиста (lib/skaters.ts) ---------- */
+.rink-players{display:none;position:fixed;inset:0;z-index:-1;pointer-events:none;overflow:hidden}
+:root[data-players] .rink-players{display:block}
+:root[data-players] body:has(.stage) .rink-players{display:none}
+:root{--sk-op:.85}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]){--sk-op:.7}}
+:root[data-theme=dark]{--sk-op:.7}
+/* в «Матче» стекло прозрачнее — чтобы игроков было видно сквозь карточки */
+:root[data-players]{--card:light-dark(rgba(255,255,255,.66),rgba(19,29,46,.6));--g-blur:blur(5px) saturate(150%)}
+/* синяя шапка — тоже стекло, как фон обложки: игроки проезжают и за ней */
+:root[data-players] .hero{background:rgba(18,48,107,.8);-webkit-backdrop-filter:blur(6px) saturate(150%);backdrop-filter:blur(6px) saturate(150%)}
+.skater{position:absolute;left:0;width:clamp(200px,42vw,320px);opacity:var(--sk-op);will-change:transform;animation:sk-glide 30s linear infinite}
+.skater svg{display:block;width:100%;transform-origin:50% 92%;animation:sk-stride 1.2s ease-in-out infinite alternate}
+.skater.a{top:30%}
+.skater.b{top:64%;animation-duration:34s;animation-delay:-17s}
+.skater.b svg{animation-delay:-.6s}
+/* едет вправо, за краем экрана разворачивается и едет обратно */
+@keyframes sk-glide{
+  0%{transform:translateX(-110%) scaleX(1)}
+  47%{transform:translateX(100vw) scaleX(1)}
+  50%{transform:translateX(100vw) scaleX(-1)}
+  97%{transform:translateX(-110%) scaleX(-1)}
+  100%{transform:translateX(-110%) scaleX(1)}}
+/* шаг конькобежца: покачивание и толчок */
+@keyframes sk-stride{from{transform:rotate(-2.5deg)}to{transform:rotate(2deg) translateY(-4px)}}
+/* без анимации — стоят на вбрасывании в центре */
+@media(prefers-reduced-motion:reduce){
+  .skater,.skater svg{animation:none}
+  .skater.a,.skater.b{top:calc(50% - 90px)}
+  .skater.a{transform:translateX(calc(50vw - 100%))}
+  .skater.b{transform:translateX(50vw) scaleX(-1)}
+}

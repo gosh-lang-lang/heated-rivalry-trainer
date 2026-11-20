@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="ru" data-players="on"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="app2/styles.css"><link rel="stylesheet" href="app2/glass.css"><link rel="stylesheet" href="mock.css"><link rel="stylesheet" href="words3.css">
+<script src="data.js"></script><script src="ipa.js"></script><script src="common.js"></script></head>
+<body><div class="rink-players"><div class="skater a"></div><div class="skater b"></div></div><div class="app"><div id="root"></div></div>
+<script>
+const v = MQ.get("v") || "list";
+const desk = v === "desk";
+document.querySelector(".skater.a").innerHTML = SKATER(KIT_RED);
+document.querySelector(".skater.b").innerHTML = SKATER(KIT_BLACK);
+const LV = ["Новые", "Учу", "Знакомо", "Выучено"];
+const grp = (l) => (l === 0 ? 0 : l <= 2 ? 1 : l <= 4 ? 2 : 3);
+const of = (n) => (n ? WORDS.filter((w) => w.lesson === n) : WORDS.filter((w) => !w.lesson));
+const dueTxt = (w) => (!w.due ? "—" : w.due === "25 ноя" ? "завтра" : w.due.replace("ноя", "ноября").replace("дек", "декабря"));
+const dots = (w) => `<div class="dots">${[1, 2, 3, 4, 5, 6].map((i) => `<i class="${i <= w.lvl ? "f" : ""}"></i>`).join("")}</div>`;
+const ipa = (w) => `<span class="ipa">${IPA[w.en] || ""}</span>`;
+const rare = (w) => (w.rare ? '<span class="rare">редкое</span>' : "");
+const LD = (n) => (n ? (LESSONS[n - 1].today ? "вт, 24 ноября · сегодня" : LESSONS[n - 1].wd + ", " + LESSONS[n - 1].date) : "придут в следующих уроках");
+
+/* строка телефона: слово + транскрипция, перевод; справа полоска и дата */
+const prow = (w) => `<a class="wrow3">
+  <div class="w3en"><b>${w.en}</b>${ipa(w)}</div>
+  <span class="w3ru">${w.ru}</span>
+  ${dots(w)}<span class="w3due">${dueTxt(w)}</span></a>`;
+/* строка десктопа: как сейчас, без картинки */
+const drow = (w, open) => `<details class="wrow"${open ? " open" : ""}><summary>
+  <div class="wen"><b>${w.en}</b>${ipa(w)}${rare(w)}</div>
+  <span class="mute sm wru">${w.ru}</span>
+  ${dots(w)}<span class="wdue">${dueTxt(w)}</span>
+  <button class="spk s${open ? " on talking" : ""}" aria-label="Озвучить">${SPK}</button></summary>
+  ${open ? `<div class="det">${w.rare ? "" : ""}<b style="color:var(--ink)">${w.ex}</b> — ${w.exRu}<br>Следующее повторение: ${dueTxt(w)}</div>` : ""}</details>`;
+const section = (n, row, extra = "") => {
+  const ws = of(n);
+  return `<section class="card lsec">
+    <div class="bhead"><span class="bno${n ? "" : " ahead"}" aria-hidden="true">${n || "…"}</span><div><h3>${n ? "Урок " + n : "Впереди"}</h3><p class="mute sm" style="margin:4px 0 6px">${LD(n)} · ${ws.length} ${ws.length === 6 ? "слов" : "слов"}</p></div></div>
+    <div class="whead" aria-hidden="true"><span>Слово</span><span>Перевод</span><span>Уровень</span><span>Повтор</span><span></span></div>
+    ${ws.map((w) => row(w, extra === w.en)).join("")}</section>`;
+};
+const chips = (sel) => `<button aria-pressed="${!sel}">Все<em>62</em></button>` + [5, 4, 3, 2, 1].map((n) => `<button aria-pressed="${sel === n}">Урок ${n}<em>${of(n).length}</em></button>`).join("") + `<button>Впереди<em>8</em></button>`;
+const lessonsList = (sel) => `<button aria-pressed="${!sel}">Все уроки<em>62</em></button>` + [5, 4, 3, 2, 1].map((n) => `<button aria-pressed="${sel === n}">Урок ${n}${LESSONS[n - 1].today ? '<span class="tday">сегодня</span>' : ""}<em>${of(n).length}</em></button>`).join("") + `<button>Впереди<em>8</em></button>`;
+const levelsList = `<button class="fall" aria-pressed="true">Все уровни<em>62</em></button>` + LV.map((n, i) => `<button><span class="sw c${i}"></span>${n}<em>${WORDS.filter((w) => grp(w.lvl) === i).length}</em></button>`).join("");
+let html = "";
+
+if (v === "list") {
+  html = `<div class="pagehead"><h1>Словарь</h1><span class="ph-meta">62 слова · 5 уроков</span></div>
+  <div class="wrap words w3">
+    <aside class="filters"><input class="inp find" type="search" placeholder="Найти слово или перевод"><div class="fl">${chips(+(MQ.get("lesson") || 5))}</div></aside>
+    <div class="wlist">${section(+(MQ.get("lesson") || 5), prow)}</div></div>`;
+}
+if (v === "word") {
+  const w = WORDS.find((x) => x.en === "face-off");
+  html = `<div class="pagehead wph"><button class="x" aria-label="Назад">${ICON.back}</button><h1>Урок 5</h1><span class="ph-meta">4 из 12</span></div>
+  <div class="wrap w3word">
+    <section class="card wcard">
+      <div class="word"><h2>${w.en}</h2><button class="spk on talking" aria-label="Озвучить">${SPK}</button></div>
+      <div class="ipa">${IPA[w.en]}</div>
+      <div class="ru">${w.ru}</div>
+      <div class="exs"><button class="spk s" aria-label="Озвучить пример">${SPK}</button><div><b>${w.ex}</b><i>${w.exRu}</i></div></div>
+    </section>
+    <section class="card wmeta">
+      <div><span class="k">Уровень</span>${dots(w)}<b>Учу · 1 из 6</b></div>
+      <div><span class="k">Повтор</span><b class="big">завтра</b><small>25 ноября</small></div>
+    </section>
+    <div class="wnav"><button class="btn ghost">‹ bend — bent</button><button class="btn ghost">puck ›</button></div>
+  </div>`;
+}
+if (v === "desk") {
+  html = `<nav class="topnav"><div class="in">
+    <span class="brand"><svg viewBox="0 0 32 32"><rect x="1.5" y="5.5" width="29" height="21" rx="10" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M16 5.5v21" stroke="var(--goal)" stroke-width="2.2"/><circle cx="16" cy="16" r="4.2" fill="none" stroke="currentColor" stroke-width="2"/></svg>Тренажёр <small>по книге</small></span>
+    <div class="tabs"><button>Сегодня</button><button>Путь</button><button aria-current="page">Слова</button><button>Я</button></div>
+    <span class="date">Вторник, 24 ноября</span>
+    <button class="theme-tg" role="switch" aria-checked="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="4.5"/></svg><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg><span class="tg-knob"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg></span></button>
+  </div></nav>
+  <div class="pagehead"><h1>Словарь</h1><span class="ph-meta">62 слова · 5 уроков</span></div>
+  <div class="wrap words w3">
+    <aside class="filters"><input class="inp find" type="search" placeholder="Найти слово">
+      <div class="fgroup"><div class="flabel">Уроки</div><div class="fl">${lessonsList(0)}</div></div>
+      <div class="fgroup"><div class="flabel">Уровень</div><div class="fl">${levelsList}</div></div></aside>
+    <div class="wlist">${section(5, drow, "face-off")}${section(4, drow)}</div></div>`;
+}
+document.getElementById("root").innerHTML = html;
+if (desk) document.body.classList.add("is-desk");
+chrome(desk ? { noTab: true } : { tab: "words", sbDark: MQ.get("theme") === "dark" });
+if (desk) { document.querySelector(".sbar").remove(); document.querySelector(".homeind").remove(); }
+if (v === "list" && MQ.get("lesson") === "1") document.querySelector(".fl").scrollLeft = 330;
+</script></body></html>

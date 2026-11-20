@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="app/styles.css"><link rel="stylesheet" href="app/glass.css"><link rel="stylesheet" href="mock.css"><link rel="stylesheet" href="screens.css"><link rel="stylesheet" href="rewards.css">
+<script src="data.js"></script><script src="common.js"></script></head>
+<body><div class="app"><div id="root"></div></div>
+<script>
+const star = (x, y, s, c, o = 1) => `<svg class="spark" style="left:${x}px;top:${y}px;width:${s}px;opacity:${o}" viewBox="0 0 20 20"><path d="M10 0c.9 5.4 4.6 9.1 10 10-5.4.9-9.1 4.6-10 10-.9-5.4-4.6-9.1-10-10C5.4 9.1 9.1 5.4 10 0z" fill="${c}"/></svg>`;
+document.getElementById("root").innerHTML = `
+<main class="stage result reward">
+  <p class="rw-kick">Урок 4 · часть 2 готова</p>
+  <h2>Урок 4 пройден!</h2>
+  <div class="rw-stage">
+    <i class="rays"></i><i class="glow"></i>
+    ${star(38, 60, 22, "#f5b324")}${star(312, 34, 16, "#78a6ff")}${star(326, 250, 24, "#f5b324")}${star(52, 286, 14, "#ff6b7c", .8)}${star(292, 120, 10, "#fff")}${star(70, 168, 10, "#f5b324", .7)}
+    <div class="flip">${cardFront(CARDS[3], 15, "rw-card")}</div>
+  </div>
+  <p class="rw-new"><span>${ICON.cards} Новая карточка · №&thinsp;04 из 10</span></p>
+  <div class="stats3">
+    <div><b>91%</b>верно</div>
+    <div><b>12</b>новых слов</div>
+    <div><b>4</b>дня подряд</div>
+  </div>
+  <p class="rw-cmp"><span class="up">+12% к прошлому разу</span></p>
+</main>
+<div class="foot"><div class="in"><div class="frow"><button class="btn ghost">В коллекцию</button><button class="btn">На главную</button></div></div></div>`;
+chrome({ noTab: true });
+</script></body></html>
