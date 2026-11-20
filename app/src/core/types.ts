@@ -99,7 +99,13 @@ export interface Settings {
   newPerDay: number;
   /** голос озвучки (id из TTS_VOICES) */
   voice: string;
+  /** оформление: классика, лёд со стеклом, лёд с хоккеистами */
+  look: Look;
+  /** день / ночь; system — как в системе устройства */
+  theme: ThemePref;
 }
+export type Look = "classic" | "ice" | "match";
+export type ThemePref = "system" | "light" | "dark";
 /** Когда менялся каждый пункт настроек (ms; 0 — ни разу). Слияние — по пунктам, см. core/state.ts mergeStates. */
 export type SettingsAt = Record<keyof Settings, number>;
 

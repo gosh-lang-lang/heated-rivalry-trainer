@@ -118,3 +118,72 @@ test.describe("навигация", () => {
     await expect(page.getByRole("navigation", { name: "Разделы" })).toHaveCount(0);
   });
 });
+
+test.describe("тема день / ночь", () => {
+  test("по умолчанию — как в системе; тумблер в шапке переключает и запоминает выбор", async ({ page }) => {
+    await page.emulateMedia({ colorScheme: "dark" });
+    await setup(page);
+    await openHome(page);
+    const tg = page.getByRole("switch", { name: "Ночная тема" });
+    await expect(tg).toHaveAttribute("aria-checked", "true");
+    const bg = () => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+    const night = await bg();
+
+    await tg.click();
+    await expect(tg).toHaveAttribute("aria-checked", "false");
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+    expect(await bg()).not.toBe(night);
+
+    // система по-прежнему тёмная, но выбор пользователя важнее
+    await page.reload();
+    await expect(page.getByRole("switch", { name: "Ночная тема" })).toHaveAttribute("aria-checked", "false");
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  });
+});
+
+test.describe("оформление", () => {
+  test("три темы в настройках: выбор применяется сразу и запоминается; в «Матче» катаются хоккеисты", async ({ page }) => {
+    await setup(page);
+    await openHome(page);
+    await openSettings(page);
+    const looks = page.getByRole("radiogroup", { name: "Оформление" });
+    await expect(looks.getByRole("radio")).toHaveCount(3);
+    const html = page.locator("html");
+    await expect(html).toHaveAttribute("data-glass", "ice"); // по умолчанию — «Лёд»
+    await expect(page.locator(".rink-players")).toBeHidden();
+
+    await looks.getByRole("radio", { name: /Классика/ }).click();
+    await expect(html).toHaveAttribute("data-glass", "classic");
+    await expect(looks.getByRole("radio", { name: /Классика/ })).toHaveAttribute("aria-checked", "true");
+
+    await looks.getByRole("radio", { name: /Матч/ }).click();
+    await expect(html).toHaveAttribute("data-glass", "ice");
+    await expect(html).toHaveAttribute("data-players", "on");
+    await expect(page.locator(".rink-players")).toBeVisible();
+
+    await page.reload();
+    await expect(page.locator("html")).toHaveAttribute("data-players", "on");
+  });
+});
+
+test("оформление и день/ночь, выбранные раньше только в этом браузере, переезжают в общие настройки", async ({ page }) => {
+  const log = await setup(page);
+  await page.addInitScript(() => {
+    if (!sessionStorage.getItem("seeded")) {
+      localStorage.setItem("hr2_look", "classic");
+      localStorage.setItem("hr2_theme", "dark");
+      sessionStorage.setItem("seeded", "1");
+    }
+  });
+  await openHome(page);
+  await expect(page.locator("html")).toHaveAttribute("data-glass", "classic");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await expect
+    .poll(() => (log.server.state as { settings?: { look: string; theme: string } } | null)?.settings)
+    .toMatchObject({ look: "classic", theme: "dark" });
+  expect(await page.evaluate(() => [localStorage.getItem("hr2_look"), localStorage.getItem("hr2_theme")])).toEqual([null, null]);
+  // и после перезагрузки — из настроек
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("data-glass", "classic");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+});

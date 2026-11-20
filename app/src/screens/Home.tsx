@@ -6,6 +6,7 @@ import { plural } from "../core/text";
 import type { AppState, Deck } from "../core/types";
 import { Check, Flame, Moon, Rink, Sun } from "../lib/icons";
 import { useVoices } from "../lib/speech";
+import { ThemeToggle } from "../ui";
 
 interface Props {
   deck: Deck;
@@ -96,6 +97,7 @@ export function Home({ deck, state, go, wide = false }: Props) {
             <span className="kick">Heated Rivalry · английский</span>
             {!wide && <span className="hdate">{today}</span>}
             <span className="chip"><Flame />{sk} {plural(sk, "день", "дня", "дней")}</span>
+            {!wide && <ThemeToggle />}
           </div>
           <h1>{new Date().getHours() < 16 ? "Доброе утро" : "Добрый вечер"}, Евгений</h1>
           <p>{now ? "Два занятия по 15 минут: утром учим, вечером применяем." : "На сегодня всё — отличная смена. До завтра!"}</p>

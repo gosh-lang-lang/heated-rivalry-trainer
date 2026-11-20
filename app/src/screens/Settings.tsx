@@ -6,9 +6,11 @@ import { ACCENT_LABEL, VOICE_SAMPLE, voiceMeta, type TtsVoice } from "../core/tt
 import { Back, Check, Chevron, Play } from "../lib/icons";
 import { logout, useMe } from "../lib/auth";
 import { say, useVoices } from "../lib/speech";
+import { LOOKS, useLook } from "../lib/glass";
+import { SKATER_BLACK, SKATER_RED } from "../lib/skaters";
 import { changeSetting } from "../core/state";
 
-/** Настройки: новые слова за утро, голос озвучки, вход. На телефоне — вкладка «Настройки», на десктопе — пункт верхнего меню. */
+/** Настройки: новые слова за утро, голос озвучки, оформление, вход. На телефоне — вкладка «Настройки», на десктопе — пункт верхнего меню. */
 export function Settings({ state, setState, onBack }: { state: AppState; setState: SetState; onBack: () => void }) {
   return (
     <>
@@ -22,6 +24,8 @@ export function Settings({ state, setState, onBack }: { state: AppState; setStat
           <NewPerDay state={state} setState={setState} />
           <div className="sgroup">Озвучка</div>
           <VoicePicker value={state.settings.voice} onPick={(id) => setState(changeSetting(state, "voice", id))} />
+          <div className="sgroup">Оформление</div>
+          <LookPicker />
         </div>
         <div className="set-col">
           <div className="sgroup">Вход</div>
@@ -29,6 +33,36 @@ export function Settings({ state, setState, onBack }: { state: AppState; setStat
         </div>
       </div>
     </>
+  );
+}
+
+/** Оформление: «Классика», «Лёд» или «Матч». У каждого — мини-превью (шапка и две карточки) в текущей теме дня / ночи. */
+function LookPicker() {
+  const [look, setLook] = useLook();
+  return (
+    <section className="card">
+      <h3>Тема</h3>
+      <div className="looks" role="radiogroup" aria-label="Оформление">
+        {LOOKS.map(([id, name, note]) => (
+          <button key={id} className="look" role="radio" aria-checked={look === id} onClick={() => setLook(id)}>
+            <span className={`lk-prev lk-${id}`} aria-hidden="true">
+              {id === "match" && (
+                <>
+                  <i className="lk-sk a" dangerouslySetInnerHTML={{ __html: SKATER_RED }} />
+                  <i className="lk-sk b" dangerouslySetInnerHTML={{ __html: SKATER_BLACK }} />
+                </>
+              )}
+              <i className="lk-hero" />
+              <i className="lk-c1" />
+              <i className="lk-c2" />
+            </span>
+            <span className="lk-name"><b>{name}</b>{look === id && <Check />}</span>
+            <small>{note}</small>
+          </button>
+        ))}
+      </div>
+      <p className="mute sm" style={{ margin: "12px 0 0" }}>День или ночь — тумблером в шапке главной.</p>
+    </section>
   );
 }
 

@@ -1,10 +1,23 @@
 import { DEFAULT_VOICE, isTtsVoice } from "./tts.ts";
-import type { AppState, DayLog, SentenceRecord, SessionResult, Settings, SettingsAt, WordState } from "./types";
+import type { AppState, DayLog, Look, SentenceRecord, SessionResult, Settings, SettingsAt, ThemePref, WordState } from "./types";
 
 export const NEW_PER_DAY_OPTIONS = [6, 12, 18, 24] as const;
 
-export const emptyState = (): AppState => ({ upd: 0, settings: { newPerDay: 12, voice: DEFAULT_VOICE }, settingsAt: { newPerDay: 0, voice: 0 }, srs: {}, days: {}, sent: [] });
-const SETTING_KEYS = ["newPerDay", "voice"] as const satisfies readonly (keyof Settings)[];
+export const LOOK_IDS = ["classic", "ice", "match"] as const satisfies readonly Look[];
+export const THEME_PREFS = ["system", "light", "dark"] as const satisfies readonly ThemePref[];
+export const isLook = (v: unknown): v is Look => LOOK_IDS.includes(v as Look);
+export const isThemePref = (v: unknown): v is ThemePref => THEME_PREFS.includes(v as ThemePref);
+
+export const emptyState = (): AppState => ({
+  upd: 0,
+  settings: { newPerDay: 12, voice: DEFAULT_VOICE, look: "ice", theme: "system" },
+  settingsAt: { newPerDay: 0, voice: 0, look: 0, theme: 0 },
+  srs: {},
+  days: {},
+  sent: [],
+});
+/** Все личные настройки: каждая сливается отдельно (mergeStates). Новая настройка — поле в Settings и здесь. */
+const SETTING_KEYS = ["newPerDay", "voice", "look", "theme"] as const satisfies readonly (keyof Settings)[];
 
 const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && !Array.isArray(v);
 const num = (v: unknown, d = 0) => (typeof v === "number" && Number.isFinite(v) ? v : d);
@@ -45,8 +58,13 @@ export const parseState = (raw: unknown): AppState => {
     : [];
   return {
     upd: num(v.upd),
-    settings: { newPerDay: num(settings.newPerDay, 12) || 12, voice: isTtsVoice(settings.voice) ? settings.voice : DEFAULT_VOICE },
-    settingsAt: { newPerDay: Math.max(0, num(at.newPerDay)), voice: Math.max(0, num(at.voice)) },
+    settings: {
+      newPerDay: num(settings.newPerDay, 12) || 12,
+      voice: isTtsVoice(settings.voice) ? settings.voice : DEFAULT_VOICE,
+      look: isLook(settings.look) ? settings.look : "ice",
+      theme: isThemePref(settings.theme) ? settings.theme : "system",
+    },
+    settingsAt: Object.fromEntries(SETTING_KEYS.map((k) => [k, Math.max(0, num(at[k]))])) as SettingsAt,
     srs,
     days,
     sent,
