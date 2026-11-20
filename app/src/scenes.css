@@ -1,0 +1,165 @@
+/* ================= Темы по мотивам книги: «Два города» и «Выезд» =================
+   Материал — тот же лёд-стекло (data-glass=ice, glass.css), вместо разметки катка — свой фон:
+   body::before — небо, слой .scenes — рисунок (lib/scenes.ts). Атрибуты <html data-scene=cities|away>,
+   у «Двух городов» ещё data-side=red|black. Цвета рисунка — переменными: они же работают в превью настроек. */
+
+.scenes{display:none;position:fixed;inset:0;z-index:-1;pointer-events:none;overflow:hidden}
+:root[data-scene] .scenes{display:block}
+/* занятие — экран сосредоточенности: без фона, как у катка */
+:root[data-scene] body:has(.stage) .scenes,
+:root[data-scene] body:has(.stage)::before{display:none}
+.scenes svg{display:none;position:absolute}
+/* стекло прозрачнее, чем на катке: рисунок должен проглядывать сквозь карточки */
+:root[data-scene]{--card:light-dark(rgba(255,255,255,.76),rgba(19,29,46,.68))}
+
+/* ---------- «Два города» ---------- */
+:root[data-scene=cities],.lk-cities{
+  --cl-b:light-dark(#f6dbe0,#2c1724);--cl-m:light-dark(#efc4cb,#3a1d2c);--cl-f:light-dark(#e6a7b1,#58253a);
+  --cr-b:light-dark(#e1e2e7,#1a1d26);--cr-f:light-dark(#bfc2cc,#2d323d);
+  --wl:light-dark(rgba(255,255,255,.8),#ffcf6b);--wr:light-dark(rgba(255,255,255,.75),#f6c21b);
+  --w-off:light-dark(rgba(255,255,255,.4),rgba(255,255,255,.04));
+  --cross:light-dark(#e6a7b1,#fff4d6);--cross-g:light-dark(transparent,rgba(255,236,170,.9));
+  --cable:light-dark(rgba(23,24,28,.3),rgba(246,194,27,.5));--tower:light-dark(#a3a7b2,#3b3f49);
+  --star:light-dark(transparent,rgba(255,255,255,.75))}
+:root[data-scene=cities]{--bg:light-dark(#f7f6f9,#0b0e19)}
+:root[data-scene=cities] .sc-cities{display:block;left:0;bottom:0;width:100%;height:clamp(170px,32vh,340px)}
+/* телефон: весь горизонт не влезает — берём середину пошире (собор, гора с крестом, мост, башни) */
+@media(max-width:719px){:root[data-scene=cities] .sc-cities{width:135vw;left:-17vw;height:auto}}
+/* небо: слева тёплое (красные), справа золотистое (чёрно-жёлтые), ночью — звёзды */
+:root[data-scene=cities] body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background:
+  radial-gradient(1.5px 1.5px at 8% 14%,var(--star),transparent),radial-gradient(1.5px 1.5px at 23% 31%,var(--star),transparent),
+  radial-gradient(2px 2px at 37% 9%,var(--star),transparent),radial-gradient(1.5px 1.5px at 52% 22%,var(--star),transparent),
+  radial-gradient(1.5px 1.5px at 66% 12%,var(--star),transparent),radial-gradient(2px 2px at 79% 27%,var(--star),transparent),
+  radial-gradient(1.5px 1.5px at 92% 8%,var(--star),transparent),radial-gradient(1.5px 1.5px at 14% 44%,var(--star),transparent),
+  radial-gradient(1.5px 1.5px at 86% 46%,var(--star),transparent),
+  linear-gradient(90deg,light-dark(rgba(211,32,59,.1),rgba(211,32,59,.13)),transparent 42% 58%,light-dark(rgba(246,194,27,.15),rgba(246,194,27,.07))),
+  linear-gradient(180deg,transparent 45%,light-dark(rgba(255,255,255,.7),rgba(50,70,130,.22)))}
+.sc-cities .z-cl-b{fill:var(--cl-b)}.sc-cities .z-cl-m{fill:var(--cl-m)}.sc-cities .z-cl-f{fill:var(--cl-f)}
+.sc-cities .z-cr-b{fill:var(--cr-b)}.sc-cities .z-cr-f{fill:var(--cr-f)}
+.sc-cities .z-wl{fill:var(--wl)}.sc-cities .z-wr{fill:var(--wr)}.sc-cities .z-off{fill:var(--w-off)}
+.sc-cities .z-cross{fill:var(--cross);filter:drop-shadow(0 0 5px var(--cross-g))}
+.sc-cities .z-stair{fill:none;stroke:var(--cl-b);stroke-width:2.5;stroke-linecap:round}
+.sc-cities .z-cable{fill:none;stroke:var(--cable);stroke-width:1.2}
+.sc-cities .z-tower{fill:none;stroke:var(--tower);stroke-width:5;stroke-linejoin:round;stroke-linecap:round}
+
+/* сторона: шапка в форме команды (полосы внизу — как на свитере), акцент — второй цвет формы */
+:root[data-side=red]{--navy:#b8192f;--navy2:#7d0f20;
+  --blue:light-dark(#1f3f94,#8fa9ff);--blueD:light-dark(#142a66,#5a78d6);--blueSoft:light-dark(#e4e9f7,#18244a)}
+:root[data-side=black]{--navy:#17181c;--navy2:#000;
+  --blue:light-dark(#17181c,#f6c21b);--blueD:light-dark(#000,#a87f08);--blueSoft:light-dark(#fbf0cc,#2c2610)}
+:root[data-side=red] .hero{background:linear-gradient(160deg,#cf2440,#a3162b);box-shadow:inset 0 -8px 0 #fff,inset 0 -18px 0 #1f3f94}
+:root[data-side=black] .hero{background:#17181c;box-shadow:inset 0 -6px 0 #f6c21b,inset 0 -12px 0 #17181c,inset 0 -18px 0 #f6c21b}
+:root[data-side=black] .btn:not(.ghost):not(:disabled){color:light-dark(#f6c21b,#17181c)}
+:root[data-side] .topnav{background:color-mix(in srgb,var(--navy) 88%,transparent)}
+:root[data-side] .tabbar button[aria-current=page]{background:color-mix(in srgb,var(--blue) 12%,transparent)}
+
+/* ---------- «Выезд» ---------- */
+:root[data-scene=away],.lk-away{
+  --map-grat:light-dark(rgba(18,48,107,.07),rgba(130,175,255,.1));
+  --map-route:light-dark(rgba(18,48,107,.26),rgba(130,175,255,.45));
+  --map-flight:light-dark(rgba(217,35,58,.65),rgba(255,194,92,.8));
+  --map-city:light-dark(#12306b,#9fc0ff);--map-hub:light-dark(#d9233a,#ffc25c);
+  --map-lbl:light-dark(rgba(18,48,107,.45),rgba(180,205,255,.62));--map-plane:light-dark(#d9233a,#ffc25c)}
+:root[data-scene=away]{--bg:light-dark(#f4f1e8,#0a1120);--card:light-dark(rgba(255,253,247,.8),rgba(19,29,46,.7))}
+:root[data-scene=away] .sc-away{display:block;inset:0;width:100%;height:100%}
+:root[data-scene=away] body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background:radial-gradient(90% 55% at 50% 0%,light-dark(rgba(255,255,255,.75),rgba(60,100,180,.18)),transparent 70%)}
+.sc-away .z-grat{fill:none;stroke:var(--map-grat);stroke-width:1.5}
+.sc-away .z-route{fill:none;stroke:var(--map-route);stroke-width:2;stroke-dasharray:1 8;stroke-linecap:round}
+.sc-away .z-flight{fill:none;stroke:var(--map-flight);stroke-width:2.5;stroke-dasharray:9 8;stroke-linecap:round}
+.sc-away .z-city{fill:light-dark(#f4f1e8,#0a1120);stroke:var(--map-city);stroke-width:3}
+.sc-away .z-hub{stroke:var(--map-hub);stroke-width:4}
+.sc-away .z-lbl{font:800 15px/1 ui-monospace,"SF Mono",Menlo,monospace;letter-spacing:.12em;fill:var(--map-lbl)}
+.sc-away .z-plane{fill:var(--map-plane)}
+
+/* карточки частей урока — билеты: линия отрыва над кнопкой и вырезы по краям */
+:where(:root[data-scene=away]) .sess .acts:not(:empty){position:relative;border-top:2px dashed var(--line2);padding-top:16px;margin-top:2px}
+:where(:root[data-scene=away]) .sess .acts:not(:empty)::before,
+:where(:root[data-scene=away]) .sess .acts:not(:empty)::after{content:"";position:absolute;top:-13px;width:24px;height:24px;border-radius:50%;
+  background:var(--bg);border:2px solid var(--line);box-sizing:border-box}
+:where(:root[data-scene=away]) .sess .acts:not(:empty)::before{left:-32px;clip-path:inset(0 0 0 50%)}
+:where(:root[data-scene=away]) .sess .acts:not(:empty)::after{right:-32px;clip-path:inset(0 50% 0 0)}
+:where(:root[data-scene=away]) .sess .ic{border-radius:12px;outline:2px dashed color-mix(in srgb,currentColor 40%,transparent);outline-offset:-6px}
+
+/* шапка — табло вылетов */
+:root[data-scene=away]{--navy:#14161b;--navy2:#08090c}
+:root[data-scene=away] .hero{background:radial-gradient(120% 90% at 100% 0%,#1f2430,#14161b 60%)}
+.hero-board{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:6px 10px;margin:16px 0 0;padding:10px 12px 12px;position:relative;
+  background:#0b0c10;border-radius:14px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.07),0 10px 24px -14px #000;
+  font-family:ui-monospace,"SF Mono",Menlo,monospace;text-transform:uppercase}
+.hero-board div{display:grid;gap:4px;align-content:start}
+.hero-board .st{grid-column:1/-1;grid-template-columns:auto 1fr;align-items:center;gap:10px}
+.hero-board dt{font-size:11px;letter-spacing:.14em;color:rgba(255,255,255,.45);font-weight:700}
+.hero-board dd{margin:0;font-size:17px;font-weight:800;letter-spacing:.08em;color:#ffd23f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  padding:3px 7px;border-radius:5px;background:linear-gradient(180deg,#22252c 0 49%,#0b0c10 49% 53%,#1a1c22 53%)}
+.hero-board .st dd{justify-self:start;display:inline-flex;align-items:center;gap:8px}
+.hero-board .st dd::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor;box-shadow:0 0 8px currentColor}
+.hero-board dd.go{color:#4ee08f}.hero-board dd.go::before{animation:hb-blink 1.2s steps(2) infinite}
+.hero-board dd.wait{color:#ffd23f}.hero-board dd.late{color:#ff7a85}.hero-board dd.done{color:#dfe6f0}
+@keyframes hb-blink{50%{opacity:.15}}
+@media(min-width:900px){
+  .hero-board{grid-template-columns:auto minmax(0,1fr) auto auto;max-width:640px;gap:6px 18px;margin-top:22px;padding:14px 18px}
+  .hero-board .st{grid-column:auto;grid-template-columns:none}
+  .hero-board dd{font-size:22px}
+}
+@media(prefers-reduced-motion:reduce){.hero-board dd.go::before{animation:none}}
+
+/* ---------- превью в настройках ---------- */
+.lk-scene{inset:0}
+.lk-scene svg{display:block;position:absolute;left:0;bottom:0;width:100%;height:auto}
+.lk-cities{background:linear-gradient(90deg,light-dark(#fbeef0,#1d1019),light-dark(#f6f4ec,#14151b))}
+.lk-cities .lk-hero{background:linear-gradient(90deg,#c41f38 50%,#17181c 50%);box-shadow:inset 0 -3px 0 light-dark(#fff,#0b0e19)}
+.lk-away{background:light-dark(#f4f1e8,#0a1120)}
+.lk-away .lk-scene svg{top:0;height:100%}
+.lk-away .lk-hero{background:#14161b;box-shadow:inset 0 -12px 0 -8px #ffd23f}
+.lk-cities .lk-c1,.lk-cities .lk-c2,.lk-away .lk-c1,.lk-away .lk-c2{background:light-dark(rgba(255,255,255,.7),rgba(19,29,46,.6));
+  border-color:light-dark(rgba(20,50,95,.15),rgba(255,255,255,.1))}
+.lk-cities .lk-c1{border-color:light-dark(#1f3f94,#8fa9ff)}
+.lk-away .lk-c1{border-color:light-dark(#d9233a,#ffc25c);border-style:dashed}
+
+/* «Два города» — одна карточка на две колонки: превью шире, сторона переключается внутри */
+.look-cities{grid-column:span 2;display:grid;gap:10px;align-content:start}
+.look-cities.on{border-color:var(--blue);background:var(--blueSoft)}
+.look-cities.on .lk-name b{color:var(--blue)}
+.look-pick{display:grid;gap:8px;align-content:start;text-align:left;padding:0;border:0;background:none;border-radius:12px}
+.look-cities .lk-scene svg{width:115%;left:-7%}
+.lk-side{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 2px}
+.lk-side button{display:flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:6px 10px;border-radius:12px;
+  border:2px solid var(--line);border-bottom-width:3px;background:var(--card);font-weight:800;font-size:15px;color:var(--ink)}
+.lk-side button[aria-pressed=true]{border-color:var(--blue);color:var(--blue)}
+.lk-side .sw{width:20px;height:20px;border-radius:6px}
+/* превью шапки — в цветах выбранной стороны */
+.lk-cities[data-side=red] .lk-hero{background:#c41f38;box-shadow:inset 0 -3px 0 #fff,inset 0 -6px 0 #1f3f94}
+.lk-cities[data-side=black] .lk-hero{background:#17181c;box-shadow:inset 0 -3px 0 #f6c21b,inset 0 -5px 0 #17181c,inset 0 -7px 0 #f6c21b}
+.sw{flex:none;width:30px;height:30px;border-radius:9px}
+.sw.cities-red{background:linear-gradient(180deg,#d3203b 0 60%,#fff 60% 72%,#1f3f94 72%)}
+.sw.cities-black{background:linear-gradient(180deg,#17181c 0 58%,#f6c21b 58% 72%,#17181c 72% 82%,#f6c21b 82%)}
+/* превью: крупнее и по центру — видно собор, дома, мост и башню; у «Выезда» — Монреаль и Бостон */
+.lk-cities .lk-scene svg{width:170%;left:-35%}
+.lk-cities .lk-c2{display:none}
+.lk-away .lk-scene svg{width:260%;height:auto;left:-106%;top:-62%}
+
+/* «Два города» в шапке главной: оба города силуэтом у нижнего края, окна — прорези */
+.hero-city{position:absolute;left:0;right:0;bottom:16px;pointer-events:none;opacity:.2}
+.hero-city svg{display:block;width:100%;height:auto}
+.hero-city svg *{fill:#fff}
+.hero-city .z-wl,.hero-city .z-wr,.hero-city .z-stair{fill:var(--navy);stroke:var(--navy)}
+.hero-city .z-cable,.hero-city .z-tower{fill:none;stroke:#fff}
+.hero-city .z-cross{filter:none}
+:root[data-side=black] .hero-city{opacity:.16}
+@media(min-width:720px){.hero-city{left:auto;width:min(100%,760px)}}
+/* десктоп: карточки закрывают низ шапки, а города и так видны внизу страницы по бокам */
+@media(min-width:900px){.hero-city{display:none}}
+/* телефон: карточки наезжают на низ шапки — город поднимаем над ними, шапку чуть удлиняем */
+@media(max-width:899px){
+  :root[data-scene=cities] .hero{padding-bottom:104px}
+  .hero-city{bottom:34px}
+}
+/* телефон: карта шире экрана по высоте не нужна — берём квадрат пошире, чтобы подписи городов не обрезались */
+@media(max-width:719px){:root[data-scene=away] .sc-away{inset:auto;width:150vw;height:150vw;left:-25vw;top:calc(50% - 75vw)}}
+/* телефон: в три колонки карточки тем слишком узкие — две колонки, «Два города» во всю ширину внизу,
+   «Выезд» встаёт рядом с «Матчем» (dense) */
+@media(max-width:560px){
+  .looks{grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-flow:dense;gap:10px}
+  .look-cities{grid-column:1/-1;order:1}
+}

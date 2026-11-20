@@ -3,7 +3,7 @@ import type { AppState, DayLog, Look, SentenceRecord, SessionResult, Settings, S
 
 export const NEW_PER_DAY_OPTIONS = [6, 12, 18, 24] as const;
 
-export const LOOK_IDS = ["classic", "ice", "match"] as const satisfies readonly Look[];
+export const LOOK_IDS = ["classic", "ice", "match", "cities-red", "cities-black", "away"] as const satisfies readonly Look[];
 export const THEME_PREFS = ["system", "light", "dark"] as const satisfies readonly ThemePref[];
 export const isLook = (v: unknown): v is Look => LOOK_IDS.includes(v as Look);
 export const isThemePref = (v: unknown): v is ThemePref => THEME_PREFS.includes(v as ThemePref);

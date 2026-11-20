@@ -5,6 +5,7 @@ import { ensureSession } from "./lib/auth";
 import { lastUser, lastUserName, peekSettings, rememberUser } from "./lib/storage";
 import "./styles.css";
 import "./glass.css";
+import "./scenes.css";
 import "./pull.css";
 import "./rewards.css";
 import "./words.css";

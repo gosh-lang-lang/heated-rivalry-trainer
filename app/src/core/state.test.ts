@@ -70,6 +70,8 @@ describe("слияние копий: прогресс — кто новее, н�
     expect(mergeStates(laptop, phone).settings).toMatchObject({ look: "match", theme: "dark" });
     expect(parseState({ srs: {}, settings: { look: "neon", theme: "sepia" } }).settings).toMatchObject({ look: "ice", theme: "system" });
     expect(parseState({ srs: {}, settings: { look: "classic", theme: "light" } }).settings).toMatchObject({ look: "classic", theme: "light" });
+    for (const look of ["cities-red", "cities-black", "away"] as const)
+      expect(parseState({ srs: {}, settings: { look } }).settings.look).toBe(look);
   });
 
   it("изменение пункта: новое значение и метка, даже если часы ушли назад", () => {

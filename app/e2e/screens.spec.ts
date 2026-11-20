@@ -168,12 +168,12 @@ test.describe("тема день / ночь", () => {
 });
 
 test.describe("оформление", () => {
-  test("три темы в настройках: выбор применяется сразу и запоминается; в «Матче» катаются хоккеисты", async ({ page }) => {
+  test("пять тем в настройках: выбор применяется сразу и запоминается; в «Матче» катаются хоккеисты", async ({ page }) => {
     await setup(page);
     await openHome(page);
     await openSettingsSection(page, "Оформление");
     const looks = page.getByRole("radiogroup", { name: "Оформление" });
-    await expect(looks.getByRole("radio")).toHaveCount(3);
+    await expect(looks.getByRole("radio")).toHaveCount(5);
     const html = page.locator("html");
     await expect(html).toHaveAttribute("data-glass", "ice"); // по умолчанию — «Лёд»
     await expect(page.locator(".rink-players")).toBeHidden();
@@ -189,6 +189,43 @@ test.describe("оформление", () => {
 
     await page.reload();
     await expect(page.locator("html")).toHaveAttribute("data-players", "on");
+  });
+
+  test("по мотивам книги: «Два города» — выбор стороны, «Выезд» — табло вылетов на главной", async ({ page }) => {
+    await setup(page);
+    await openHome(page);
+    await openSettingsSection(page, "Оформление");
+    const looks = page.getByRole("radiogroup", { name: "Оформление" });
+    const html = page.locator("html");
+
+    await looks.getByRole("radio", { name: /Два города/ }).click();
+    await expect(html).toHaveAttribute("data-scene", "cities");
+    await expect(html).toHaveAttribute("data-side", "red"); // по умолчанию — Монреаль
+    await expect(html).not.toHaveAttribute("data-players", "on");
+    const side = page.getByRole("group", { name: "За кого болеешь" });
+    await expect(side.getByRole("button", { name: "Монреаль" })).toHaveAttribute("aria-pressed", "true");
+    await side.getByRole("button", { name: "Бостон" }).click();
+    await expect(html).toHaveAttribute("data-side", "black");
+    await expect(side.getByRole("button", { name: "Бостон" })).toHaveAttribute("aria-pressed", "true");
+    await expect(looks.getByRole("radio", { name: /Два города/ })).toHaveAttribute("aria-checked", "true");
+    await page.reload();
+    await expect(html).toHaveAttribute("data-side", "black");
+
+    await openSettingsSection(page, "Оформление");
+    await looks.getByRole("radio", { name: /Выезд/ }).click();
+    await expect(html).toHaveAttribute("data-scene", "away");
+    await expect(html).not.toHaveAttribute("data-side", /.+/);
+    await expect(side.getByRole("button", { pressed: true })).toHaveCount(0);
+    await openHome(page);
+    const board = page.getByRole("definition").filter({ hasText: /^HR \d{3}$/ });
+    await expect(board).toBeVisible();
+    await expect(page.locator(".hero-board")).toContainText("Посадка");
+
+    // сторона нажата из другой темы — сразу «Два города» с этой стороной
+    await openSettingsSection(page, "Оформление");
+    await side.getByRole("button", { name: "Монреаль" }).click();
+    await expect(html).toHaveAttribute("data-scene", "cities");
+    await expect(html).toHaveAttribute("data-side", "red");
   });
 });
 
