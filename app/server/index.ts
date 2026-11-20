@@ -13,12 +13,13 @@
  * TTS_CACHE_DIR (server/cache/tts), TTS_DTYPE (fp32 | q8), TTS_WARM=0 — не прогревать колоду,
  * TTS_DISABLED=1 — без озвучки (тесты входа), AUTH_DEV_BYPASS=1 — без входа (только не в production).
  */
-import { createReadStream, existsSync, readFileSync, statSync } from "node:fs";
-import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import { existsSync, readFileSync, statSync } from "node:fs";
+import { createServer } from "node:http";
 import { dirname, extname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { DEFAULT_VOICE, TTS_VOICES, ttsRequestError, VOICE_SAMPLE } from "../src/core/tts.ts";
-import { createLimiter } from "../src/core/ratelimit.ts";
+import { DEFAULT_VOICE, TTS_VOICES, VOICE_SAMPLE } from "../src/core/tts.ts";
+import { clientIp, json, readBody, sendFile } from "./http.ts";
+import { createTtsRoutes } from "./tts-routes.ts";
 import { openAuthStore } from "./auth-store.ts";
 import { cleanPath, isPublicAsset } from "./paths.ts";
 import { openProgress, parseStateBody, STATE_MAX_BYTES } from "./progress.ts";
@@ -34,45 +35,6 @@ const engine: TtsEngine | null = TTS_ON
   : null;
 const DEV_BYPASS = !PROD && process.env.AUTH_DEV_BYPASS === "1";
 
-/** Новые фразы (не из кэша) — не больше TTS_RATE_LIMIT в час с одного адреса; из кэша — без ограничений. */
-const limiter = createLimiter(Number(process.env.TTS_RATE_LIMIT ?? 120), 60 * 60 * 1000);
-/** Очередь генерации не растёт бесконечно. */
-const MAX_QUEUE = Number(process.env.TTS_MAX_QUEUE ?? 400);
-/** Адрес клиента: за Caddy — первый в X-Forwarded-For (до сервера доходит только Caddy). */
-const clientIp = (req: IncomingMessage) =>
-  String(req.headers["x-forwarded-for"] ?? "").split(",")[0].trim() || req.socket.remoteAddress || "?";
-
-const json = (res: ServerResponse, code: number, body: unknown) => {
-  res.writeHead(code, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
-  res.end(JSON.stringify(body));
-};
-
-const readBody = (req: IncomingMessage, limit = 8 * 1024) =>
-  new Promise<string>((resolve, reject) => {
-    let size = 0;
-    const chunks: Buffer[] = [];
-    req.on("data", (c: Buffer) => {
-      size += c.length;
-      if (size > limit) {
-        reject(new Error("too large"));
-        req.destroy();
-      } else chunks.push(c);
-    });
-    req.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
-    req.on("error", reject);
-  });
-
-const sendFile = (req: IncomingMessage, res: ServerResponse, path: string, type: string, cache: string) => {
-  const st = statSync(path);
-  const etag = `"${st.size.toString(16)}-${st.mtimeMs.toString(16)}"`;
-  if (req.headers["if-none-match"] === etag) {
-    res.writeHead(304, { etag, "cache-control": cache });
-    return res.end();
-  }
-  res.writeHead(200, { "content-type": type, "content-length": st.size, etag, "cache-control": cache, "accept-ranges": "none" });
-  createReadStream(path).pipe(res);
-};
-
 const MIME: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
   ".js": "text/javascript",
@@ -83,6 +45,10 @@ const MIME: Record<string, string> = {
   ".webmanifest": "application/manifest+json",
 };
 const DIST = join(ROOT, "dist");
+const tts = createTtsRoutes(engine, {
+  rateLimit: Number(process.env.TTS_RATE_LIMIT ?? 120),
+  maxQueue: Number(process.env.TTS_MAX_QUEUE ?? 400),
+});
 
 const store = openAuthStore(process.env.AUTH_DB ?? join(ROOT, "server/cache/auth.db"));
 const authCfg = authConfigFromEnv();
@@ -128,40 +94,7 @@ const server = createServer(async (req, res) => {
       return json(res, 200, { state: progress.put(who.id, s).state });
     }
 
-    if (url.pathname.startsWith("/api/tts") && !engine) return json(res, 503, { error: "озвучка отключена" });
-
-    if (url.pathname === "/api/tts/voices") return json(res, 200, { default: DEFAULT_VOICE, voices: TTS_VOICES });
-
-    if (url.pathname === "/api/tts" && req.method === "POST") {
-      let body: { text?: unknown; voice?: unknown };
-      try {
-        body = JSON.parse(await readBody(req));
-      } catch {
-        return json(res, 400, { error: "нужен JSON { text, voice? }" });
-      }
-      const err = ttsRequestError(body.text, body.voice);
-      if (err) return json(res, 400, { error: err });
-      const text = body.text as string,
-        voice = (body.voice as string | undefined) ?? DEFAULT_VOICE;
-      if (!engine!.has(text, voice)) {
-        const ip = clientIp(req),
-          now = Date.now();
-        if (engine!.stats().queued >= MAX_QUEUE) return json(res, 503, { error: "очередь озвучки переполнена" });
-        if (!limiter.take(ip, now)) {
-          res.setHeader("retry-after", Math.ceil(limiter.retryAfter(ip, now) / 1000));
-          return json(res, 429, { error: "слишком много новых фраз, попробуй позже" });
-        }
-      }
-      const key = await engine!.ensure(text, voice, "hi");
-      return json(res, 200, { url: `/api/tts/${key}.mp3` });
-    }
-
-    const m = url.pathname.match(/^\/api\/tts\/([0-9a-f]{20})\.mp3$/);
-    if (m && req.method === "GET") {
-      const path = engine!.file(m[1]);
-      if (!existsSync(path)) return json(res, 404, { error: "нет такого файла" });
-      return sendFile(req, res, path, "audio/mpeg", "public, max-age=31536000, immutable");
-    }
+    if (await tts(req, res, url.pathname)) return;
 
     if (url.pathname.startsWith("/api/")) return json(res, 404, { error: "нет такого метода" });
 

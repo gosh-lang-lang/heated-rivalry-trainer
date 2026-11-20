@@ -8,7 +8,9 @@
   деплоя — в том же коммите обновить PROJECT_BRIEF.md (раздел 6 «Статус», с датой) и, если касается сервера, deploy/README.md.
 - **Тесты — часть задачи.** Новая логика в `app/src/core` или `app/server` — unit-тест рядом (`*.test.ts`);
   новый сценарий в интерфейсе — e2e в `app/e2e`. Перед коммитом: `npm --prefix app run typecheck && npm --prefix app test && npm --prefix app run e2e`.
-  Покрытие unit-тестами: `npx --prefix app vitest run --coverage`.
+  Покрытие unit-тестами: `npx --prefix app vitest run --coverage` (cli.ts, поток Kokoro, auth.ts и index.ts там 0% —
+  их проверяют подпроцессы и e2e `auth.spec.ts`, которые счётчик не видит).
+  Что где проверяется — PROJECT_BRIEF.md, раздел 6, «Тесты».
 - **На прод — только `deploy/deploy.sh`.** Он выкатывает коммит, который уже на GitHub (main чистый и = origin/main),
   после зелёных typecheck/unit/e2e и бэкапа. Руками (`git archive | ssh`, `docker compose up --build` на сервере) не выкатывать.
   Версии локально / GitHub / прод: `deploy/deploy.sh status`.

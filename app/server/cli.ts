@@ -77,6 +77,6 @@ switch (cmd) {
 }
 
 function readmeUsage() {
-  return `Команды: user:add <имя> [Имя], users, enroll <имя> [минут], passkeys [имя], passkey:remove <id>, logout <имя>, user:remove <имя>
+  return `Команды: user:add <имя> [Имя], users, enroll <имя> [минут], passkeys [имя], passkey:remove <id>, logout <имя>, user:remove <имя>, progress
 База: ${process.env.AUTH_DB ?? "server/cache/auth.db"} · адрес: ${cfg.origin}`;
 }

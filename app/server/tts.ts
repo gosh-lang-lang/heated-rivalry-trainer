@@ -31,9 +31,6 @@ interface Job {
 }
 
 export const createEngine = (cacheDir: string, dtype: "fp32" | "q8" = "fp32"): TtsEngine => {
-  mkdirSync(cacheDir, { recursive: true });
-  const file = (key: string) => join(cacheDir, `${key}.mp3`);
-
   /* ---------- поток с моделью ---------- */
   const worker = new Worker(new URL("./tts-worker.ts", import.meta.url), { workerData: { dtype } });
   worker.unref();
@@ -62,8 +59,16 @@ export const createEngine = (cacheDir: string, dtype: "fp32" | "q8" = "fp32"): T
       pending.set(id, { res, rej });
       worker.postMessage({ id, text, voice });
     });
+  return createQueue(cacheDir, generate, ready);
+};
 
-  /* ---------- очередь ---------- */
+export type Generate = (text: string, voice: string) => Promise<Uint8Array>;
+
+/** Очередь генерации и кэш файлов. generate — сама озвучка (в проде — поток с Kokoro, в тестах — подделка). */
+export const createQueue = (cacheDir: string, generate: Generate, ready: Promise<void> = Promise.resolve()): TtsEngine => {
+  mkdirSync(cacheDir, { recursive: true });
+  const file = (key: string) => join(cacheDir, `${key}.mp3`);
+
   const hi: Job[] = [];
   const lo: Job[] = [];
   const jobs = new Map<string, Job>();

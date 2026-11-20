@@ -4,7 +4,8 @@
 # Хранит KEEP последних дней: появилась копия за новый день — самая старая удаляется.
 # Запускается раз в день (backup-install.sh), можно и руками.
 #   deploy/backup.sh
-# Переменные: HR_HOST (root@195.133.197.130), HR_BACKUP_DIR (~/Backups/heated-rivalry), HR_BACKUP_KEEP (3).
+# Переменные: HR_HOST (root@195.133.197.130), HR_BACKUP_DIR (~/Backups/heated-rivalry), HR_BACKUP_KEEP (3),
+# HR_NOTIFY=0 — без уведомления на маке (тесты).
 # Восстановить: см. deploy/README.md, раздел «Бэкапы».
 set -euo pipefail
 HOST="${HR_HOST:-root@195.133.197.130}"
@@ -14,7 +15,7 @@ KEEP="${HR_BACKUP_KEEP:-3}"
 log() { echo "$(date '+%F %T') $*"; }
 fail() {
   log "ОШИБКА: $*" >&2
-  osascript -e "display notification \"$*\" with title \"Бэкап Heated Rivalry не удался\"" >/dev/null 2>&1 || true
+  [ "${HR_NOTIFY:-1}" = 1 ] && osascript -e "display notification \"$*\" with title \"Бэкап Heated Rivalry не удался\"" >/dev/null 2>&1 || true
   exit 1
 }
 

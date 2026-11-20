@@ -9,6 +9,9 @@ import {
   type PublicKeyCredentialCreationOptionsJSON,
   type PublicKeyCredentialRequestOptionsJSON,
 } from "@simplewebauthn/browser";
+import { humanError, nextPath as nextFrom } from "./messages.ts";
+
+const nextPath = () => nextFrom(location.search);
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const show = (id: string, on = true) => ($(id).hidden = !on);
@@ -23,20 +26,6 @@ const post = async <T>(path: string, body: unknown = {}): Promise<T> => {
   const j = (await r.json().catch(() => ({}))) as { error?: string };
   if (!r.ok) throw new Error(j.error ?? `Ошибка ${r.status}`);
   return j as T;
-};
-
-/** Куда вернуться после входа: только свой путь. */
-const nextPath = () => {
-  const n = new URLSearchParams(location.search).get("next");
-  return n && n.startsWith("/") && !n.startsWith("//") && !n.startsWith("/login") ? n : "/";
-};
-
-const humanError = (e: unknown) => {
-  const err = e as { name?: string; message?: string };
-  if (err?.name === "NotAllowedError") return "Отменено или время вышло — попробуй ещё раз.";
-  if (err?.name === "InvalidStateError") return "Этот passkey уже привязан.";
-  if (err?.name === "SecurityError") return "Браузер не разрешил passkey на этом адресе.";
-  return err?.message || "Что-то пошло не так.";
 };
 
 const busy = (btn: HTMLButtonElement, on: boolean, label: string) => {
