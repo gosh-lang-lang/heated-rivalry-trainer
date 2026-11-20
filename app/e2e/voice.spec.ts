@@ -13,8 +13,10 @@ test.describe("голос", () => {
     await expect(sel).toHaveAttribute("aria-expanded", "false");
     await sel.click();
     await expect(sel).toHaveAttribute("aria-expanded", "true");
-    await expect(page.getByRole("radiogroup")).toBeVisible();
-    await expect(page.getByRole("radio")).toHaveCount(10);
+    // на странице есть и выбор оформления — берём именно список голосов
+    const list = page.getByRole("radiogroup", { name: "Голос озвучки" });
+    await expect(list).toBeVisible();
+    await expect(list.getByRole("radio")).toHaveCount(10);
     await expect(page.getByText("Американский акцент")).toBeVisible();
     await expect(page.getByText("Британский акцент")).toBeVisible();
     await expect(page.getByRole("radio", { name: /Heart/ })).toHaveAttribute("aria-checked", "true");

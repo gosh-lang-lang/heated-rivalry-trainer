@@ -1,7 +1,28 @@
 import { useEffect, useState, type MouseEvent, type ReactNode } from "react";
 import type { View } from "./App";
 import { say } from "./lib/speech";
-import { Speaker } from "./lib/icons";
+import { Moon, Speaker, Sun } from "./lib/icons";
+import { useTheme } from "./lib/theme";
+
+/** Тумблер «день / ночь» в шапке. */
+export function ThemeToggle() {
+  const [theme, set] = useTheme();
+  const night = theme === "dark";
+  return (
+    <button
+      className="theme-tg"
+      role="switch"
+      aria-checked={night}
+      aria-label="Ночная тема"
+      title={night ? "Ночная тема" : "Дневная тема"}
+      onClick={() => set(night ? "light" : "dark")}
+    >
+      <Sun className="tg-sun" aria-hidden="true" />
+      <Moon className="tg-moon" aria-hidden="true" />
+      <span className="tg-knob" aria-hidden="true">{night ? <Moon /> : <Sun />}</span>
+    </button>
+  );
+}
 
 /** Кнопка «озвучить». Не всплывает — работает внутри <summary> и плиток. */
 export const SpeakBtn = ({ text, size = "" }: { text: string; size?: "" | "s" | "big" }) => (
@@ -94,6 +115,7 @@ export function TopNav({ current, go }: { current: Section; go: (v: View) => voi
           ))}
         </div>
         <span className="date">{today}</span>
+        <ThemeToggle />
       </div>
     </nav>
   );
