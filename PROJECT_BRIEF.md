@@ -175,7 +175,8 @@
 - Продакшен: `npm run build && npm start` — тот же сервер раздаёт `dist/` и `/api`. Нужен хостинг с постоянным диском под кэш и ~1 ГБ памяти (модель fp32 ~330 МБ; `TTS_DTYPE=q8` — ~90 МБ). Serverless (Vercel/Netlify) не подходит.
 - Микрофон: `SpeechRecognition`/`webkitSpeechRecognition`, иначе текстовое поле.
 - **Регрессия — Playwright** (`app/e2e/`, `npm run e2e`, `npm run e2e:ui`): проекты `desktop-chrome` и `iphone` (WebKit). Время зафиксировано (2026-11-20 09:00 МСК), `Math.random` детерминирован, `/api/tts` замокан — Kokoro для тестов не нужен. `e2e/helpers.ts → playSession()` проходит любое занятие по данным `words.json`. Тесты опираются на тексты кнопок, роли, aria-label, id `chk`/`next` и `data-say` у кнопки озвучки — при редизайне их сохранять.
-- Git: репозиторий в корне, ветка `main`.
+- Git: репозиторий в корне, ветка `main`, приватный GitHub `gosh-lang-lang/heated-rivalry-trainer`.
+- **Прод (VPS 195.133.197.130):** Docker-контейнер `heated-rivalry` рядом с проектами spillthetea и motivator, общий Caddy, домен `heated-rivalry-trainer.spill-the-tea.xyz`. **Сайт закрыт — на любой запрос 500, пока нет авторизации.** Как обновлять, открывать и откатывать — `deploy/README.md`.
 - Проверка своих предложений: если задан `VITE_CHECK_URL`, клиент шлёт `{words, text}` на серверную функцию (фаза 3). Без него предложение сохраняется с `pending: true`.
 - Проверено в браузере: утро (38 заданий, 12 новых слов), вечер, «ещё 6», импорт экспорта прототипа.
 
