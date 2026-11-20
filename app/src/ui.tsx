@@ -3,6 +3,8 @@ import type { View } from "./App";
 import { say } from "./lib/speech";
 import { Moon, Speaker, Sun } from "./lib/icons";
 import { useTheme } from "./lib/theme";
+import { usePullToRefresh } from "./lib/pull";
+import { SKATER_BLACK, SKATER_RED } from "./lib/skaters";
 
 /** Тумблер «день / ночь» в шапке. */
 export function ThemeToggle() {
@@ -118,5 +120,30 @@ export function TopNav({ current, go }: { current: Section; go: (v: View) => voi
         <ThemeToggle />
       </div>
     </nav>
+  );
+}
+
+/**
+ * «Потяни, чтобы обновить»: полоска льда над страницей, двое игроков выезжают с краёв навстречу,
+ * на пороге — вбрасывание: клюшки стукаются, искра — и перезагрузка (lib/pull.ts, pull.css).
+ * Монтируется только в разделах (главная, словарь, статистика, настройки) — во время занятия жеста нет.
+ */
+export function PullRefresh() {
+  usePullToRefresh(true);
+  return (
+    <div className="ptr" aria-hidden="true">
+      <i className="ptr-ice" />
+      <i className="ptr-puck" />
+      <div className="ptr-sk l">
+        <div className="ptr-body" dangerouslySetInnerHTML={{ __html: SKATER_RED }} />
+      </div>
+      <div className="ptr-sk r">
+        <div className="ptr-body" dangerouslySetInnerHTML={{ __html: SKATER_BLACK }} />
+      </div>
+      <svg className="ptr-spark" viewBox="-20 -20 40 40">
+        <path d="M0-8V-17M5.7-5.7l6.4-6.4M-5.7-5.7l-6.4-6.4M8-1h9M-8-1h-9M5 5l4.5 4M-5 5l-4.5 4" />
+        <circle r="4.5" />
+      </svg>
+    </div>
   );
 }

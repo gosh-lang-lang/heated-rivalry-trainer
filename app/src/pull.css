@@ -1,0 +1,70 @@
+/* ================= «Потяни, чтобы обновить»: вбрасывание =================
+   Логика — lib/pull.ts, разметка — PullRefresh в ui.tsx. На <html>: data-ptr (pull / back / clash),
+   --ptr-y — на сколько страница сдвинута вниз (px), --ptr-p — путь игроков до центра (0…1).
+   Сцена — полоска льда, которая открывается над страницей: игроки едут с краёв навстречу (рисунок — lib/skaters.ts),
+   на пороге клюшки стукаются над шайбой (искра, отскок), и страница перезагружается. */
+
+/* системный pull-to-refresh Safari (во вкладке) не нужен — работает свой; в установленном PWA его и так нет */
+html{overscroll-behavior-y:contain}
+
+:root{
+  --ptr-ice:light-dark(rgba(255,255,255,.75),rgba(110,150,225,.13));
+  --ptr-circle:light-dark(rgba(217,35,58,.32),rgba(255,105,125,.5));
+  --ptr-rim:light-dark(rgba(15,27,45,.16),rgba(214,228,255,.6));
+  --ptr-w:76px;   /* ширина игрока (рисунок 240×200) */
+  --ptr-gap:5px;  /* на пороге между крюками клюшек — 2 × gap */
+}
+
+/* страница едет вниз за пальцем; панель вкладок стоит на месте */
+:root[data-ptr] .shell > :not(.tabbar, .ptr){transform:translate3d(0,var(--ptr-y,0px),0)}
+
+.ptr{display:none;position:fixed;left:0;right:0;top:0;z-index:5;height:var(--ptr-y,0px);overflow:hidden;pointer-events:none;
+  background:linear-gradient(180deg,transparent,var(--ptr-ice) 70%,transparent)}
+:root[data-ptr] .ptr{display:block}
+.ptr i{position:absolute;left:50%;display:block}
+/* круг вбрасывания на льду (в перспективе) и шайба между крюками */
+.ptr-ice{bottom:2px;width:min(210px,64vw);height:22px;margin-left:calc(min(210px,64vw) / -2);border:2px solid var(--ptr-circle);border-radius:50%;opacity:var(--ptr-p,0)}
+.ptr-puck{bottom:10px;width:13px;height:6px;margin-left:-6.5px;border-radius:50%;background:#16171b;box-shadow:0 1px 0 #3a3c44,0 0 0 1px var(--ptr-rim);opacity:var(--ptr-p,0)}
+
+/* игроки: от центра на полэкрана наружу при p = 0, вплотную к центру при p = 1 */
+.ptr-sk{position:absolute;bottom:10px;left:50%;width:var(--ptr-w)}
+.ptr-sk.l{transform:translateX(calc(-100% - var(--ptr-gap) - (1 - var(--ptr-p,0)) * 50vw))}
+.ptr-sk.r{transform:translateX(calc(var(--ptr-gap) + (1 - var(--ptr-p,0)) * 50vw)) scaleX(-1)}
+.ptr-body{transform-origin:50% 95%}
+.ptr-body svg{display:block;width:100%;height:auto;transform-origin:50% 95%;filter:drop-shadow(0 0 1.2px var(--ptr-rim))}
+/* пока тянем — катятся: покачивание и толчок */
+:root[data-ptr=pull] .ptr-body svg{animation:ptr-stride .45s ease-in-out infinite alternate}
+.ptr-sk.r .ptr-body svg{animation-delay:-.22s}
+@keyframes ptr-stride{from{transform:rotate(-3deg)}to{transform:rotate(2.5deg) translateY(-2px)}}
+
+/* искра от удара клюшек — над шайбой, на высоте крюков */
+.ptr-spark{position:absolute;left:50%;bottom:-1px;width:32px;height:32px;margin-left:-16px;opacity:0;overflow:visible}
+.ptr-spark path{stroke:#f6b51b;stroke-width:2.6;stroke-linecap:round;fill:none}
+.ptr-spark circle{fill:#fff;stroke:#f6b51b;stroke-width:1.5}
+
+/* отпустили до порога — всё уезжает обратно; после порога — встают на вбрасывание */
+:root[data-ptr=back] .shell > :not(.tabbar, .ptr),
+:root[data-ptr=back] .ptr,:root[data-ptr=back] .ptr-sk{transition:transform .32s cubic-bezier(.3,.7,.4,1),height .32s cubic-bezier(.3,.7,.4,1)}
+:root[data-ptr=clash] .shell > :not(.tabbar, .ptr),
+:root[data-ptr=clash] .ptr,:root[data-ptr=clash] .ptr-sk{transition:transform .2s ease-out,height .2s ease-out}
+/* удар: оба подаются вперёд и стукаются крюками, отскок и лёгкий подскок (у правого то же — он отражён) */
+:root[data-ptr=clash] .ptr-body{animation:ptr-clash .46s cubic-bezier(.3,.6,.3,1) .12s both}
+:root[data-ptr=clash] .ptr-spark{animation:ptr-spark .36s ease-out .27s both}
+@keyframes ptr-clash{
+  0%{transform:none}
+  38%{transform:translateX(7px) rotate(5deg)}
+  62%{transform:translateX(0) translateY(-4px) rotate(-2deg)}
+  100%{transform:translateX(2px) rotate(0)}}
+@keyframes ptr-spark{
+  0%{opacity:0;transform:scale(.2)}
+  30%{opacity:1;transform:scale(1.15)}
+  100%{opacity:0;transform:scale(1.5) rotate(12deg)}}
+
+/* «уменьшить движение»: никто не катится — игроки просто стоят у центра и проявляются, страница перезагружается */
+@media(prefers-reduced-motion:reduce){
+  .ptr-sk.l{transform:translateX(calc(-100% - var(--ptr-gap)))}
+  .ptr-sk.r{transform:translateX(var(--ptr-gap)) scaleX(-1)}
+  .ptr-sk{opacity:var(--ptr-p,0)}
+  :root[data-ptr] .ptr-body,:root[data-ptr] .ptr-body svg,:root[data-ptr] .ptr-spark{animation:none}
+  :root[data-ptr] .shell > :not(.tabbar, .ptr),:root[data-ptr] .ptr,:root[data-ptr] .ptr-sk{transition:none}
+}

@@ -15,7 +15,7 @@ import { SessionScreen } from "./screens/Session";
 import { Stats } from "./screens/Stats";
 import { Words } from "./screens/Words";
 import { Settings } from "./screens/Settings";
-import { TabBar, TopNav, useWide } from "./ui";
+import { PullRefresh, TabBar, TopNav, useWide } from "./ui";
 
 export type View =
   | { name: "home" }
@@ -115,6 +115,7 @@ export default function App({ user }: { user: string | null }) {
   const section = view.name;
   return withSettings(
     <div className={`shell is-${section}${wide ? "" : " has-tabbar"}`}>
+      <PullRefresh />
       {wide && <TopNav current={section} go={go} />}
       {section === "words" ? (
         <Words deck={DECK} state={state} onBack={() => go({ name: "home" })} />
