@@ -161,7 +161,7 @@ test.describe("потяни, чтобы обновить", () => {
     await setup(page);
     await openHome(page);
     await page.evaluate(() => ((window as unknown as { __alive: number }).__alive = 1));
-    await page.getByRole("button", { name: "Начать утреннее" }).click();
+    await page.getByRole("button", { name: "Начать часть 1" }).click();
     await expect(page.locator(".sect h2")).toHaveText("Новые слова · блок 1");
 
     expect(await pull(page, 220)).toBe(false);

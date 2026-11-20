@@ -341,7 +341,7 @@ test("устройства: «Выйти везде, кроме этого» —
     await expect(page).toHaveURL(/\/login/);
   }
   await laptop.reload();
-  await expect(laptop.getByRole("button", { name: "Начать утреннее" })).toBeVisible(); // а этот остался
+  await expect(laptop.getByRole("button", { name: "Начать часть 1" })).toBeVisible(); // а этот остался
   for (const p of [laptop, phone, tablet]) await p.context().close();
 });
 
