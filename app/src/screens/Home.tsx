@@ -16,6 +16,8 @@ interface Props {
   go: (v: View) => void;
   /** широкий экран: дашборд с боковой колонкой; на телефоне — только «сегодня» */
   wide?: boolean;
+  /** как зовут вошедшего — для приветствия; null — просто «Доброе утро» */
+  name?: string | null;
 }
 
 const WD = ["вс", "пн", "вт", "ср", "чт", "пт", "сб"];
@@ -40,7 +42,7 @@ function useNow(): Date {
   return now;
 }
 
-export function Home({ deck, state, go, wide = false }: Props) {
+export function Home({ deck, state, go, wide = false, name = null }: Props) {
   const clock = useNow();
   const ls = lessonStatus(state, deck, clock);
   const t = ls.today;
@@ -161,7 +163,7 @@ export function Home({ deck, state, go, wide = false }: Props) {
             <span className="chip"><Flame />{sk} {plural(sk, "день", "дня", "дней")}</span>
             {!wide && <ThemeToggle />}
           </div>
-          <h1>{clock.getHours() < 16 ? "Доброе утро" : "Добрый вечер"}, Евгений</h1>
+          <h1>{clock.getHours() < 16 ? "Доброе утро" : "Добрый вечер"}{name ? `, ${name}` : ""}</h1>
           <p>{ls.focus ? "Урок из двух частей по ~15 минут: сначала учим, потом применяем." : "На сегодня всё — отличная смена. До завтра!"}</p>
         </div>
       </header>

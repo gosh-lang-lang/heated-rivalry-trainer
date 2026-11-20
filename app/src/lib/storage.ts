@@ -8,6 +8,7 @@ import type { AppState } from "../core/types";
  */
 const LEGACY = "hr2_state";
 const LAST_USER = "hr2_user";
+const LAST_NAME = "hr2_user_name";
 
 export const cacheKey = (user: string | null) => (user ? `${LEGACY}:${user}` : LEGACY);
 
@@ -54,9 +55,18 @@ export const lastUser = (): string | null => {
     return null;
   }
 };
-export const rememberUser = (user: string) => {
+/** Как зовут последнего вошедшего (для приветствия без сети). */
+export const lastUserName = (): string | null => {
+  try {
+    return localStorage.getItem(LAST_NAME);
+  } catch {
+    return null;
+  }
+};
+export const rememberUser = (user: string, displayName?: string) => {
   try {
     localStorage.setItem(LAST_USER, user);
+    if (displayName) localStorage.setItem(LAST_NAME, displayName);
   } catch {
     /* не страшно */
   }

@@ -11,6 +11,17 @@ test.describe("главная", () => {
     await expect(page.getByText("всего слов: 62")).toBeVisible();
   });
 
+  test("приветствие — по имени вошедшего, не прописанное в коде", async ({ page }) => {
+    await setup(page);
+    await page.route("**/api/auth/me", (route) => route.fulfill({ json: { user: { name: "svetlana", displayName: "Светлана" }, passkeys: 1 } }));
+    await page.goto("/");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Доброе утро, Светлана");
+    // без сети имя берётся у последнего вошедшего на этом устройстве
+    await page.route("**/api/auth/me", (route) => route.abort("internetdisconnected"));
+    await page.reload();
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Доброе утро, Светлана");
+  });
+
   test("настройка «новых слов за урок» сохраняется", async ({ page }) => {
     await setup(page);
     await openHome(page);

@@ -30,8 +30,9 @@ export type SetState = (next: AppState) => void;
 
 /**
  * @param user — кто вошёл; null — неизвестно (без сети и без прошлого входа): только кэш, без сервера
+ * @param name — как его зовут (приветствие на главной); null — неизвестно
  */
-export default function App({ user }: { user: string | null }) {
+export default function App({ user, name = null }: { user: string | null; name?: string | null }) {
   const [state, setRaw] = useState<AppState>(() => withLegacySettings(user, loadState(user)));
   const [view, setView] = useState<View>({ name: "home" });
   const wide = useWide();
@@ -126,7 +127,7 @@ export default function App({ user }: { user: string | null }) {
       ) : section === "settings" ? (
         <Settings state={state} setState={setState} onBack={() => go({ name: "home" })} />
       ) : (
-        <Home deck={DECK} state={state} go={go} wide={wide} />
+        <Home deck={DECK} state={state} go={go} wide={wide} name={name} />
       )}
       {!wide && <TabBar current={section} go={go} />}
     </div>
