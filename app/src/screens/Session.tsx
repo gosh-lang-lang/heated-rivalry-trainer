@@ -27,6 +27,8 @@ import { SpeakBtn } from "../ui";
 interface Props {
   deck: Deck;
   kind: SessionKind;
+  /** день урока для части 2 (перенесённой со вчера); по умолчанию — сегодня */
+  day?: string;
   state: AppState;
   setState: SetState;
   onQuit: () => void;
@@ -45,10 +47,10 @@ interface Api {
   addSentence: (rec: SentenceRecord, n: number, graded: boolean) => void;
 }
 
-export function SessionScreen({ deck, kind, state, setState, onQuit, onFinish }: Props) {
+export function SessionScreen({ deck, kind, day, state, setState, onQuit, onFinish }: Props) {
   const [sess, setSess] = useState<Session | null>(() => {
     const t = todayKey();
-    const steps = kind === "evening" ? eveningPlan(deck, state, t) : morningPlan(deck, state, t, { extra: kind === "extra" });
+    const steps = kind === "evening" ? eveningPlan(deck, state, t, Math.random, day ?? t) : morningPlan(deck, state, t, { extra: kind === "extra" });
     return startSession(kind, steps);
   });
 
@@ -75,6 +77,8 @@ export function SessionScreen({ deck, kind, state, setState, onQuit, onFinish }:
 
   const step = sess.steps[sess.i];
   const t = todayKey();
+  /** куда записать итог и «перечитал»: часть 2, перенесённая со вчера, — в день урока */
+  const logDay = kind === "evening" && day ? day : t;
 
   const api: Api = {
     deck,
@@ -88,7 +92,7 @@ export function SessionScreen({ deck, kind, state, setState, onQuit, onFinish }:
     next: () => {
       const n = advance(sess);
       if (isDone(n)) {
-        const fin = finishSession(n, state, t);
+        const fin = finishSession(n, state, logDay);
         setState(fin.state);
         onFinish(fin);
         return;
@@ -99,9 +103,9 @@ export function SessionScreen({ deck, kind, state, setState, onQuit, onFinish }:
     wrongPair: (ids) => setState(bumpWrong(state, ids)),
     reread: () => {
       const n = advance(sess);
-      const st = { ...state, days: { ...state.days, [t]: { ...(state.days[t] ?? {}), reread: true } } };
+      const st = { ...state, days: { ...state.days, [logDay]: { ...(state.days[logDay] ?? {}), reread: true } } };
       if (isDone(n)) {
-        const fin = finishSession(n, st, t);
+        const fin = finishSession(n, st, logDay);
         setState(fin.state);
         onFinish(fin);
         return;

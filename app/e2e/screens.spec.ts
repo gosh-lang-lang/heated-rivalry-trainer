@@ -11,7 +11,7 @@ test.describe("главная", () => {
     await expect(page.getByText("всего слов: 62")).toBeVisible();
   });
 
-  test("настройка «новых слов за утро» сохраняется", async ({ page }) => {
+  test("настройка «новых слов за урок» сохраняется", async ({ page }) => {
     await setup(page);
     await openHome(page);
     await openSettings(page);
@@ -72,7 +72,7 @@ test.describe("вёрстка", () => {
       await setup(page, { state: afterMorning(12) });
       await openHome(page);
       if (name === "занятие") {
-        await page.getByRole("button", { name: "Начать вечернее" }).click();
+        await page.getByRole("button", { name: "Начать часть 2" }).click();
         await page.getByRole("button", { name: "Поехали" }).click();
       }
       if (name === "словарь") await page.getByRole("button", { name: "Словарь" }).first().click();
@@ -83,13 +83,13 @@ test.describe("вёрстка", () => {
     });
   }
 
-  test("нет ошибок в консоли за утреннее занятие", async ({ page }) => {
+  test("нет ошибок в консоли за часть 1", async ({ page }) => {
     const errors: string[] = [];
     page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
     page.on("pageerror", (e) => errors.push(e.message));
     await setup(page, { state: state({ settings: { newPerDay: 6 } }) });
     await openHome(page);
-    await page.getByRole("button", { name: "Начать утреннее" }).click();
+    await page.getByRole("button", { name: "Начать часть 1" }).click();
     const { playSession } = await import("./helpers");
     await playSession(page);
     expect(errors).toEqual([]);
@@ -108,13 +108,13 @@ test.describe("навигация", () => {
       await expect(page.getByRole("navigation", { name: "Разделы" }).getByRole("button", { name: tab, exact: true })).toHaveAttribute("aria-current", "page");
     }
     await goTab(page, "Главная");
-    await expect(page.getByRole("button", { name: "Начать утреннее" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Начать часть 1" })).toBeVisible();
   });
 
   test("во время занятия меню скрыто", async ({ page }) => {
     await setup(page);
     await openHome(page);
-    await page.getByRole("button", { name: "Начать утреннее" }).click();
+    await page.getByRole("button", { name: "Начать часть 1" }).click();
     await expect(page.getByRole("navigation", { name: "Разделы" })).toHaveCount(0);
   });
 });

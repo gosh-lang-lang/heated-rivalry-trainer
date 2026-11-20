@@ -22,7 +22,8 @@ export type View =
   | { name: "words" }
   | { name: "stats" }
   | { name: "settings" }
-  | { name: "session"; kind: SessionKind }
+  /** day — день урока для части 2, перенесённой со вчера */
+  | { name: "session"; kind: SessionKind; day?: string }
   | { name: "result"; fin: Finished };
 
 export type SetState = (next: AppState) => void;
@@ -101,6 +102,7 @@ export default function App({ user }: { user: string | null }) {
         <SessionScreen
           deck={DECK}
           kind={view.kind}
+          day={view.day}
           state={state}
           setState={setState}
           onQuit={() => go({ name: "home" })}

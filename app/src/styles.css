@@ -42,6 +42,7 @@ h1,h2,h3{margin:0;line-height:1.1;font-weight:900}
 .sess .ic{width:64px;height:64px;border-radius:18px;display:grid;place-items:center}
 .sess .ic svg{width:36px;height:36px}
 .ic.sun{background:var(--goldSoft);color:var(--gold)}.ic.moon{background:var(--blueSoft);color:var(--blue)}
+.sess .ic .pn{font-size:32px;font-weight:900;line-height:1;font-variant-numeric:tabular-nums}
 .sess h2{font-size:22px}
 .sess .acts{grid-column:1/-1;display:flex;gap:10px;flex-wrap:wrap}
 .done-tag{display:inline-flex;align-items:center;gap:6px;color:var(--ok);font-weight:800}
@@ -209,6 +210,7 @@ details summary{list-style:none;cursor:pointer}details summary::-webkit-details-
 .wrap.home .main-col{display:grid;gap:22px}
 .sess.now{position:relative;border-color:var(--blue);padding:22px 20px 20px;box-shadow:0 18px 36px -22px rgba(6,20,52,.55);gap:16px 14px}
 .sess.now::before{content:"Сейчас";position:absolute;top:-12px;left:18px;background:var(--blue);color:light-dark(#fff,#08142b);font-size:12px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;padding:3px 10px;border-radius:999px}
+.sess.now.wait::before{content:"Дальше"}
 .sess.now h2{font-size:25px}
 .sess.now .mute{font-size:15px;margin-top:2px}
 .sess.now .acts .btn{min-height:58px;font-size:18px;border-radius:18px}
@@ -325,6 +327,7 @@ details summary{list-style:none;cursor:pointer}details summary::-webkit-details-
   .today .sess:not(.now){padding:12px 14px;border-bottom-width:2px;border-radius:18px;grid-template-columns:40px minmax(0,1fr);gap:10px 12px}
   .today .sess:not(.now) .ic{width:40px;height:40px;border-radius:12px}
   .today .sess:not(.now) .ic svg{width:22px;height:22px}
+  .today .sess:not(.now) .ic .pn{font-size:20px}
   .today .sess:not(.now) h2{font-size:17px}
   .today .sess:not(.now) .mute{font-size:14px;line-height:1.35}
   .today .sess:not(.now) .acts{grid-column:2}

@@ -11,7 +11,7 @@ import { LOOKS, useLook } from "../lib/glass";
 import { SKATER_BLACK, SKATER_RED } from "../lib/skaters";
 import { changeSetting } from "../core/state";
 
-/** Настройки: новые слова за утро, голос озвучки, оформление, вход. На телефоне — вкладка «Настройки», на десктопе — пункт верхнего меню. */
+/** Настройки: новые слова за урок, голос озвучки, оформление, вход. На телефоне — вкладка «Настройки», на десктопе — пункт верхнего меню. */
 export function Settings({ state, setState, onBack }: { state: AppState; setState: SetState; onBack: () => void }) {
   return (
     <>
@@ -160,7 +160,7 @@ function Account() {
 export function NewPerDay({ state, setState }: { state: AppState; setState: SetState }) {
   return (
     <section className="card">
-      <h3>Новых слов за утро</h3>
+      <h3>Новых слов за урок</h3>
       <div className="seg">
         {NEW_PER_DAY_OPTIONS.map((n) => (
           <button key={n} aria-pressed={state.settings.newPerDay === n} onClick={() => setState(changeSetting(state, "newPerDay", n))}>{n}</button>

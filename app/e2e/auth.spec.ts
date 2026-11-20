@@ -86,7 +86,7 @@ test("привязка по одноразовой ссылке → прилож
   // вход тем же passkey
   await page.getByRole("button", { name: "Войти с passkey" }).click();
   await expect(page).toHaveURL(`${ORIGIN}/`);
-  await expect(page.getByRole("button", { name: "Начать утреннее" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Начать часть 1" })).toBeVisible();
   expect(cli("passkeys", "evgeny")).toMatch(/вход 20\d\d-/); // время последнего входа записано
 
   // возврат на страницу, с которой выкинуло
@@ -125,7 +125,7 @@ const newDevice = async (browser: Browser, origin: string, link: string, before?
   await page.goto(link);
   await page.getByRole("button", { name: "Создать passkey" }).click();
   await page.getByRole("link", { name: "Открыть тренажёр" }).click();
-  await expect(page.getByRole("button", { name: "Начать утреннее" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Начать часть 1" })).toBeVisible();
   return page;
 };
 const settings = async (page: Page) => {
@@ -187,8 +187,8 @@ test("личные настройки одинаковы на всех устр�
   const laptop = await newDevice(browser, origin, link());
   const phone = await newDevice(browser, origin, link());
 
-  // ноутбук: идёт утреннее занятие (настройки на нём — старые)
-  await laptop.getByRole("button", { name: "Начать утреннее" }).click();
+  // ноутбук: идёт часть 1 урока (настройки на нём — старые)
+  await laptop.getByRole("button", { name: "Начать часть 1" }).click();
   await laptop.getByRole("button", { name: "Поехали" }).click();
 
   // телефон: выбрали голос и число новых слов
@@ -238,8 +238,8 @@ test("прогресс с двух устройств складывается, 
   const laptop = await newDevice(browser, origin, link());
   const phone = await newDevice(browser, origin, link()); // открыт до занятия на ноутбуке — его кэш устареет
 
-  // ноутбук: начал утреннее, познакомился с тремя словами, вышел
-  await laptop.getByRole("button", { name: "Начать утреннее" }).click();
+  // ноутбук: начал часть 1, познакомился с тремя словами, вышел
+  await laptop.getByRole("button", { name: "Начать часть 1" }).click();
   await laptop.getByRole("button", { name: "Поехали" }).click();
   await laptop.locator("#next").click();
   await laptop.locator("#next").click();

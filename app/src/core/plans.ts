@@ -10,9 +10,9 @@ type Draft = Step extends infer S ? (S extends Step ? Omit<S, "k"> : never) : ne
 const number = (drafts: Draft[]): Step[] => drafts.map((d, k) => ({ ...d, k }) as Step);
 
 export const BLOCK = 6;
-/** Повторений в утренней разминке (короткие задания, ~5–6 минут). */
+/** Повторений в разминке части 1 (короткие задания, ~5–6 минут). */
 export const MAX_REVIEW = 40;
-/** Повторений вечером — то, что не поместилось утром. */
+/** Повторений в части 2 — то, что не поместилось в часть 1. */
 export const MAX_EVENING_REVIEW = 20;
 export const MAX_EVENING_TYPE = 12;
 
@@ -30,7 +30,7 @@ export const ACC_LOW = 0.8;
 export const ACC_HIGH = 0.95;
 export const MAX_NEW = 24;
 
-/** Точность на повторениях за последние `days` дней (утро, вечер, «ещё 6»). */
+/** Точность на повторениях за последние `days` дней (часть 1, часть 2, «ещё 6»). */
 export const reviewAccuracy = (state: AppState, today: string, days = ACC_DAYS) => {
   let right = 0,
     total = 0;
@@ -47,7 +47,7 @@ export const reviewAccuracy = (state: AppState, today: string, days = ACC_DAYS) 
 };
 
 export interface NewToday {
-  /** сколько новых слов дать утром */
+  /** сколько новых слов дать в части 1 */
   n: number;
   /** почему меньше или больше настройки — для главной; пусто, если по настройке */
   why: string;
@@ -108,7 +108,7 @@ export const blockSteps = (block: Word[], known: Word[], deck: Deck, rng: Rng): 
 /**
  * Повторение: чем выше уровень, тем активнее задание.
  * 1–2 — узнать (выбор перевода или на слух), 3 — вписать в пропуск с подсказкой, 4+ — без подсказки.
- * Своё предложение и речь для слов уровня 5+ — вечером (writeGroups).
+ * Своё предложение и речь для слов уровня 5+ — в части 2 (writeGroups).
  */
 const reviewStep = (w: Word, l: number, rng: Rng): Draft =>
   l >= 3 ? { t: "type", w: w.id, rev: true, hint: l < 4 } : { t: rng() < 0.5 ? "pick" : "listen", w: w.id, rev: true };
@@ -150,9 +150,9 @@ export const morningPlan = (deck: Deck, state: AppState, today: string, opts: Mo
   return number(st);
 };
 
-/** Слова для вечера: выученные сегодня, иначе 12 последних по дате знакомства. */
-export const eveningWords = (deck: Deck, srs: AppState["srs"], today: string): Word[] => {
-  const ws = deck.words.filter((w) => srs[w.id]?.intro === today);
+/** Слова для части 2 урока дня `day`: выученные в этот день, иначе 12 последних по дате знакомства. */
+export const eveningWords = (deck: Deck, srs: AppState["srs"], day: string): Word[] => {
+  const ws = deck.words.filter((w) => srs[w.id]?.intro === day);
   if (ws.length) return ws;
   return deck.words
     .filter((w) => srs[w.id]?.intro)
@@ -205,17 +205,24 @@ export const writeGroups = (deck: Deck, state: AppState, ws: Word[], rng: Rng): 
   return groups;
 };
 
-/** Вечер: type без подсказок → write ×3 → speak ×2 → reread. */
-export const eveningPlan = (deck: Deck, state: AppState, today: string, rng: Rng = Math.random): Step[] => {
-  const ws = eveningWords(deck, state.srs, today);
+/**
+ * Часть 2 урока (данные — «evening»): повторения, не поместившиеся в часть 1 → type без подсказок → write ×3 → speak ×2 → reread.
+ * `day` — день урока: слова урока — выученные в этот день (часть 2, перенесённая со вчера, — вчерашние);
+ * повторения — на сегодня (`today`), без слов самого урока: их проверит «впиши».
+ */
+export const eveningPlan = (deck: Deck, state: AppState, today: string, rng: Rng = Math.random, day: string = today): Step[] => {
+  const ws = eveningWords(deck, state.srs, day);
   if (!ws.length) return [];
   const st: Draft[] = [];
-  const due = dueList(deck.words, state.srs, today).slice(0, MAX_EVENING_REVIEW);
+  const inLesson = new Set(ws.map((w) => w.id));
+  const due = dueList(deck.words, state.srs, today)
+    .filter((w) => !inLesson.has(w.id))
+    .slice(0, MAX_EVENING_REVIEW);
   if (due.length) {
-    st.push({ t: "section", pic: "🔁", title: "Повторение", sub: `${due.length} ${plural(due.length, "слово", "слова", "слов")} не поместились утром` });
+    st.push({ t: "section", pic: "🔁", title: "Повторение", sub: `${due.length} ${plural(due.length, "слово", "слова", "слов")} ещё ждут повторения` });
     shuffle(due, rng).forEach((w) => st.push(reviewStep(w, state.srs[w.id].lvl, rng)));
   }
-  st.push({ t: "section", pic: "🧠", title: "Проверка без подсказок", sub: "Утренние слова: вспомни и впиши" });
+  st.push({ t: "section", pic: "🧠", title: "Проверка без подсказок", sub: "Слова из части 1: вспомни и впиши" });
   shuffle(ws, rng)
     .slice(0, MAX_EVENING_TYPE)
     .forEach((w) => st.push({ t: "type", w: w.id, hint: false, eve: true }));

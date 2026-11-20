@@ -1,18 +1,18 @@
 import { expect, test } from "@playwright/test";
 import { afterMorning, DECK, openHome, playSession, readState, setup, state, TODAY, ws } from "./helpers";
 
-test.describe("вечернее занятие", () => {
-  test("до утра вечер недоступен", async ({ page }) => {
+test.describe("часть 2 урока — применяем", () => {
+  test("до части 1 часть 2 недоступна", async ({ page }) => {
     await setup(page);
     await openHome(page);
-    await expect(page.getByText("Сначала пройди утреннее занятие")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Начать вечернее" })).toHaveCount(0);
+    await expect(page.getByText("Сначала пройди часть 1")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Начать часть 2" })).toHaveCount(0);
   });
 
-  test("полный вечер: вписать → своё предложение → вслух → перечитать", async ({ page }) => {
+  test("полная часть 2: вписать → своё предложение → вслух → перечитать", async ({ page }) => {
     await setup(page, { state: afterMorning(12) });
     await openHome(page);
-    await page.getByRole("button", { name: "Начать вечернее" }).click();
+    await page.getByRole("button", { name: "Начать часть 2" }).click();
     const r = await playSession(page, { sentence: "My coach is always grumpy in the morning." });
 
     const kinds = [...new Set(r.steps)];
@@ -26,7 +26,7 @@ test.describe("вечернее занятие", () => {
     ]);
     // 12 «впиши» + 2 «скажи вслух»; предложения без автопроверки в счёт не идут
     await expect(page.getByText("14 из 14 с первой попытки")).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Вечернее занятие готово" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Урок 1 · часть 2 готова" })).toBeVisible();
 
     const st = await readState(page);
     expect(st.days[TODAY].reread).toBe(true);
@@ -37,11 +37,11 @@ test.describe("вечернее занятие", () => {
     await expect(page.getByText("Готово · 14/14")).toBeVisible();
   });
 
-  test("ошибка вечером снижает уровень на 2 и ставит проверку на завтра", async ({ page }) => {
+  test("ошибка в части 2 снижает уровень на 2 и ставит проверку на завтра", async ({ page }) => {
     const srs = { [DECK.words[0].id]: ws({ lvl: 4, due: "2026-12-01" }) };
     await setup(page, { state: state({ srs, days: { [TODAY]: { morning: { score: 1, total: 1, mins: 1, newN: 1, at: "x" } } } }) });
     await openHome(page);
-    await page.getByRole("button", { name: "Начать вечернее" }).click();
+    await page.getByRole("button", { name: "Начать часть 2" }).click();
     await page.getByRole("button", { name: "Поехали" }).click();
     await page.locator("input.inp").fill("неправильно");
     await page.locator("#chk").click();
@@ -52,7 +52,7 @@ test.describe("вечернее занятие", () => {
   test("«Скажи вслух»: проверка по доле услышанных слов", async ({ page }) => {
     await setup(page, { state: afterMorning(2) });
     await openHome(page);
-    await page.getByRole("button", { name: "Начать вечернее" }).click();
+    await page.getByRole("button", { name: "Начать часть 2" }).click();
     // пропускаем до говорения
     for (let i = 0; i < 40 && !(await page.locator(".lbl", { hasText: "Скажи вслух" }).isVisible()); i++) {
       if (await page.getByRole("button", { name: "Пропустить" }).isVisible()) await page.getByRole("button", { name: "Пропустить" }).click();
