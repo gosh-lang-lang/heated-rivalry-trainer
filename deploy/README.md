@@ -16,10 +16,14 @@ git archive HEAD | ssh root@195.133.197.130 'rm -rf /opt/heated-rivalry/src.new 
 ssh root@195.133.197.130 'cd /opt/heated-rivalry/src/deploy && docker compose up -d --build'
 ```
 
+## Подключить домен
+После DNS-записи `A heated-rivalry-trainer → 195.133.197.130`: `/opt/heated-rivalry/src/deploy/caddy-install.sh`
+(сам проверит, что DNS уже указывает на сервер; если нет — ничего не меняет). Откат: `caddy-install.sh --remove`.
+
 ## Открыть сайт (когда будет авторизация)
 В `/opt/spillthetea/caddy/Caddyfile`, в блоке heated-rivalry: удалить `handle { … respond 500 }`, раскомментировать
 `encode` и `reverse_proxy`, затем `/opt/heated-rivalry/src/deploy/caddy-reload.sh`.
 
 ## Откатить
-Удалить помеченный блок из Caddyfile → `caddy-reload.sh`; `systemctl disable --now heated-rivalry-edge.timer`;
+`caddy-install.sh --remove`; `systemctl disable --now heated-rivalry-edge.timer`;
 `docker compose -f /opt/heated-rivalry/src/deploy/compose.yaml down` (том с кэшем озвучки — `docker volume rm heated_rivalry_tts`).
