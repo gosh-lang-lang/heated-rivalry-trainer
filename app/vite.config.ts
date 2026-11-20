@@ -40,7 +40,7 @@ export default defineConfig({
         description: "Английские слова из романа: утром учим, вечером применяем.",
         lang: "ru",
         theme_color: "#12306b",
-        background_color: "#0a111d",
+        background_color: "#12306b", // заставка при запуске — тот же синий, что у иконки
         display: "standalone",
         start_url: ".",
         icons: [
