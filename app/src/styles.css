@@ -171,6 +171,7 @@ details summary{list-style:none;cursor:pointer}details summary::-webkit-details-
 .vtx small{display:block;color:var(--mute);font-size:14px;font-weight:700;line-height:1.35;margin-top:2px}
 .vbadge{display:inline-block;padding:2px 8px;white-space:nowrap;border-radius:999px;background:var(--goldSoft);color:var(--gold);font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.04em}
 .vlist{margin-top:10px;display:grid;gap:8px}
+.vpage .vhint{margin:0 4px}.vpage .vfoot{margin:14px 4px 0}.vpage .vgroup:first-child{margin-top:4px}
 .vgroup{font-size:13px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;color:var(--mute);margin:10px 4px 0}
 .vrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;padding:4px 10px 4px 4px;border:2px solid var(--line);border-bottom-width:4px;border-radius:18px;background:var(--card)}
 .vrow[data-on=true]{border-color:var(--blue);background:var(--blueSoft)}

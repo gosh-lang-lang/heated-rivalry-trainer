@@ -8,12 +8,7 @@ test.describe("голос", () => {
     await setup(page);
     await openHome(page);
     await openSettingsSection(page, "Озвучка");
-    const sel = page.locator(".vsel");
-    await expect(sel).toContainText("Heart");
-    await expect(sel).toHaveAttribute("aria-expanded", "false");
-    await sel.click();
-    await expect(sel).toHaveAttribute("aria-expanded", "true");
-    // список голосов — радиогруппа «Голос озвучки»
+    // у озвучки свой экран — все голоса сразу списком, без раскрытия
     const list = page.getByRole("radiogroup", { name: "Голос озвучки" });
     await expect(list).toBeVisible();
     await expect(list.getByRole("radio")).toHaveCount(10);
@@ -26,27 +21,25 @@ test.describe("голос", () => {
     const log = await setup(page);
     await openHome(page);
     await openSettingsSection(page, "Озвучка");
-    await page.locator(".vsel").click();
     await page.getByRole("button", { name: "Послушать George" }).click();
     await expect.poll(() => log.requests.at(-1)).toEqual({ text: SAMPLE, voice: "bm_george" });
     await expect(page.getByRole("radio", { name: /Heart/ })).toHaveAttribute("aria-checked", "true");
   });
 
-  test("выбор голоса: сохраняется, список сворачивается, озвучка идёт новым голосом", async ({ page }) => {
+  test("выбор голоса: отмечается в списке, сохраняется, озвучка идёт новым голосом", async ({ page }) => {
     const log = await setup(page);
     await openHome(page);
     await openSettingsSection(page, "Озвучка");
-    await page.locator(".vsel").click();
     await page.getByRole("radio", { name: /Emma/ }).click();
-    await expect(page.locator(".vlist")).toHaveCount(0);
-    await expect(page.locator(".vsel")).toContainText("Emma");
+    await expect(page.getByRole("radio", { name: /Heart/ })).toHaveAttribute("aria-checked", "false"); // список остаётся открытым, отметка переехала
+    await expect(page.getByRole("radiogroup", { name: "Голос озвучки" }).locator('[role=radio][aria-checked="true"]')).toContainText("Emma");
     // выбор — в личных настройках: в кэше устройства и на сервере (оттуда — на остальные устройства)
     expect((await readState(page)).settings.voice).toBe("bf_emma");
     await expect.poll(() => (log.server.state as { settings?: { voice: string } } | null)?.settings?.voice).toBe("bf_emma");
 
     await page.reload();
     await openSettingsSection(page, "Озвучка");
-    await expect(page.locator(".vsel")).toContainText("Emma");
+    await expect(page.getByRole("radiogroup", { name: "Голос озвучки" }).locator('[role=radio][aria-checked="true"]')).toContainText("Emma");
 
     // занятие говорит выбранным голосом
     await goTab(page, "Главная");
@@ -59,7 +52,7 @@ test.describe("голос", () => {
     const log = await setup(page, { voice: "bm_george" });
     await openHome(page);
     await openSettingsSection(page, "Озвучка");
-    await expect(page.locator(".vsel")).toContainText("George");
+    await expect(page.getByRole("radiogroup", { name: "Голос озвучки" }).locator('[role=radio][aria-checked="true"]')).toContainText("George");
     await expect.poll(() => (log.server.state as { settings?: { voice: string } } | null)?.settings?.voice).toBe("bm_george");
     expect(await page.evaluate(() => localStorage.getItem("hr2_tts_voice"))).toBeNull();
   });
@@ -69,7 +62,7 @@ test.describe("голос", () => {
     log.server.state = { ...state({ upd: 50 }), settings: { newPerDay: 12, voice: "bf_emma" }, settingsAt: { newPerDay: 0, voice: 40 } };
     await openHome(page);
     await openSettingsSection(page, "Озвучка");
-    await expect(page.locator(".vsel")).toContainText("Emma");
+    await expect(page.getByRole("radiogroup", { name: "Голос озвучки" }).locator('[role=radio][aria-checked="true"]')).toContainText("Emma");
   });
 
   test("новое слово озвучивается сервером, следующий шаг подгружается заранее", async ({ page }) => {
@@ -90,7 +83,6 @@ test.describe("голос", () => {
     await setup(page, { tts: "down" });
     await openHome(page);
     await openSettingsSection(page, "Озвучка");
-    await page.locator(".vsel").click();
     await page.getByRole("button", { name: "Послушать Heart" }).click();
     await expect(page.getByText(/Сервер озвучки недоступен/)).toBeVisible();
   });

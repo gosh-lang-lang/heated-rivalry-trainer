@@ -191,9 +191,8 @@ test("личные настройки одинаковы на всех устр�
 
   // телефон: выбрали голос и число новых слов
   await settings(phone, "Озвучка");
-  await phone.locator(".vsel").click();
   await phone.getByRole("radio", { name: /Emma/ }).click();
-  await expect(phone.locator(".vsel")).toContainText("Emma");
+  await expect(phone.getByRole("radiogroup", { name: "Голос озвучки" }).locator('[role=radio][aria-checked="true"]')).toContainText("Emma");
   await settings(phone, "Занятия");
   await perDay(phone, 24).click();
   await settings(phone, "Оформление");
@@ -212,7 +211,7 @@ test("личные настройки одинаковы на всех устр�
   for (const page of [phone, laptop]) {
     await page.reload();
     await settings(page, "Озвучка");
-    await expect(page.locator(".vsel"), "голос").toContainText("Emma");
+    await expect(page.getByRole("radiogroup", { name: "Голос озвучки" }).locator('[role=radio][aria-checked="true"]'), "голос").toContainText("Emma");
     await settings(page, "Занятия");
     await expect(perDay(page, 24), "новых слов").toHaveAttribute("aria-pressed", "true");
     await settings(page, "Оформление");
@@ -226,7 +225,7 @@ test("личные настройки одинаковы на всех устр�
   // новое устройство сразу получает те же настройки
   const tablet = await newDevice(browser, origin, link());
   await settings(tablet, "Озвучка");
-  await expect(tablet.locator(".vsel")).toContainText("Emma");
+  await expect(tablet.getByRole("radiogroup", { name: "Голос озвучки" }).locator('[role=radio][aria-checked="true"]')).toContainText("Emma");
   await settings(tablet, "Занятия");
   await expect(perDay(tablet, 24)).toHaveAttribute("aria-pressed", "true");
   await expect(tablet.locator("html")).toHaveAttribute("data-players", "on");

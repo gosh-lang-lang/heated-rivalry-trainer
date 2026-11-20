@@ -117,7 +117,7 @@ test.describe("навигация", () => {
   test("разделы открываются из меню, на главной нет настроек", async ({ page }) => {
     await setup(page);
     await openHome(page);
-    await expect(page.locator(".vsel")).toHaveCount(0);
+    await expect(page.getByRole("radiogroup", { name: "Голос озвучки" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Экспорт" })).toHaveCount(0);
     for (const [tab, h1] of [["Словарь", "Словарь"], ["Статистика", "Статистика"], ["Настройки", "Настройки"]] as const) {
       await goTab(page, tab);

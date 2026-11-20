@@ -2,7 +2,7 @@ import { Fragment, useState, type ComponentType, type SVGProps } from "react";
 import type { SetState, SettingsSection, View } from "../App";
 import { NEW_PER_DAY_OPTIONS } from "../core/state";
 import type { AppState, ThemePref } from "../core/types";
-import { ACCENT_LABEL, VOICE_SAMPLE, voiceMeta, type TtsVoice } from "../core/tts";
+import { ACCENT_LABEL, VOICE_SAMPLE } from "../core/tts";
 import { Back, Book, Check, Chevron, Key, Laptop, Palette, Phone, Play, Speaker, Tablet } from "../lib/icons";
 import { logout, revokeDevice, revokeOtherDevices, useDevices, useMe, type Devices, type Me } from "../lib/auth";
 import { seenAgo, type DeviceKind } from "../core/device";
@@ -255,74 +255,53 @@ export function NewPerDay({ state, setState }: { state: AppState; setState: SetS
 }
 
 /** Выбор голоса. value — из личных настроек (общих для всех устройств), onPick — изменить их. */
+/** Выбор голоса — весь список сразу (у озвучки свой экран). value — из личных настроек, onPick — изменить их. */
 export function VoicePicker({ value, onPick }: { value: string; onPick: (id: string) => void }) {
   const { voices, server, fallback, playing } = useVoices();
-  const current = value;
-  const [open, setOpen] = useState(false);
-  const cur = voices.find((v) => v.id === current) ?? voices[0];
-
-  const avatar = (v: TtsVoice, on = false) => (
-    <span className={`vav ${v.accent}${on ? " sel" : ""}`} aria-hidden="true">{on ? <Check /> : v.name[0]}</span>
-  );
-  const text = (v: TtsVoice, inGroup = false) => (
-    <span className="vtx">
-      <span className="vname"><b>{v.name}</b>{v.best && <span className="vbadge">лучший</span>}</span>
-      <small>{[inGroup ? (v.gender === "f" ? "женский" : "мужской") : voiceMeta(v), v.note].filter(Boolean).join(" · ")}</small>
-    </span>
-  );
 
   return (
-    <section className="card">
-      <h3>Голос</h3>
-      <button className="vsel" aria-expanded={open} aria-controls="vlist" onClick={() => setOpen(!open)}>
-        {avatar(cur)}
-        {text(cur)}
-        <Chevron className="chev" />
-      </button>
-
-      {open && (
-        <div className="vlist" id="vlist" role="radiogroup" aria-label="Голос озвучки">
-          {(["us", "gb"] as const).map((acc) => (
-            <Fragment key={acc}>
-              <div className="vgroup">{acc === "us" ? "🇺🇸" : "🇬🇧"} {ACCENT_LABEL[acc]}</div>
-              {voices
-                .filter((v) => v.accent === acc)
-                .map((v) => {
-                  const on = v.id === current;
-                  const p = playing?.voice === v.id ? playing : null;
-                  return (
-                    <div className="vrow" data-on={on} key={v.id}>
-                      <button
-                        className="vpick"
-                        role="radio"
-                        aria-checked={on}
-                        onClick={() => {
-                          onPick(v.id);
-                          say(VOICE_SAMPLE, v.id);
-                          setOpen(false);
-                        }}
-                      >
-                        {avatar(v, on)}
-                        {text(v, true)}
-                      </button>
-                      <button className={`vplay${p ? " on" : ""}`} aria-label={`Послушать ${v.name}`} onClick={() => say(VOICE_SAMPLE, v.id)}>
-                        {p?.loading ? <span className="spin" /> : p ? <span className="eq"><i /><i /><i /></span> : <Play />}
-                      </button>
-                    </div>
-                  );
-                })}
-            </Fragment>
-          ))}
-        </div>
-      )}
-
-      <p className="mute sm" style={{ margin: "12px 0 0" }}>
+    <div className="vpage">
+      <p className="mute sm vhint">
         {server === "down"
           ? `Сервер озвучки недоступен — сейчас звучит системный голос${fallback ? ` (${fallback})` : ""}.`
-          : open
-            ? "▶ — послушать, не меняя голос. Нажми на голос, чтобы выбрать."
-            : "Нейросетевой голос Kokoro, озвучка на сервере."}
+          : "Нажми на голос, чтобы выбрать: он сразу прочитает образец. ▶ — послушать, не меняя."}
       </p>
-    </section>
+      <div className="vlist" role="radiogroup" aria-label="Голос озвучки">
+        {(["us", "gb"] as const).map((acc) => (
+          <Fragment key={acc}>
+            <div className="vgroup">{acc === "us" ? "🇺🇸" : "🇬🇧"} {ACCENT_LABEL[acc]}</div>
+            {voices
+              .filter((v) => v.accent === acc)
+              .map((v) => {
+                const on = v.id === value;
+                const p = playing?.voice === v.id ? playing : null;
+                return (
+                  <div className="vrow" data-on={on} key={v.id}>
+                    <button
+                      className="vpick"
+                      role="radio"
+                      aria-checked={on}
+                      onClick={() => {
+                        onPick(v.id);
+                        say(VOICE_SAMPLE, v.id);
+                      }}
+                    >
+                      <span className={`vav ${v.accent}${on ? " sel" : ""}`} aria-hidden="true">{on ? <Check /> : v.name[0]}</span>
+                      <span className="vtx">
+                        <span className="vname"><b>{v.name}</b>{v.best && <span className="vbadge">лучший</span>}</span>
+                        <small>{[v.gender === "f" ? "женский" : "мужской", v.note].filter(Boolean).join(" · ")}</small>
+                      </span>
+                    </button>
+                    <button className={`vplay${p ? " on" : ""}`} aria-label={`Послушать ${v.name}`} onClick={() => say(VOICE_SAMPLE, v.id)}>
+                      {p?.loading ? <span className="spin" /> : p ? <span className="eq"><i /><i /><i /></span> : <Play />}
+                    </button>
+                  </div>
+                );
+              })}
+          </Fragment>
+        ))}
+      </div>
+      <p className="mute sm vfoot">Нейросетевой голос Kokoro, озвучка на сервере. Выбор — один на все твои устройства.</p>
+    </div>
   );
 }

@@ -36,7 +36,6 @@ test("значения на корне меняются вслед за выбо
   await openSettingsSection(page, "Занятия");
   await page.getByRole("button", { name: "18", exact: true }).click();
   await openSettingsSection(page, "Озвучка");
-  await page.locator(".vsel").click();
   await page.getByRole("radio", { name: /Emma/ }).click();
   await openSettingsSection(page, "Оформление");
   await page.getByRole("radiogroup", { name: "Оформление" }).getByRole("radio", { name: /Классика/ }).click();
@@ -68,7 +67,7 @@ test.describe("телефон: раздел — своя страница", () =
 
     await settingsRow(page, "Озвучка").click();
     await expect(page.getByRole("heading", { level: 1, name: "Озвучка" })).toBeVisible();
-    await expect(page.locator(".vsel")).toBeVisible();
+    await expect(page.getByRole("radiogroup", { name: "Голос озвучки" })).toBeVisible();
     await expect(page.locator(".srow")).toHaveCount(0);
     await expect(tab(page)).toHaveAttribute("aria-current", "page"); // всё ещё внутри «Настроек»
 
@@ -136,7 +135,7 @@ test("десктоп: список слева, раздел справа — п�
 
   await settingsRow(page, "Озвучка").click();
   await expect(detail.getByRole("heading", { level: 2, name: "Озвучка" })).toBeVisible();
-  await expect(detail.locator(".vsel")).toContainText("Heart");
+  await expect(detail.getByRole("radiogroup", { name: "Голос озвучки" }).locator('[role=radio][aria-checked="true"]')).toContainText("Heart");
   await expect(settingsRow(page, "Озвучка")).toHaveAttribute("aria-current", "true");
   await expect(settingsRow(page, "Занятия")).not.toHaveAttribute("aria-current", "true");
   await expect(rootHeading(page)).toBeVisible(); // список остаётся на месте
