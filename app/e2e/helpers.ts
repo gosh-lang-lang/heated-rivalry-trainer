@@ -39,6 +39,16 @@ export const addDays = (k: string, n: number) => {
 
 /* ---------- окружение ---------- */
 
+/** Мок GET /api/auth/sessions: телефон (это устройство), ноутбук — вчера вечером, планшет — 3 дня назад. */
+export const MOCK_DEVICES = {
+  sessions: [
+    { id: "a1a1a1a1a1a1a1a1", name: "iPhone · приложение", kind: "phone", createdAt: +NOW - 9 * 864e5, lastSeenAt: +NOW, current: true },
+    { id: "b2b2b2b2b2b2b2b2", name: "Mac · Chrome", kind: "computer", createdAt: +NOW - 20 * 864e5, lastSeenAt: +new Date("2026-11-19T21:40:00+03:00"), current: false },
+    { id: "c3c3c3c3c3c3c3c3", name: "iPad · Safari", kind: "tablet", createdAt: +NOW - 30 * 864e5, lastSeenAt: +NOW - 3 * 864e5, current: false },
+  ],
+  passkeys: { count: 1, synced: 1 },
+};
+
 export interface TtsLog {
   requests: { text: string; voice: string }[];
   /** мок сервера прогресса: что на нём лежит и сколько раз сохраняли */
@@ -77,6 +87,9 @@ export const setup = async (
 
   // вход выполнен (настоящий вход проверяет e2e/auth.spec.ts на продакшен-сервере)
   await page.route("**/api/auth/me", (route) => route.fulfill({ json: { user: { name: "evgeny", displayName: "Евгений" }, passkeys: 1 } }));
+  // устройства, где выполнен вход (настройки → «Вход»); настоящий список проверяет auth.spec.ts
+  await page.route("**/api/auth/device", (route) => route.fulfill({ json: { ok: true } }));
+  await page.route("**/api/auth/sessions", (route) => route.fulfill({ json: MOCK_DEVICES }));
 
   const log: TtsLog = { requests: [], server: { state: (opts.remote as { upd: number }) ?? null, puts: 0 } };
   // сервер прогресса — как server/progress.ts: сливает присланное с тем, что лежит (core/state.ts mergeStates)

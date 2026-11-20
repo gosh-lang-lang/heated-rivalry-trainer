@@ -78,7 +78,7 @@ test("привязка по одноразовой ссылке → прилож
 
   // выход
   await page.getByRole("navigation", { name: "Разделы" }).getByRole("button", { name: "Настройки", exact: true }).click();
-  await expect(page.locator(".account")).toContainText("привязано: 1");
+  await expect(page.locator(".account")).toContainText("Passkey: 1");
   await page.getByRole("button", { name: "Выйти" }).click();
   await expect(page).toHaveURL(/\/login$/);
   expect((await page.request.get("/api/auth/me")).status()).toBe(401);
@@ -114,8 +114,8 @@ test("устройство без привязанного passkey войти н
 });
 
 /** Привязать passkey по ссылке на новом «устройстве» (свой контекст браузера и свой authenticator) и открыть приложение. */
-const newDevice = async (browser: Browser, origin: string, link: string, before?: (page: Page) => Promise<void>) => {
-  const ctx = await browser.newContext({ baseURL: origin, serviceWorkers: "block" });
+const newDevice = async (browser: Browser, origin: string, link: string, before?: (page: Page) => Promise<void>, userAgent?: string) => {
+  const ctx = await browser.newContext({ baseURL: origin, serviceWorkers: "block", userAgent });
   const page = await ctx.newPage();
   await addAuthenticator(page);
   if (before) {
@@ -272,4 +272,124 @@ test("прогресс с двух устройств складывается, 
     await expect(page.locator(".legend")).toContainText("Учу4");
   }
   for (const p of [laptop, phone]) await p.context().close();
+});
+
+const UA_MAC = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
+const UA_IPHONE = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1 Mobile/15E148 Safari/604.1";
+const UA_WIN = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
+const devices = (page: Page) => page.getByRole("list", { name: "Где выполнен вход" }).getByRole("listitem");
+
+test("устройства: оба видны, на другом можно выйти — его отправит на вход", async ({ browser, auth }) => {
+  const { cli, origin } = auth;
+  cli("user:add", "evgeny", "Евгений");
+  cli("user:add", "anna", "Анна");
+  const link = (name = "evgeny") => cli("enroll", name).trim().split("\n").pop()!;
+  const laptop = await newDevice(browser, origin, link(), undefined, UA_MAC);
+  const phone = await newDevice(browser, origin, link(), undefined, UA_IPHONE);
+  const anna = await newDevice(browser, origin, link("anna"), undefined, UA_WIN);
+
+  // ноутбук видит оба своих устройства (и не видит чужие), своё — первым и помечено
+  await settings(laptop);
+  await expect(devices(laptop)).toHaveCount(2);
+  await expect(devices(laptop).nth(0)).toContainText("Mac · Chrome");
+  await expect(devices(laptop).nth(0)).toContainText("это устройство · сейчас");
+  await expect(devices(laptop).nth(1)).toContainText("iPhone · Safari");
+  await expect(devices(laptop).nth(1)).toContainText("сейчас");
+  await expect(laptop.locator(".account")).not.toContainText("Windows");
+  await expect(laptop.locator(".account")).toContainText(/Passkey: 2 \(/);
+  expect(cli("sessions", "evgeny").trim().split("\n").map((l) => l.split("\t")[2]).sort()).toEqual(["Mac · Chrome", "iPhone · Safari"]);
+
+  // на телефоне тот же список, «это устройство» — телефон
+  await settings(phone);
+  await expect(devices(phone).filter({ hasText: "это устройство" })).toContainText("iPhone · Safari");
+
+  // ноутбук выходит на телефоне
+  await laptop.getByRole("button", { name: /^Выйти: iPhone · Safari/ }).click();
+  await expect(devices(laptop)).toHaveCount(1);
+  expect(cli("sessions", "evgeny")).not.toContain("iPhone");
+  // телефон при следующем действии оказывается на странице входа
+  await phone.getByRole("navigation", { name: "Разделы" }).getByRole("button", { name: "Главная", exact: true }).click();
+  await phone.getByRole("navigation", { name: "Разделы" }).getByRole("button", { name: "Настройки", exact: true }).click();
+  await expect(phone).toHaveURL(/\/login/);
+  expect((await phone.request.get("/api/auth/me")).status()).toBe(401);
+  // ноутбук и Анна остались
+  expect((await laptop.request.get("/api/auth/me")).status()).toBe(200);
+  expect((await anna.request.get("/api/auth/me")).status()).toBe(200);
+  for (const p of [laptop, phone, anna]) await p.context().close();
+});
+
+test("устройства: «Выйти везде, кроме этого» — с подтверждением", async ({ browser, auth }) => {
+  const { cli, origin } = auth;
+  cli("user:add", "evgeny", "Евгений");
+  const link = () => cli("enroll", "evgeny").trim().split("\n").pop()!;
+  const laptop = await newDevice(browser, origin, link(), undefined, UA_MAC);
+  const phone = await newDevice(browser, origin, link(), undefined, UA_IPHONE);
+  const tablet = await newDevice(browser, origin, link(), undefined, UA_WIN);
+
+  await settings(laptop);
+  await expect(devices(laptop)).toHaveCount(3);
+  await laptop.getByRole("button", { name: "Выйти везде, кроме этого" }).click();
+  await expect(laptop.getByText("Выйти на других устройствах (2)?")).toBeVisible();
+  await laptop.getByRole("button", { name: "Да, выйти" }).click();
+  await expect(devices(laptop)).toHaveCount(1);
+  await expect(devices(laptop)).toContainText("это устройство");
+  await expect(laptop.getByRole("button", { name: "Выйти везде, кроме этого" })).toHaveCount(0);
+  expect(cli("users")).toContain("сессий: 1");
+
+  for (const page of [phone, tablet]) {
+    await page.reload();
+    await expect(page).toHaveURL(/\/login/);
+  }
+  await laptop.reload();
+  await expect(laptop.getByRole("button", { name: "Начать утреннее" })).toBeVisible(); // а этот остался
+  for (const p of [laptop, phone, tablet]) await p.context().close();
+});
+
+test("устройства: API — только своя сессия, только со своей страницы, без входа — 401", async ({ browser, request, auth }) => {
+  const { cli, origin } = auth;
+  cli("user:add", "evgeny", "Евгений");
+  cli("user:add", "anna", "Анна");
+  const link = (name: string) => cli("enroll", name).trim().split("\n").pop()!;
+  const me = await newDevice(browser, origin, link("evgeny"), undefined, UA_MAC);
+  const anna = await newDevice(browser, origin, link("anna"), undefined, UA_WIN);
+  type List = { sessions: { id: string; name: string; kind: string; current: boolean; createdAt: number; lastSeenAt: number }[]; passkeys: { count: number; synced: number } };
+  const list = async (p: Page) => (await (await p.request.get("/api/auth/sessions")).json()) as List;
+  const H = { origin };
+
+  // без входа — ничего
+  expect((await request.get("/api/auth/sessions")).status()).toBe(401);
+  expect((await request.post("/api/auth/sessions/revoke-others", { headers: H, data: {} })).status()).toBe(401);
+  expect((await request.post("/api/auth/device", { headers: H, data: { touch: true } })).status()).toBe(401);
+
+  const mine = await list(me);
+  expect(mine.sessions).toHaveLength(1);
+  expect(mine.sessions[0]).toMatchObject({ name: "Mac · Chrome", kind: "computer", current: true });
+  expect(mine.sessions[0].id).toMatch(/^[0-9a-f]{16}$/);
+  expect(mine.passkeys).toEqual({ count: 1, synced: expect.any(Number) });
+  const cookie = (await me.context().cookies()).find((c) => c.name === "hr_session")!.value;
+  expect(cookie).not.toContain(mine.sessions[0].id);
+  const hers = (await list(anna)).sessions[0].id;
+
+  // чужую сессию завершить нельзя, мусорный id — тоже
+  for (const id of [hers, "0".repeat(16), "x", cookie]) {
+    const r = await me.request.post("/api/auth/sessions/revoke", { headers: H, data: { id } });
+    expect(r.status(), id).toBe(404);
+  }
+  expect((await anna.request.get("/api/auth/me")).status()).toBe(200);
+  // запрос с чужого сайта отклоняется
+  for (const path of ["/api/auth/sessions/revoke", "/api/auth/sessions/revoke-others", "/api/auth/device"])
+    expect((await anna.request.post(path, { headers: { origin: "https://evil.example" }, data: { id: hers } })).status(), path).toBe(403);
+  expect((await anna.request.get("/api/auth/me")).status()).toBe(200);
+
+  // подсказка браузера: Mac + сенсорный экран + установлено = iPad, приложение; лишние поля игнорируются
+  expect((await me.request.post("/api/auth/device", { headers: H, data: { touch: true, standalone: true, name: "<b>хакер</b>" } })).status()).toBe(200);
+  expect((await list(me)).sessions[0]).toMatchObject({ name: "iPad · приложение", kind: "tablet" });
+  expect((await me.request.post("/api/auth/device", { headers: H, data: { touch: "yes", standalone: 1 } })).status()).toBe(200);
+  expect((await list(me)).sessions[0]).toMatchObject({ name: "Mac · Chrome", kind: "computer" });
+
+  // завершить свою же текущую сессию по id — это выход
+  const r = await me.request.post("/api/auth/sessions/revoke", { headers: H, data: { id: mine.sessions[0].id } });
+  expect(await r.json()).toEqual({ ok: true, current: true });
+  expect((await me.request.get("/api/auth/me")).status()).toBe(401);
+  for (const p of [me, anna]) await p.context().close();
 });
