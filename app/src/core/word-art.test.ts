@@ -1,0 +1,82 @@
+import { existsSync, statSync } from "node:fs";
+import { join } from "node:path";
+import { describe, expect, it } from "vitest";
+import words from "../../../words.json";
+import gen from "./word-art.gen.json";
+import { ART_CANVAS, SCENES, artUrl, boxStyle, checkArt, toKeyframes, type ArtGen, type ArtSceneSpec } from "./word-art";
+
+const GEN = gen as unknown as ArtGen;
+const IDS = words.words.map((w) => w.id);
+const PUBLIC = join(__dirname, "../../public");
+
+describe("сцены к словам: данные", () => {
+  it("описание, собранные слои и слова согласованы", () => {
+    expect(checkArt(SCENES, GEN, IDS)).toEqual([]);
+  });
+
+  it("у каждой сцены есть файлы всех слоёв, кроп для списка и целая картинка; сцена ≤ 60 КБ", () => {
+    for (const [id, g] of Object.entries(GEN)) {
+      let total = 0;
+      for (const l of g.layers) {
+        const f = join(PUBLIC, "words", id, `${l.name}.webp`);
+        expect(existsSync(f), f).toBe(true);
+        total += statSync(f).size;
+      }
+      expect(total, `${id}: слои ${total} байт`).toBeLessThanOrEqual(60 * 1024);
+      for (const f of ["list", "still"]) expect(existsSync(join(PUBLIC, "words", id, `${f}.webp`)), `${id}/${f}`).toBe(true);
+    }
+  });
+});
+
+describe("checkArt ловит ошибки описания", () => {
+  const g: ArtGen = { banter: { v: "1", bg: "#000", layers: [{ name: "bg", box: [0, 0, 1024, 1024] }, { name: "red", box: [10, 10, 100, 100] }] } };
+  const spec = (motion: ArtSceneSpec["motion"], dur = 3000): Record<string, ArtSceneSpec> => ({ banter: { src: "x", dur, motion } });
+
+  it("движение для несуществующего слоя, кадры не с 0 до 1, рывок в конце цикла", () => {
+    const errs = checkArt(spec({ blue: { keys: [{ at: 0 }, { at: 1 }] }, red: { keys: [{ at: 0.1 }, { at: 0.9, r: 2 }] } }), g, ["banter"]);
+    expect(errs.join("\n")).toMatch(/слоя «blue»/);
+    expect(errs.join("\n")).toMatch(/red: кадры должны идти от 0 до 1/);
+    expect(errs.join("\n")).toMatch(/red: конец цикла не совпадает/);
+  });
+
+  it("цикл вне 2–4 с, слово без слоёв, слои без описания, нет такого слова, фон не первым", () => {
+    expect(checkArt(spec({}, 1000), g, ["banter"])).toEqual(["banter: цикл 1000 мс — нужно 2–4 с"]);
+    expect(checkArt(spec({}), {}, ["banter"])[0]).toMatch(/слои не собраны/);
+    expect(checkArt({}, g, ["banter"])[0]).toMatch(/описания сцены нет/);
+    expect(checkArt(spec({}), g, [])[0]).toMatch(/нет такого слова/);
+    const back = { banter: { ...g.banter, layers: [...g.banter.layers].reverse() } };
+    expect(checkArt(spec({}), back, ["banter"])).toContain("banter: первым слоем должен идти фон");
+  });
+
+  it("рамка слоя или кроп для списка за краем холста", () => {
+    const out = { banter: { ...g.banter, layers: [g.banter.layers[0], { name: "red", box: [1000, 0, 100, 10] as [number, number, number, number] }] } };
+    expect(checkArt(spec({}), out, ["banter"])).toEqual(["banter/red: рамка вне холста"]);
+    expect(checkArt({ banter: { src: "x", dur: 3000, motion: {}, list: [600, 0, 500] } }, g, ["banter"])).toEqual(["banter: кроп для списка вне холста"]);
+  });
+});
+
+describe("toKeyframes", () => {
+  it("сдвиг — в % от рамки слоя, ось — в % внутри рамки, пустой кадр — исходное положение", () => {
+    const { origin, frames } = toKeyframes(
+      { origin: [150, 250], keys: [{ at: 0 }, { at: 0.5, x: 20, y: -40, r: -2, s: 1.1, o: 0.5, ease: "ease-out" }, { at: 1 }] },
+      [100, 200, 200, 400],
+    );
+    expect(origin).toBe("25% 12.5%");
+    expect(frames[0]).toEqual({ offset: 0, transform: "translate(0%, 0%) rotate(0deg) scale(1, 1)", opacity: 1, easing: "ease-in-out" });
+    expect(frames[1]).toEqual({ offset: 0.5, transform: "translate(10%, -10%) rotate(-2deg) scale(1.1, 1.1)", opacity: 0.5, easing: "ease-out" });
+  });
+
+  it("масштаб по осям: sx/sy поверх общего s", () => {
+    const { frames } = toKeyframes({ keys: [{ at: 0, s: 1.2, sy: 0.9 }, { at: 1, sx: 1.05 }] }, [0, 0, 10, 10]);
+    expect(frames.map((f) => f.transform)).toEqual(["translate(0%, 0%) rotate(0deg) scale(1.2, 0.9)", "translate(0%, 0%) rotate(0deg) scale(1.05, 1)"]);
+  });
+
+  it("без оси — центр слоя", () => {
+    expect(toKeyframes({ keys: [{ at: 0 }, { at: 1 }] }, [0, 0, 10, 10]).origin).toBe("50% 50%");
+  });
+
+  it("рамка в % холста и адрес файла с версией", () => {
+    expect(boxStyle([0, 512, ART_CANVAS / 4, 1024 / 3])).toEqual({ left: "0%", top: "50%", width: "25%", height: "33.333%" });
+    expect(artUrl("banter", "red", "abc")).toBe("/words/banter/red.webp?v=abc");
+  });
+});

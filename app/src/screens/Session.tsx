@@ -22,6 +22,7 @@ import type { AppState, Deck, SentenceRecord, SessionKind, Step } from "../core/
 import { checkerAvailable, checkSentence } from "../lib/checker";
 import { Check, Close, Cross, Mic } from "../lib/icons";
 import { prefetch, say, useDictation } from "../lib/speech";
+import { hasWordArt, WordArt } from "../lib/WordArt";
 import { SpeakBtn } from "../ui";
 
 interface Props {
@@ -298,8 +299,8 @@ function StepView({ step, api }: { step: Step; api: Api }) {
       body = w && (
         <>
           <div className="lbl">Новое слово</div>
-          <div className="intro">
-            <div className={`pic ${picClass(deck, w.id)}`}>{w.picture}</div>
+          <div className={`intro${hasWordArt(w.id) ? "" : " noart"}`}>
+            <WordArt wordId={w.id} label={w.example} />
             <div className="intro-info">
               <div className="word"><h2>{w.en}</h2><SpeakBtn text={w.en} /></div>
               <div className="ipa">{w.ipa}</div>

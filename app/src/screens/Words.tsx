@@ -6,6 +6,7 @@ import { plural } from "../core/text";
 import type { AppState, Deck, Word } from "../core/types";
 import { dayMonth, dueText, groupKey, groupTitle, hardWords, knownCount, type LessonGroup, type LessonKey, weekdayDay, wordLessons } from "../core/vocab";
 import { Alert, Back, Chevron, Route, Search } from "../lib/icons";
+import { WordArt } from "../lib/WordArt";
 import { SpeakBtn } from "../ui";
 
 const LEVELS = ["Новое", "Учу", "Знакомо", "Выучено"];
@@ -64,8 +65,10 @@ function WordRow({ w, state, today }: { w: Word; state: AppState; today: string 
   const lvl = s?.lvl ?? 0;
   const g = levelGroup(lvl);
   const due = dueText(s?.due, today);
+  // сцена к слову — только в раскрытой строке: закрытые не грузят слои и не крутят анимацию
+  const [open, setOpen] = useState(false);
   return (
-    <details className="wrow">
+    <details className="wrow" onToggle={(e) => setOpen(e.currentTarget.open)}>
       <summary>
         <span className="wtx">
           <b lang="en">{w.en}<span className="ipa">{w.ipa}</span></b>
@@ -75,6 +78,7 @@ function WordRow({ w, state, today }: { w: Word; state: AppState; today: string 
         <span className={`wdot c${g}`} role="img" aria-label={`${LEVELS[g]} · уровень ${lvl} из 6`} title={`${LEVELS[g]} · уровень ${lvl} из 6`} />
       </summary>
       <div className="det">
+        {open && <WordArt wordId={w.id} label={w.example} />}
         <p className="dex"><b lang="en">{w.example}</b><span>{w.exampleRu}</span></p>
         {w.note && <p className="dnote">{w.note}</p>}
         {w.quote && <p className="dnote"><i>«{w.quote}»</i>{w.page && <> — стр. {w.page}</>}</p>}

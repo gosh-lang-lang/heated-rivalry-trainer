@@ -32,7 +32,11 @@ export default defineConfig({
     VitePWA({
       registerType: "autoUpdate",
       // /login и /api — всегда из сети: без сессии сервер отдаёт только вход
-      workbox: { navigateFallbackDenylist: [/^\/api\//, /^\/login/] },
+      workbox: {
+        navigateFallbackDenylist: [/^\/api\//, /^\/login/],
+        // иллюстрации к словам: в адресе версия (?v=), поэтому из кэша без перепроверки — и без сети в уроке
+        runtimeCaching: [{ urlPattern: /\/words\/[^?]+\.webp\?v=/, handler: "CacheFirst", options: { cacheName: "word-art", expiration: { maxEntries: 800 } } }],
+      },
       includeAssets: ["icon.svg", "apple-touch-icon.png"],
       manifest: {
         name: "Heated Rivalry — тренажёр слов",

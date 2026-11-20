@@ -1,0 +1,22 @@
+/* Иллюстрации к словам (lib/WordArt.tsx). Сцена — квадратный холст со слоями; кадр может быть ниже квадрата —
+   тогда холст сдвигается так, чтобы в кадре осталась точка --fy (доля высоты холста). Только токены темы. */
+.wart{position:relative;overflow:hidden;container-type:size;aspect-ratio:var(--wart-ar,1);width:100%;background:var(--wart-bg);border-radius:24px;border:2px solid var(--line);isolation:isolate}
+.wart-cv{position:absolute;left:0;width:100%;aspect-ratio:1;top:clamp(calc(100cqh - 100cqw),calc(50cqh - var(--fy,.5) * 100cqw),0px);opacity:0;transition:opacity .35s ease-out}
+.wart.ready .wart-cv{opacity:1}
+.wart-cv img{position:absolute;display:block;max-width:none;user-select:none;-webkit-user-select:none;-webkit-user-drag:none;pointer-events:none}
+.wart:not(.still) .wart-cv img{will-change:transform,opacity}
+.wart-img{display:block;border-radius:14px;object-fit:cover}
+.wart-img.list{width:56px;height:56px}
+.wart-img.still{width:100%;height:auto;aspect-ratio:1}
+/* ночью сцена чуть приглушена, чтобы не слепила на тёмной странице */
+:root[data-theme=dark] .wart,:root[data-theme=dark] .wart-img{filter:brightness(.9)}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]) .wart,:root:not([data-theme=light]) .wart-img{filter:brightness(.9)}}
+@media(prefers-reduced-motion:reduce){.wart-cv{transition:none}}
+
+/* карточка нового слова: на телефоне — кадр 4:3 над словом, на десктопе — квадрат слева */
+.intro .wart{--wart-ar:4/3;margin-bottom:16px}
+.intro.noart{grid-template-columns:minmax(0,1fr)!important}
+@media(min-width:900px){.intro .wart{--wart-ar:1;margin:0;border-radius:32px}}
+
+/* словарь: раскрытая строка слова — сцена в движении над примером */
+.det .wart{--wart-ar:4/3;max-width:440px;margin:2px 0 12px;border-radius:18px}
