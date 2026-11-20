@@ -1,5 +1,6 @@
 import type { Browser, Page } from "@playwright/test";
 import { expect, test } from "./auth-fixture";
+import { DECK } from "./helpers";
 
 /**
  * Вход по passkey на продакшен-сервере (npm run e2e -- --project=auth).
@@ -219,4 +220,47 @@ test("личные настройки одинаковы на всех устр�
   await expect(tablet.locator(".vsel")).toContainText("Emma");
   await expect(perDay(tablet, 24)).toHaveAttribute("aria-pressed", "true");
   for (const p of [laptop, phone, tablet]) await p.context().close();
+});
+
+test("прогресс с двух устройств складывается, а не затирает друг друга", async ({ browser, auth }) => {
+  const { cli, origin } = auth;
+  cli("user:add", "evgeny", "Евгений");
+  const link = () => cli("enroll", "evgeny").trim().split("\n").pop()!;
+  const laptop = await newDevice(browser, origin, link());
+  const phone = await newDevice(browser, origin, link()); // открыт до занятия на ноутбуке — его кэш устареет
+
+  // ноутбук: начал утреннее, познакомился с тремя словами, вышел
+  await laptop.getByRole("button", { name: "Начать утреннее" }).click();
+  await laptop.getByRole("button", { name: "Поехали" }).click();
+  await laptop.locator("#next").click();
+  await laptop.locator("#next").click();
+  await laptop.getByRole("button", { name: "Выйти" }).click();
+  await expect.poll(() => cli("progress")).toMatch(/^evgeny\tслов: 3\t/);
+  const laptopWords = Object.keys(((await (await laptop.request.get("/api/state")).json()) as { state: { srs: object } }).state.srs);
+
+  // телефон без связи позанимался на своём старом кэше и потом отправил: другое слово, своё предложение, перечитал главы
+  const stale = await phone.evaluate(() => JSON.parse(localStorage.getItem("hr2_state:evgeny")!));
+  const other = DECK.words.find((w) => !laptopWords.includes(w.id))!.id;
+  const fromPhone = {
+    ...stale,
+    upd: Date.now() + 5_000,
+    srs: { [other]: { lvl: 2, due: "2026-12-01", intro: "2026-11-20", right: 2, wrong: 0 } },
+    days: { "2026-11-20": { reread: true } },
+    sent: [{ at: "2026-11-20T20:00:00.000Z", words: ["endure"], text: "I endure the cold.", pending: true }],
+  };
+  const r = await phone.request.put("/api/state", { headers: { origin }, data: { state: fromPhone } });
+  expect(r.status()).toBe(200);
+
+  // на сервере — и то, и другое
+  const merged = ((await r.json()) as { state: { srs: Record<string, unknown>; days: Record<string, { reread?: boolean }>; sent: unknown[] } }).state;
+  expect(Object.keys(merged.srs).sort()).toEqual([...laptopWords, other].sort());
+  expect(merged.days["2026-11-20"]?.reread).toBe(true);
+  expect(merged.sent).toHaveLength(1);
+
+  // и на обоих устройствах после обновления
+  for (const page of [laptop, phone]) {
+    await page.reload();
+    await expect(page.locator(".legend")).toContainText("Учу4");
+  }
+  for (const p of [laptop, phone]) await p.context().close();
 });

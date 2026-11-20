@@ -5,8 +5,8 @@
  *   GET /api/state            → { state: AppState | null }
  *   PUT /api/state { state }  → { state }  — то, что теперь на сервере
  *
- * Слияние — core/state.ts mergeStates: прогресс «кто новее» по upd (старое не перезаписывает новое),
- * личные настройки — по пунктам (пункт, изменённый позже, побеждает, с какого бы устройства ни пришёл).
+ * Присланное сливается с тем, что лежит (core/state.ts mergeStates): слова, дни и свои предложения —
+ * по отдельности, личные настройки — по пунктам. Ничего, сделанное на одном устройстве, не затирается другим.
  */
 import type { DatabaseSync } from "node:sqlite";
 import { mergeStates, parseState, sameState } from "../src/core/state.ts";
