@@ -166,7 +166,7 @@ export function DataTransfer({ state, setState }: { state: AppState; setState: S
   return (
     <section className="card xio">
       <h3>Перенос данных</h3>
-      <p className="mute sm" style={{ margin: "4px 0 12px" }}>Весь прогресс одним JSON. Сюда же загружается экспорт из прототипа.</p>
+      <p className="mute sm" style={{ margin: "4px 0 12px" }}>Прогресс хранится на сервере и сам появляется на всех твоих устройствах. Здесь — резервная копия одним JSON и загрузка экспорта из прототипа.</p>
       <div className="row2">
         <button className="btn ghost" aria-pressed={mode === "export"} onClick={() => { setMode("export"); setMsg(""); }}>Экспорт</button>
         <button className="btn ghost" aria-pressed={mode === "import"} onClick={() => { setMode("import"); setMsg(""); setText(""); }}>Импорт</button>
@@ -188,7 +188,7 @@ export function DataTransfer({ state, setState }: { state: AppState; setState: S
             <input type="file" accept="application/json,.json" hidden onChange={async (e) => { const f = e.target.files?.[0]; if (f) setText(await f.text()); }} />
           </label>
           <button className="btn bad wide" style={{ marginTop: 10 }} disabled={!text.trim()} onClick={() => doImport(text)}>Заменить мой прогресс</button>
-          <p className="mute sm" style={{ margin: "8px 0 0" }}>Текущий прогресс на этом устройстве будет заменён.</p>
+          <p className="mute sm" style={{ margin: "8px 0 0" }}>Текущий прогресс будет заменён на всех устройствах.</p>
         </>
       )}
       {mode === "done" && <p className="done-tag" style={{ margin: "10px 0 0" }}><Check /> Прогресс загружен</p>}

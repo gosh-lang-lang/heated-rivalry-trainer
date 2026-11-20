@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { pickNewer, parseState } from "./core/state";
 import type { Finished } from "./core/session";
 import type { AppState, SessionKind } from "./core/types";
 import { DECK } from "./data";
-import { loadState, saveState } from "./lib/storage";
+import { cacheKey, loadState, saveState } from "./lib/storage";
+import { useServerSync } from "./lib/sync";
 import { Home } from "./screens/Home";
 import { Result } from "./screens/Result";
 import { SessionScreen } from "./screens/Session";
@@ -22,32 +23,56 @@ export type View =
 
 export type SetState = (next: AppState) => void;
 
-export default function App() {
-  const [state, setRaw] = useState<AppState>(loadState);
+/**
+ * @param user — кто вошёл; null — неизвестно (без сети и без прошлого входа): только кэш, без сервера
+ */
+export default function App({ user }: { user: string | null }) {
+  const [state, setRaw] = useState<AppState>(() => loadState(user));
   const [view, setView] = useState<View>({ name: "home" });
   const wide = useWide();
+  const current = useRef(state);
+  const inSession = useRef(false);
+  inSession.current = view.name === "session";
 
-  /** Любое изменение прогресса: метка времени для слияния + запись на устройство. */
-  const setState: SetState = useCallback((next) => {
-    const s = { ...next, upd: Date.now() };
-    saveState(s);
-    setRaw(s);
-  }, []);
+  /** Принять прогресс как есть (с сервера, из другой вкладки) — в память и в кэш устройства. */
+  const adopt = useCallback(
+    (s: AppState) => {
+      current.current = s;
+      saveState(user, s);
+      setRaw(s);
+    },
+    [user],
+  );
+  const schedulePush = useServerSync(!!user, current, adopt, inSession);
+
+  /** Любое изменение прогресса: метка времени для слияния, кэш, отправка на сервер. */
+  const setState: SetState = useCallback(
+    (next) => {
+      // строго растёт, даже если два изменения пришлись на одну миллисекунду или часы ушли назад
+      adopt({ ...next, upd: Math.max(Date.now(), current.current.upd + 1) });
+      schedulePush();
+    },
+    [adopt, schedulePush],
+  );
 
   // прогресс из другой вкладки — берём, если он новее
   useEffect(() => {
+    const key = cacheKey(user);
     const onStorage = (e: StorageEvent) => {
-      if (e.key !== "hr2_state" || !e.newValue) return;
+      if (e.key !== key || !e.newValue) return;
       try {
         const other = parseState(e.newValue);
-        setRaw((cur) => pickNewer(cur, other));
+        if (pickNewer(current.current, other) === other) {
+          current.current = other;
+          setRaw(other);
+        }
       } catch {
         /* чужие данные — игнорируем */
       }
     };
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
-  }, []);
+  }, [user]);
 
   const go = useCallback((v: View) => {
     setView(v);

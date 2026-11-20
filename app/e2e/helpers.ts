@@ -40,15 +40,18 @@ export const addDays = (k: string, n: number) => {
 
 export interface TtsLog {
   requests: { text: string; voice: string }[];
+  /** мок сервера прогресса: что на нём лежит и сколько раз сохраняли */
+  server: { state: { upd: number } | null; puts: number };
 }
 
 /**
- * Готовит страницу: фиксированное время, детерминированный Math.random,
- * состояние в localStorage, мок сервера озвучки. Вызывать до page.goto.
+ * Готовит страницу: фиксированное время, детерминированный Math.random, моки сервера озвучки и прогресса.
+ * state — прогресс на устройстве (как до переезда на сервер: его заберёт вошедший пользователь),
+ * remote — прогресс на сервере, sync: "down" — сервер прогресса недоступен. Вызывать до page.goto.
  */
 export const setup = async (
   page: Page,
-  opts: { state?: unknown; voice?: string; tts?: "ok" | "down" } = {},
+  opts: { state?: unknown; remote?: unknown; voice?: string; tts?: "ok" | "down"; sync?: "ok" | "down" } = {},
 ): Promise<TtsLog> => {
   await page.clock.setFixedTime(NOW);
   await page.addInitScript(
@@ -74,7 +77,19 @@ export const setup = async (
   // вход выполнен (настоящий вход проверяет e2e/auth.spec.ts на продакшен-сервере)
   await page.route("**/api/auth/me", (route) => route.fulfill({ json: { user: { name: "evgeny", displayName: "Евгений" }, passkeys: 1 } }));
 
-  const log: TtsLog = { requests: [] };
+  const log: TtsLog = { requests: [], server: { state: (opts.remote as { upd: number }) ?? null, puts: 0 } };
+  // сервер прогресса — как server/progress.ts: более старое не перезаписывает новое
+  await page.route("**/api/state", async (route) => {
+    if (opts.sync === "down") return route.abort("connectionrefused");
+    const srv = log.server;
+    if (route.request().method() === "PUT") {
+      const { state } = route.request().postDataJSON() as { state: { upd: number } };
+      srv.puts++;
+      if (!srv.state || state.upd > srv.state.upd) srv.state = state;
+    }
+    await route.fulfill({ json: { state: srv.state } });
+  });
+
   await page.route("**/api/tts", async (route) => {
     if (opts.tts === "down") return route.abort("connectionrefused");
     const body = route.request().postDataJSON() as { text: string; voice: string };
@@ -124,8 +139,9 @@ export const afterMorning = (n = 12) =>
     days: { [TODAY]: { morning: { score: 30, total: 38, mins: 14, newN: n, at: NOW.toISOString() } } },
   });
 
+/** Прогресс в кэше устройства (вошедший в тестах — evgeny). */
 export const readState = (page: Page) =>
-  page.evaluate(() => JSON.parse(localStorage.getItem("hr2_state") ?? "null")) as Promise<{
+  page.evaluate(() => JSON.parse(localStorage.getItem("hr2_state:evgeny") ?? "null")) as Promise<{
     srs: Record<string, WS>;
     days: Record<string, Record<string, unknown>>;
     sent: { text: string; pending?: boolean; words: string[] }[];

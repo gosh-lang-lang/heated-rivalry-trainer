@@ -8,7 +8,8 @@
 - Caddy подключается к сети таймером `heated-rivalry-edge.timer` (файлы spillthetea/motivator не меняются).
 - Сайт — помеченный блок в `/opt/spillthetea/caddy/Caddyfile` (текст — `deploy/caddy-site.conf`).
 - **Вход только по passkey.** Регистрации нет: пользователей и одноразовые ссылки привязки создаёт команда на сервере.
-  База входа — том `heated_rivalry_auth` (`/data/auth/auth.db`).
+  База — том `heated_rivalry_auth` (`/data/auth/auth.db`): пользователи, passkey, сессии **и прогресс** (таблица `progress`).
+  Прогресс живёт на сервере, браузер держит только кэш — **этот том терять нельзя**, см. «Бэкапы».
 
 ## Пользователи и passkey
 ```sh
@@ -19,8 +20,27 @@ $H users                        # пользователи, сколько passk
 $H passkeys evgeny              # привязанные passkey
 $H passkey:remove <начало id>   # отозвать passkey (потерянное устройство)
 $H logout evgeny                # завершить все сессии
+$H progress                     # чей прогресс на сервере, когда изменён и сохранён
 ```
 Passkey из связки ключей iCloud синхронизируется на все устройства с тем же Apple ID — привязывать каждое не нужно.
+
+## Бэкапы
+Раз в день мак забирает с сервера согласованную копию базы (`VACUUM INTO` внутри контейнера) в `~/Backups/heated-rivalry/`
+и хранит **3 последние** (`auth-ГГГГ-ММ-ДД_ЧЧММСС.db`). Каждая копия проверяется (`integrity_check`) до ротации.
+Если не вышло — уведомление на маке и запись в `~/Library/Logs/heated-rivalry-backup.log`.
+```sh
+deploy/backup.sh                    # снять копию сейчас (перед рискованным деплоем — обязательно)
+deploy/backup-install.sh            # задача launchd: каждый день в 04:00 (проспал — сделает после пробуждения)
+deploy/backup-install.sh --remove   # убрать задачу
+launchctl kickstart gui/$(id -u)/xyz.spill-the-tea.heated-rivalry.backup   # запустить задачу сейчас
+```
+Восстановить из копии:
+```sh
+F=~/Backups/heated-rivalry/auth-….db
+ssh root@195.133.197.130 'docker stop heated-rivalry'
+cat "$F" | ssh root@195.133.197.130 'docker run --rm -i -v heated_rivalry_auth:/data/auth alpine sh -c "rm -f /data/auth/auth.db-wal /data/auth/auth.db-shm && cat > /data/auth/auth.db && chown 1000:1000 /data/auth/auth.db"'
+ssh root@195.133.197.130 'docker start heated-rivalry'
+```
 
 ## Обновить
 ```sh

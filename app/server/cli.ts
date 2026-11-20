@@ -7,13 +7,15 @@
  *   passkeys [имя]                      — привязанные passkey
  *   passkey:remove <id или начало id>   — отозвать passkey
  *   logout <имя>                        — завершить все сессии пользователя
- *   user:remove <имя>                   — удалить пользователя со всеми passkey и сессиями
+ *   user:remove <имя>                   — удалить пользователя со всеми passkey, сессиями и прогрессом
+ *   progress                            — чей прогресс на сервере и когда сохранён
  */
 import { join } from "node:path";
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { openAuthStore } from "./auth-store.ts";
 import { authConfigFromEnv } from "./auth.ts";
+import { openProgress } from "./progress.ts";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const store = openAuthStore(process.env.AUTH_DB ?? join(ROOT, "server/cache/auth.db"));
@@ -63,6 +65,10 @@ switch (cmd) {
     console.log(`завершено сессий: ${store.deleteSessionsOf(u.id)}`);
     break;
   }
+  case "progress":
+    for (const p of openProgress(store.db).summary())
+      console.log(`${p.name}\tслов: ${p.words}\tдней: ${p.days}\tизменён ${date(p.upd)}\tсохранён ${date(p.savedAt)}\t${Math.ceil(p.bytes / 1024)} КБ`);
+    break;
   case "user:remove":
     console.log(store.removeUser(args[0] ?? "") ? "удалён" : "нет такого пользователя");
     break;

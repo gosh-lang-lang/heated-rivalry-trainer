@@ -13,13 +13,25 @@ export const goLogin = () => {
   location.replace(here === "/" ? "/login" : `/login?next=${encodeURIComponent(here)}`);
 };
 
-/** Сессия жива? Нет — на вход. Без сети — работаем дальше (приложение может быть из кэша). */
-export const ensureSession = async () => {
+/**
+ * Сессия жива? Нет — на вход (промис не завершится). Без сети — null: работаем дальше
+ * (приложение может быть из кэша), прогресс — из кэша последнего вошедшего.
+ */
+export const ensureSession = async (): Promise<Me | null> => {
+  let r: Response;
   try {
-    const r = await fetch("/api/auth/me", { credentials: "same-origin" });
-    if (r.status === 401) goLogin();
+    r = await fetch("/api/auth/me", { credentials: "same-origin" });
   } catch {
-    /* офлайн */
+    return null; // офлайн
+  }
+  if (r.status === 401) {
+    goLogin();
+    return new Promise<never>(() => {});
+  }
+  try {
+    return r.ok ? ((await r.json()) as Me) : null;
+  } catch {
+    return null;
   }
 };
 

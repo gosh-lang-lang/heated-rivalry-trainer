@@ -4,6 +4,7 @@
  *   POST /api/tts         { text, voice? } → { url }   — озвучить (или взять из кэша)
  *   GET  /api/tts/<key>.mp3                            — файл из кэша (неизменяемый)
  *   GET  /api/tts/voices                               — голоса и голос по умолчанию
+ *   GET  /api/state  /  PUT /api/state { state }       — прогресс пользователя (см. progress.ts)
  *   GET  /api/health                                   — публично, только { ok }
  * В production (NODE_ENV=production) ещё и раздаёт собранное приложение из dist/:
  * /login (+ /auth/*, иконки) — публично, остальное — после входа.
@@ -20,6 +21,7 @@ import { DEFAULT_VOICE, TTS_VOICES, ttsRequestError, VOICE_SAMPLE } from "../src
 import { createLimiter } from "../src/core/ratelimit.ts";
 import { openAuthStore } from "./auth-store.ts";
 import { cleanPath, isPublicAsset } from "./paths.ts";
+import { openProgress, parseStateBody, STATE_MAX_BYTES } from "./progress.ts";
 import { authConfigFromEnv, createAuth } from "./auth.ts";
 import { createEngine, type TtsEngine } from "./tts.ts";
 
@@ -85,6 +87,9 @@ const DIST = join(ROOT, "dist");
 const store = openAuthStore(process.env.AUTH_DB ?? join(ROOT, "server/cache/auth.db"));
 const authCfg = authConfigFromEnv();
 const auth = createAuth(store, authCfg, { json, readBody: (req) => readBody(req), clientIp });
+const progress = openProgress(store.db);
+/** Без входа (AUTH_DEV_BYPASS) прогресс пишется локальному пользователю dev. */
+const devUser = () => store.userByName("dev") ?? store.addUser("dev", "Разработчик");
 
 const server = createServer(async (req, res) => {
   const url = new URL(req.url ?? "/", "http://x");
@@ -105,7 +110,23 @@ const server = createServer(async (req, res) => {
       res.writeHead(302, { location: `/login${next}`, "cache-control": "no-store" });
       return res.end();
     }
-    if (req.method === "POST" && !auth.sameOrigin(req)) return json(res, 403, { error: "чужой источник запроса" });
+    if (req.method !== "GET" && req.method !== "HEAD" && !auth.sameOrigin(req)) return json(res, 403, { error: "чужой источник запроса" });
+
+    if (url.pathname === "/api/state") {
+      const who = user ?? (DEV_BYPASS ? devUser() : undefined);
+      if (!who) return json(res, 401, { error: "нужен вход" });
+      if (req.method === "GET") return json(res, 200, { state: progress.get(who.id) });
+      if (req.method !== "PUT") return json(res, 405, { error: "метод не поддерживается" });
+      let raw: string;
+      try {
+        raw = await readBody(req, STATE_MAX_BYTES);
+      } catch {
+        return json(res, 413, { error: "слишком большое состояние" });
+      }
+      const s = parseStateBody(raw);
+      if (typeof s === "string") return json(res, 400, { error: s });
+      return json(res, 200, { state: progress.put(who.id, s).state });
+    }
 
     if (url.pathname.startsWith("/api/tts") && !engine) return json(res, 503, { error: "озвучка отключена" });
 
@@ -156,7 +177,7 @@ const server = createServer(async (req, res) => {
     json(res, 404, { error: "not found" });
   } catch (e) {
     console.error(e);
-    if (!res.headersSent) json(res, 500, { error: "ошибка озвучки" });
+    if (!res.headersSent) json(res, 500, { error: "ошибка сервера" });
     else res.end();
   }
 });

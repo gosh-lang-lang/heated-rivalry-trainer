@@ -1,22 +1,63 @@
 import { emptyState, parseState } from "../core/state";
 import type { AppState } from "../core/types";
 
-/** Тот же ключ, что у прототипа: открытая на том же адресе версия подхватит прогресс. */
-const KEY = "hr2_state";
+/**
+ * Кэш прогресса на устройстве. Главная копия — на сервере (sync.ts); кэш нужен, чтобы приложение
+ * открывалось мгновенно и работало без сети. У каждого пользователя свой ключ: на общем устройстве
+ * чужой прогресс не попадёт на сервер под другим именем.
+ */
+const LEGACY = "hr2_state";
+const LAST_USER = "hr2_user";
 
-export const loadState = (): AppState => {
+export const cacheKey = (user: string | null) => (user ? `${LEGACY}:${user}` : LEGACY);
+
+const read = (key: string): AppState | null => {
   try {
-    const raw = localStorage.getItem(KEY);
-    return raw ? parseState(raw) : emptyState();
+    const raw = localStorage.getItem(key);
+    return raw ? parseState(raw) : null;
   } catch {
-    return emptyState();
+    return null;
   }
 };
 
-export const saveState = (s: AppState) => {
+/**
+ * Прогресс из кэша. Прогресс времён, когда всё жило только в браузере (ключ hr2_state),
+ * забирает себе первый вошедший на этом устройстве — дальше он уходит на сервер.
+ */
+export const loadState = (user: string | null): AppState => {
+  const own = read(cacheKey(user));
+  if (own || !user) return own ?? emptyState();
+  const legacy = read(LEGACY);
+  if (!legacy) return emptyState();
+  saveState(user, legacy);
   try {
-    localStorage.setItem(KEY, JSON.stringify(s));
+    localStorage.removeItem(LEGACY);
+  } catch {
+    /* не страшно */
+  }
+  return legacy;
+};
+
+export const saveState = (user: string | null, s: AppState) => {
+  try {
+    localStorage.setItem(cacheKey(user), JSON.stringify(s));
   } catch {
     /* приватный режим или переполнение — работаем в памяти */
+  }
+};
+
+/** Кто входил последним — чтобы без сети открыть его кэш. */
+export const lastUser = (): string | null => {
+  try {
+    return localStorage.getItem(LAST_USER);
+  } catch {
+    return null;
+  }
+};
+export const rememberUser = (user: string) => {
+  try {
+    localStorage.setItem(LAST_USER, user);
+  } catch {
+    /* не страшно */
   }
 };

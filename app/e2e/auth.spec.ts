@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import type { Browser, Page } from "@playwright/test";
 import { expect, test } from "./auth-fixture";
 
 /**
@@ -24,8 +24,9 @@ test("без входа закрыто всё, кроме страницы вх�
     expect(r.status(), p).toBe(302);
     expect(r.headers().location).toMatch(/^\/login/);
   }
-  for (const p of ["/sw.js", "/api/tts/voices", "/api/auth/me"]) expect((await get(p, false)).status(), p).toBe(401);
+  for (const p of ["/sw.js", "/api/tts/voices", "/api/auth/me", "/api/state"]) expect((await get(p, false)).status(), p).toBe(401);
   expect((await request.post("/api/tts", { data: { text: "hi" } })).status()).toBe(401);
+  expect((await request.put("/api/state", { data: { state: { upd: 1, srs: {} } } })).status()).toBe(401);
   // обход через закодированные «..» не открывает приложение
   for (const p of ["/auth/%2e%2e/index.html", "/auth/..%2findex.html", "/auth/nope.js"]) {
     const r = await get(p);
@@ -109,4 +110,71 @@ test("устройство без привязанного passkey войти н
   await page.getByRole("button", { name: "Войти с passkey" }).click();
   await expect(page.locator("#login-msg")).not.toBeEmpty();
   expect((await page.request.get("/api/auth/me")).status()).toBe(401);
+});
+
+/** Привязать passkey по ссылке на новом «устройстве» (свой контекст браузера и свой authenticator) и открыть приложение. */
+const newDevice = async (browser: Browser, origin: string, link: string, before?: (page: Page) => Promise<void>) => {
+  const ctx = await browser.newContext({ baseURL: origin, serviceWorkers: "block" });
+  const page = await ctx.newPage();
+  await addAuthenticator(page);
+  if (before) {
+    await before(page);
+    await page.goto("about:blank"); // ссылка отличается от /login только #фрагментом — без этого страница не перезагрузится
+  }
+  await page.goto(link);
+  await page.getByRole("button", { name: "Создать passkey" }).click();
+  await page.getByRole("link", { name: "Открыть тренажёр" }).click();
+  await expect(page.getByRole("button", { name: "Начать утреннее" })).toBeVisible();
+  return page;
+};
+const settings = async (page: Page) => {
+  await page.getByRole("navigation", { name: "Разделы" }).getByRole("button", { name: "Настройки", exact: true }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Настройки" })).toBeVisible();
+};
+const perDay = (page: Page, n: number) => page.getByRole("button", { name: String(n), exact: true });
+
+test("прогресс на сервере: переезжает из браузера, виден на другом устройстве, у каждого свой", async ({ browser, auth }) => {
+  const { cli, origin } = auth;
+  cli("user:add", "evgeny", "Евгений");
+  cli("user:add", "anna", "Анна");
+  const link = (name: string) => cli("enroll", name).trim().split("\n").pop()!;
+
+  // ноутбук: прогресс жил только в браузере (до переезда на сервер)
+  const old = { upd: 100, settings: { newPerDay: 18 }, srs: { sacred: { lvl: 3, due: "2026-11-25", intro: "2026-11-10", right: 5, wrong: 1 } }, days: {}, sent: [] };
+  const laptop = await newDevice(browser, origin, link("evgeny"), async (page) => {
+    await page.goto("/login");
+    await page.evaluate((s) => localStorage.setItem("hr2_state", JSON.stringify(s)), old);
+  });
+  await settings(laptop);
+  await expect(perDay(laptop, 18)).toHaveAttribute("aria-pressed", "true");
+  await expect.poll(() => cli("progress")).toMatch(/^evgeny\tслов: 1\t/);
+
+  // телефон: тот же пользователь, чистый браузер — прогресс приходит с сервера
+  const phone = await newDevice(browser, origin, link("evgeny"));
+  await settings(phone);
+  await expect(perDay(phone, 18)).toHaveAttribute("aria-pressed", "true");
+  await perDay(phone, 24).click();
+  await expect.poll(async () => ((await (await phone.request.get("/api/state")).json()) as { state: { settings: { newPerDay: number } } }).state.settings.newPerDay).toBe(24);
+
+  // ноутбук снова открыли — видно сделанное на телефоне
+  await laptop.reload();
+  await settings(laptop);
+  await expect(perDay(laptop, 24)).toHaveAttribute("aria-pressed", "true");
+
+  // старое состояние не затирает новое
+  const stale = await laptop.request.put("/api/state", { headers: { origin }, data: { state: { ...old, settings: { newPerDay: 6 } } } });
+  expect(((await stale.json()) as { state: { settings: { newPerDay: number } } }).state.settings.newPerDay).toBe(24);
+  // запись с чужого сайта отклоняется
+  expect((await laptop.request.put("/api/state", { headers: { origin: "https://evil.example" }, data: { state: { ...old, upd: Date.now() * 2 } } })).status()).toBe(403);
+
+  // другой пользователь прогресса Евгения не видит
+  const anna = await newDevice(browser, origin, link("anna"));
+  expect(((await (await anna.request.get("/api/state")).json()) as { state: unknown }).state).toBeNull();
+  await settings(anna);
+  await expect(perDay(anna, 12)).toHaveAttribute("aria-pressed", "true");
+
+  // удалили пользователя — прогресс удалён вместе с ним
+  cli("user:remove", "evgeny");
+  expect(cli("progress")).not.toContain("evgeny");
+  for (const p of [laptop, phone, anna]) await p.context().close();
 });
