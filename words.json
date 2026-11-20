@@ -29,7 +29,8 @@
       "example": "The new book got a lot of praise.",
       "exampleRu": "Новая книга получила много похвалы.",
       "blank": "praise",
-      "correctionOfMyTranslation": false
+      "correctionOfMyTranslation": false,
+      "rare": false
     },
     {
       "id": "novel",
@@ -42,7 +43,8 @@
       "example": "She writes novels about hockey players.",
       "exampleRu": "Она пишет романы о хоккеистах.",
       "blank": "novels",
-      "correctionOfMyTranslation": false
+      "correctionOfMyTranslation": false,
+      "rare": false
     },
     {
       "id": "sacred",
@@ -55,7 +57,8 @@
       "example": "For him, Sunday morning is sacred.",
       "exampleRu": "Для него утро воскресенья — святое.",
       "blank": "sacred",
-      "correctionOfMyTranslation": true
+      "correctionOfMyTranslation": true,
+      "rare": false
     },
     {
       "id": "autumn-lawn",
@@ -68,7 +71,8 @@
       "example": "The kids are playing on the lawn.",
       "exampleRu": "Дети играют на лужайке.",
       "blank": "lawn",
-      "correctionOfMyTranslation": true
+      "correctionOfMyTranslation": true,
+      "rare": true
     },
     {
       "id": "rambunctious",
@@ -81,7 +85,8 @@
       "example": "Our rambunctious puppies ran all over the house.",
       "exampleRu": "Наши неугомонные щенки носились по всему дому.",
       "blank": "rambunctious",
-      "correctionOfMyTranslation": false
+      "correctionOfMyTranslation": false,
+      "rare": true
     },
     {
       "id": "passionate",
@@ -94,7 +99,8 @@
       "example": "He is passionate about hockey.",
       "exampleRu": "Он страстно увлечён хоккеем.",
       "blank": "passionate",
-      "correctionOfMyTranslation": false
+      "correctionOfMyTranslation": false,
+      "rare": false
     },
     {
       "id": "devour",
@@ -107,7 +113,8 @@
       "example": "I devoured the book in two days.",
       "exampleRu": "Я проглотил книгу за два дня.",
       "blank": "devoured",
-      "correctionOfMyTranslation": false
+      "correctionOfMyTranslation": false,
+      "rare": false
     },
     {
       "id": "entire",
@@ -120,7 +127,8 @@
       "example": "He slept the entire day.",
       "exampleRu": "Он проспал весь день.",
       "blank": "entire",
-      "correctionOfMyTranslation": false
+      "correctionOfMyTranslation": false,
+      "rare": false
     },
     {
       "id": "banter",
@@ -133,7 +141,8 @@
       "example": "The players enjoy friendly banter before the game.",
       "exampleRu": "Игроки любят дружеские подколки перед игрой.",
       "blank": "banter",
-      "correctionOfMyTranslation": true
+      "correctionOfMyTranslation": true,
+      "rare": false
     },
     {
       "id": "exploration",
@@ -146,7 +155,8 @@
       "example": "The book is an exploration of first love.",
       "exampleRu": "Книга исследует тему первой любви.",
       "blank": "exploration",
-      "correctionOfMyTranslation": false
+      "correctionOfMyTranslation": false,
+      "rare": false
     },
     {
       "id": "red-hot",
@@ -159,7 +169,8 @@
       "example": "The team is red-hot this month.",
       "exampleRu": "Команда в этом месяце в ударе.",
       "blank": "red-hot",
-      "correctionOfMyTranslation": false
+      "correctionOfMyTranslation": false,
+      "rare": true
     },
     {
       "id": "streak",
@@ -172,7 +183,8 @@
       "example": "They are on a five-game winning streak.",
       "exampleRu": "У них победная серия из пяти игр.",
       "blank": "streak",
-      "correctionOfMyTranslation": false
+      "correctionOfMyTranslation": false,
+      "rare": false
     },
     {
       "id": "irresistible",
@@ -185,7 +197,8 @@
       "example": "The smell of fresh coffee is irresistible.",
       "exampleRu": "Запах свежего кофе неотразим.",
       "blank": "irresistible",
-      "correctionOfMyTranslation": false
+      "correctionOfMyTranslation": false,
+      "rare": false
     },
     {
       "id": "mix",
@@ -198,7 +211,8 @@
       "example": "The team is a mix of young and old players.",
       "exampleRu": "Команда — смесь молодых и опытных игроков.",
       "blank": "mix",
-      "correctionOfMyTranslation": false
+      "correctionOfMyTranslation": false,
+      "rare": false
     },
     {
       "id": "score",
@@ -211,7 +225,8 @@
       "example": "He scored two goals last night.",
       "exampleRu": "Вчера вечером он забил два гола.",
       "blank": "scored",
-      "correctionOfMyTranslation": false
+      "correctionOfMyTranslation": false,
+      "rare": false
     },
     {
       "id": "another",
@@ -224,7 +239,8 @@
       "example": "Can I have another coffee?",
       "exampleRu": "Можно мне ещё один кофе?",
       "blank": "another",
-      "correctionOfMyTranslation": false
+      "correctionOfMyTranslation": false,
+      "rare": false
     },
     {
       "id": "wink",
@@ -237,7 +253,8 @@
       "example": "He winked at me and smiled.",
       "exampleRu": "Он подмигнул мне и улыбнулся.",
       "blank": "winked",
-      "correctionOfMyTranslation": false
+      "correctionOfMyTranslation": false,
+      "rare": false
     },
     {
       "id": "firmly-ensconced",
@@ -250,7 +267,8 @@
       "example": "The cat was firmly ensconced on the sofa.",
       "exampleRu": "Кот прочно обосновался на диване.",
       "blank": "firmly ensconced",
-      "correctionOfMyTranslation": false
+      "correctionOfMyTranslation": false,
+      "rare": true
     },
     {
       "id": "take-on-sensitive-topics",
@@ -263,7 +281,8 @@
       "example": "This film takes on sensitive topics.",
       "exampleRu": "Этот фильм берётся за деликатные темы.",
       "blank": "takes on",
-      "correctionOfMyTranslation": false
+      "correctionOfMyTranslation": false,
+      "rare": false
     },
     {
       "id": "heartfelt",
@@ -276,7 +295,8 @@
       "example": "She wrote him a heartfelt letter.",
       "exampleRu": "Она написала ему искреннее письмо.",
       "blank": "heartfelt",
-      "correctionOfMyTranslation": true
+      "correctionOfMyTranslation": true,
+      "rare": false
     },
     {
       "id": "grumpy",
@@ -289,7 +309,8 @@
       "example": "He is always grumpy in the morning.",
       "exampleRu": "Он всегда ворчливый по утрам.",
       "blank": "grumpy",
-      "correctionOfMyTranslation": false
+      "correctionOfMyTranslation": false,
+      "rare": false
     },
     {
       "id": "enemies-to-lovers",
@@ -302,7 +323,8 @@
       "example": "I love enemies-to-lovers stories.",
       "exampleRu": "Я люблю истории «от врагов к возлюбленным».",
       "blank": "enemies-to-lovers",
-      "correctionOfMyTranslation": false
+      "correctionOfMyTranslation": false,
+      "rare": false
     },
     {
       "id": "loads-of",
@@ -315,7 +337,8 @@
       "example": "We have loads of time.",
       "exampleRu": "У нас куча времени.",
       "blank": "loads",
-      "correctionOfMyTranslation": false
+      "correctionOfMyTranslation": false,
+      "rare": false
     },
     {
       "id": "literally",
@@ -328,7 +351,8 @@
       "example": "I literally ran to the station.",
       "exampleRu": "Я буквально бежал до станции.",
       "blank": "literally",
-      "correctionOfMyTranslation": false
+      "correctionOfMyTranslation": false,
+      "rare": false
     },
     {
       "id": "sizzling",
@@ -341,7 +365,8 @@
       "example": "The steak was still sizzling on the plate.",
       "exampleRu": "Стейк ещё шипел на тарелке.",
       "blank": "sizzling",
-      "correctionOfMyTranslation": true
+      "correctionOfMyTranslation": true,
+      "rare": true
     },
     {
       "id": "all-tied-up",
@@ -354,7 +379,8 @@
       "example": "All the stories are tied up in the last chapter.",
       "exampleRu": "Все линии связываются в последней главе.",
       "blank": "tied up",
-      "correctionOfMyTranslation": false
+      "correctionOfMyTranslation": false,
+      "rare": true
     },
     {
       "id": "helluva",
@@ -367,7 +393,8 @@
       "example": "That was a helluva game!",
       "exampleRu": "Это была чертовски крутая игра!",
       "blank": "helluva",
-      "correctionOfMyTranslation": false
+      "correctionOfMyTranslation": false,
+      "rare": false
     },
     {
       "id": "slow-burn",
@@ -380,7 +407,8 @@
       "example": "It's a slow-burn story, so be patient.",
       "exampleRu": "Это медленно разгорающаяся история, наберись терпения.",
       "blank": "slow-burn",
-      "correctionOfMyTranslation": true
+      "correctionOfMyTranslation": true,
+      "rare": false
     },
     {
       "id": "endure",
@@ -393,7 +421,8 @@
       "example": "She endured three hours of meetings.",
       "exampleRu": "Она вытерпела три часа встреч.",
       "blank": "endured",
-      "correctionOfMyTranslation": false
+      "correctionOfMyTranslation": false,
+      "rare": false
     },
     {
       "id": "frustrating",
@@ -406,7 +435,8 @@
       "example": "Losing your keys is so frustrating.",
       "exampleRu": "Терять ключи так бесит.",
       "blank": "frustrating",
-      "correctionOfMyTranslation": true
+      "correctionOfMyTranslation": true,
+      "rare": false
     },
     {
       "id": "glorious",
@@ -419,7 +449,8 @@
       "example": "It was a glorious sunny day.",
       "exampleRu": "Это был великолепный солнечный день.",
       "blank": "glorious",
-      "correctionOfMyTranslation": false
+      "correctionOfMyTranslation": false,
+      "rare": false
     },
     {
       "id": "voyageurs",
@@ -432,7 +463,8 @@
       "example": "The Voyageurs play at home tonight.",
       "exampleRu": "«Вояжёры» сегодня играют дома.",
       "blank": "Voyageurs",
-      "correctionOfMyTranslation": false
+      "correctionOfMyTranslation": false,
+      "rare": true
     },
     {
       "id": "against",
@@ -445,7 +477,8 @@
       "example": "Montreal plays against Boston tonight.",
       "exampleRu": "Монреаль сегодня играет против Бостона.",
       "blank": "against",
-      "correctionOfMyTranslation": false
+      "correctionOfMyTranslation": false,
+      "rare": false
     },
     {
       "id": "their",
@@ -458,7 +491,8 @@
       "example": "The fans love their team.",
       "exampleRu": "Фанаты любят свою команду.",
       "blank": "their",
-      "correctionOfMyTranslation": false
+      "correctionOfMyTranslation": false,
+      "rare": false
     },
     {
       "id": "archrival",
@@ -471,7 +505,8 @@
       "example": "Boston is our archrival.",
       "exampleRu": "Бостон — наш заклятый соперник.",
       "blank": "archrival",
-      "correctionOfMyTranslation": false
+      "correctionOfMyTranslation": false,
+      "rare": false
     },
     {
       "id": "instead",
@@ -484,7 +519,8 @@
       "example": "I didn't go out. Instead, I read a book.",
       "exampleRu": "Я не пошёл гулять. Вместо этого читал книгу.",
       "blank": "Instead",
-      "correctionOfMyTranslation": false
+      "correctionOfMyTranslation": false,
+      "rare": false
     },
     {
       "id": "grueling-humiliation",
@@ -497,7 +533,8 @@
       "example": "The game was a grueling humiliation for the home team.",
       "exampleRu": "Игра стала мучительным унижением для хозяев.",
       "blank": "grueling humiliation",
-      "correctionOfMyTranslation": false
+      "correctionOfMyTranslation": false,
+      "rare": true
     },
     {
       "id": "the-score-stood-at",
@@ -510,7 +547,8 @@
       "example": "The score stood at 2–2 after the first period.",
       "exampleRu": "После первого периода счёт был 2:2.",
       "blank": "stood",
-      "correctionOfMyTranslation": false
+      "correctionOfMyTranslation": false,
+      "rare": true
     },
     {
       "id": "century-old",
@@ -523,7 +561,8 @@
       "example": "They live in a century-old house.",
       "exampleRu": "Они живут в столетнем доме.",
       "blank": "century-old",
-      "correctionOfMyTranslation": false
+      "correctionOfMyTranslation": false,
+      "rare": true
     },
     {
       "id": "become-personified",
@@ -536,7 +575,8 @@
       "example": "For the fans, the rivalry became personified by two players.",
       "exampleRu": "Для фанатов соперничество олицетворяли два игрока.",
       "blank": "personified",
-      "correctionOfMyTranslation": false
+      "correctionOfMyTranslation": false,
+      "rare": true
     },
     {
       "id": "intense",
@@ -549,7 +589,8 @@
       "example": "The last minutes of the game were intense.",
       "exampleRu": "Последние минуты игры были напряжёнными.",
       "blank": "intense",
-      "correctionOfMyTranslation": false
+      "correctionOfMyTranslation": false,
+      "rare": false
     },
     {
       "id": "animosity",
@@ -562,7 +603,8 @@
       "example": "There is no animosity between us.",
       "exampleRu": "Между нами нет вражды.",
       "blank": "animosity",
-      "correctionOfMyTranslation": false
+      "correctionOfMyTranslation": false,
+      "rare": true
     },
     {
       "id": "the-farthest",
@@ -575,7 +617,8 @@
       "example": "We sat in the farthest row.",
       "exampleRu": "Мы сидели в самом дальнем ряду.",
       "blank": "farthest",
-      "correctionOfMyTranslation": false
+      "correctionOfMyTranslation": false,
+      "rare": false
     },
     {
       "id": "the-cheapest",
@@ -588,7 +631,8 @@
       "example": "This is the cheapest ticket.",
       "exampleRu": "Это самый дешёвый билет.",
       "blank": "cheapest",
-      "correctionOfMyTranslation": false
+      "correctionOfMyTranslation": false,
+      "rare": false
     },
     {
       "id": "bend-bent",
@@ -601,7 +645,8 @@
       "example": "He bent down to tie his skates.",
       "exampleRu": "Он наклонился, чтобы завязать коньки.",
       "blank": "bent",
-      "correctionOfMyTranslation": false
+      "correctionOfMyTranslation": false,
+      "rare": false
     },
     {
       "id": "face-off",
@@ -614,7 +659,8 @@
       "example": "He won the face-off.",
       "exampleRu": "Он выиграл вбрасывание.",
       "blank": "face-off",
-      "correctionOfMyTranslation": false
+      "correctionOfMyTranslation": false,
+      "rare": false
     },
     {
       "id": "puck",
@@ -627,7 +673,8 @@
       "example": "The referee dropped the puck.",
       "exampleRu": "Судья вбросил шайбу.",
       "blank": "puck",
-      "correctionOfMyTranslation": false
+      "correctionOfMyTranslation": false,
+      "rare": false
     },
     {
       "id": "cheerfully",
@@ -640,7 +687,8 @@
       "example": "She cheerfully said hello to everyone.",
       "exampleRu": "Она бодро поздоровалась со всеми.",
       "blank": "cheerfully",
-      "correctionOfMyTranslation": false
+      "correctionOfMyTranslation": false,
+      "rare": false
     },
     {
       "id": "sparkle",
@@ -653,7 +701,8 @@
       "example": "Her eyes sparkled with joy.",
       "exampleRu": "Её глаза сверкали от радости.",
       "blank": "sparkled",
-      "correctionOfMyTranslation": false
+      "correctionOfMyTranslation": false,
+      "rare": true
     },
     {
       "id": "growl",
@@ -666,7 +715,8 @@
       "example": "The dog growled at the stranger.",
       "exampleRu": "Собака зарычала на незнакомца.",
       "blank": "growled",
-      "correctionOfMyTranslation": false
+      "correctionOfMyTranslation": false,
+      "rare": true
     },
     {
       "id": "still",
@@ -679,7 +729,8 @@
       "example": "There is still time to win.",
       "exampleRu": "Ещё есть время победить.",
       "blank": "still",
-      "correctionOfMyTranslation": true
+      "correctionOfMyTranslation": true,
+      "rare": false
     },
     {
       "id": "muse",
@@ -692,7 +743,8 @@
       "example": "\"Maybe we should go home,\" she mused.",
       "exampleRu": "«Может, пойдём домой», — задумчиво протянула она.",
       "blank": "mused",
-      "correctionOfMyTranslation": true
+      "correctionOfMyTranslation": true,
+      "rare": true
     },
     {
       "id": "barely",
@@ -705,7 +757,8 @@
       "example": "I could barely hear him.",
       "exampleRu": "Я еле его слышал.",
       "blank": "barely",
-      "correctionOfMyTranslation": false
+      "correctionOfMyTranslation": false,
+      "rare": false
     },
     {
       "id": "comprehensible",
@@ -718,7 +771,8 @@
       "example": "His notes are barely comprehensible.",
       "exampleRu": "Его записи едва понятны.",
       "blank": "comprehensible",
-      "correctionOfMyTranslation": false
+      "correctionOfMyTranslation": false,
+      "rare": true
     },
     {
       "id": "mouth-guard",
@@ -731,7 +785,8 @@
       "example": "Always wear a mouth guard in hockey.",
       "exampleRu": "В хоккее всегда надевай капу.",
       "blank": "mouth guard",
-      "correctionOfMyTranslation": false
+      "correctionOfMyTranslation": false,
+      "rare": true
     },
     {
       "id": "grit-one-s-teeth",
@@ -744,7 +799,8 @@
       "example": "He gritted his teeth and kept playing.",
       "exampleRu": "Он стиснул зубы и продолжил играть.",
       "blank": "gritted",
-      "correctionOfMyTranslation": false
+      "correctionOfMyTranslation": false,
+      "rare": false
     },
     {
       "id": "get-under-someone-s-skin",
@@ -757,7 +813,8 @@
       "example": "His jokes really get under my skin.",
       "exampleRu": "Его шутки меня реально бесят.",
       "blank": "get under my skin",
-      "correctionOfMyTranslation": true
+      "correctionOfMyTranslation": true,
+      "rare": false
     },
     {
       "id": "lose-it",
@@ -770,7 +827,8 @@
       "example": "When the referee said no, he almost lost it.",
       "exampleRu": "Когда судья отказал, он чуть не сорвался.",
       "blank": "lost it",
-      "correctionOfMyTranslation": false
+      "correctionOfMyTranslation": false,
+      "rare": false
     },
     {
       "id": "capitalize-on",
@@ -783,7 +841,8 @@
       "example": "Boston capitalized on our mistakes.",
       "exampleRu": "Бостон воспользовался нашими ошибками.",
       "blank": "capitalized on",
-      "correctionOfMyTranslation": false
+      "correctionOfMyTranslation": false,
+      "rare": false
     },
     {
       "id": "talk-shit",
@@ -796,7 +855,8 @@
       "example": "He loves to talk shit on the ice.",
       "exampleRu": "Он любит задирать соперников на льду.",
       "blank": "talk shit",
-      "correctionOfMyTranslation": false
+      "correctionOfMyTranslation": false,
+      "rare": false
     },
     {
       "id": "prepare-to",
@@ -809,7 +869,8 @@
       "example": "The team prepared to leave the hotel.",
       "exampleRu": "Команда готовилась выезжать из отеля.",
       "blank": "prepared to",
-      "correctionOfMyTranslation": true
+      "correctionOfMyTranslation": true,
+      "rare": false
     },
     {
       "id": "thick-accent",
@@ -822,7 +883,8 @@
       "example": "She speaks English with a thick Russian accent.",
       "exampleRu": "Она говорит по-английски с сильным русским акцентом.",
       "blank": "thick",
-      "correctionOfMyTranslation": false
+      "correctionOfMyTranslation": false,
+      "rare": false
     }
   ],
   "sentences": [

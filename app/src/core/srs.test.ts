@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { addDays } from "./dates";
-import { applyGrade, blankState, dueList, groups, introduce, IV, levelGroup, streak, unseen } from "./srs";
+import { applyGrade, blankState, dueList, groups, introduce, IV, IV_RARE, levelGroup, streak, unseen } from "./srs";
 import { deck, TODAY } from "./fixtures";
 
 describe("даты", () => {
@@ -48,6 +48,24 @@ describe("интервальное повторение", () => {
 
   it("шаг блока новых слов меняет только счётчики", () => {
     expect(applyGrade({ ...blankState(), lvl: 1, due: "d" }, false, {}, TODAY)).toMatchObject({ lvl: 1, due: "d", wrong: 1 });
+  });
+
+  describe("редкие слова", () => {
+    it("интервалы вдвое длиннее", () => expect([...IV_RARE]).toEqual([0, 2, 6, 14, 30, 60, 120]));
+
+    it("знакомство: повтор послезавтра", () => {
+      expect(introduce(undefined, TODAY, true)).toMatchObject({ lvl: 1, due: addDays(TODAY, 2), intro: TODAY });
+    });
+
+    it("повторение, верно: интервал из IV_RARE", () => {
+      expect(applyGrade({ ...blankState(), lvl: 5 }, true, { rev: true, rare: true }, TODAY)).toMatchObject({ lvl: 6, due: addDays(TODAY, 120) });
+    });
+
+    it("ошибка: уровень −2, не ниже 1; due по интервалу нового уровня", () => {
+      expect(applyGrade({ ...blankState(), lvl: 5 }, false, { rev: true, rare: true }, TODAY)).toMatchObject({ lvl: 3, due: addDays(TODAY, 14) });
+      expect(applyGrade({ ...blankState(), lvl: 2 }, false, { rev: true, rare: true }, TODAY)).toMatchObject({ lvl: 1, due: addDays(TODAY, 2) });
+      expect(applyGrade({ ...blankState(), lvl: 4 }, false, { eve: true, rare: true }, TODAY)).toMatchObject({ lvl: 2, due: addDays(TODAY, 6) });
+    });
   });
 
   it("группы уровней", () => {

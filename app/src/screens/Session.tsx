@@ -58,7 +58,7 @@ export function SessionScreen({ deck, kind, state, setState, onQuit, onFinish }:
     const step = sess.steps[sess.i];
     const w0 = "w" in step && step.w ? deck.byId[step.w] : null;
     if (step.t === "intro") {
-      const r = introduceCurrent(sess, state, todayKey());
+      const r = introduceCurrent(sess, state, todayKey(), deck.byId[step.w]?.rare);
       if (r.state !== state) setState(r.state);
       if (r.sess !== sess) setSess(r.sess);
     }
@@ -80,7 +80,7 @@ export function SessionScreen({ deck, kind, state, setState, onQuit, onFinish }:
     deck,
     sess,
     grade: (ok, wordId) => {
-      const r = gradeCurrent(sess, state, ok, wordId, t);
+      const r = gradeCurrent(sess, state, ok, wordId, t, wordId ? deck.byId[wordId]?.rare : undefined);
       setSess(r.sess);
       if (r.state !== state) setState(r.state);
     },

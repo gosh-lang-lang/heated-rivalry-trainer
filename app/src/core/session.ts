@@ -36,14 +36,21 @@ const NO_RETRY = new Set<Step["t"]>(["write", "speak", "pairs", "section", "intr
  * SRS слова меняется только на первой попытке.
  * Ошибка → копия шага в конец занятия (один раз; не для write/speak/pairs).
  */
-export const gradeCurrent = (sess: Session, state: AppState, ok: boolean, wordId: string | null, today: string): Graded => {
+export const gradeCurrent = (
+  sess: Session,
+  state: AppState,
+  ok: boolean,
+  wordId: string | null,
+  today: string,
+  rare?: boolean,
+): Graded => {
   const step = sess.steps[sess.i];
   let s = sess,
     st = state;
   if (!sess.first.includes(step.k)) {
     s = { ...s, first: [...s.first, step.k], graded: s.graded + 1, right: s.right + (ok ? 1 : 0) };
     if (wordId) {
-      const ctx = { rev: "rev" in step && !!step.rev, eve: "eve" in step && !!step.eve };
+      const ctx = { rev: "rev" in step && !!step.rev, eve: "eve" in step && !!step.eve, rare };
       st = { ...st, srs: { ...st.srs, [wordId]: applyGrade(st.srs[wordId], ok, ctx, today) } };
     }
   }
@@ -57,13 +64,13 @@ export const markSeen = (sess: Session): Session => {
   return sess.first.includes(k) ? sess : { ...sess, first: [...sess.first, k] };
 };
 
-/** Шаг «знакомство»: слово становится lvl=1, due=завтра. */
-export const introduceCurrent = (sess: Session, state: AppState, today: string): Graded => {
+/** Шаг «знакомство»: слово становится lvl=1, due=завтра (редкое — послезавтра). */
+export const introduceCurrent = (sess: Session, state: AppState, today: string, rare?: boolean): Graded => {
   const step = sess.steps[sess.i];
   if (step.t !== "intro" || state.srs[step.w]?.intro) return { sess, state };
   return {
     sess: sess.newIds.includes(step.w) ? sess : { ...sess, newIds: [...sess.newIds, step.w] },
-    state: { ...state, srs: { ...state.srs, [step.w]: introduce(state.srs[step.w], today) } },
+    state: { ...state, srs: { ...state.srs, [step.w]: introduce(state.srs[step.w], today, rare) } },
   };
 };
 

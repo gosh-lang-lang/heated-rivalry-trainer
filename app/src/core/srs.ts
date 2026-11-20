@@ -1,17 +1,26 @@
 import { addDays } from "./dates";
 import type { AppState, DayLog, Word, WordState } from "./types";
 
-/** Интервалы по уровню, дни. */
+/** Интервалы по уровню, дни: ходовые слова. */
 export const IV = [0, 1, 3, 7, 14, 30, 60] as const;
+/** Интервалы для редких слов — вдвое длиннее. */
+export const IV_RARE = [0, 2, 6, 14, 30, 60, 120] as const;
 export const MAX_LVL = 6;
+/** Насколько падает уровень редкого слова при ошибке (ходовое падает до 1). */
+export const RARE_DROP = 2;
+
+const interval = (lvl: number, rare?: boolean) => (rare ? IV_RARE : IV)[lvl];
+
+/** Уровень после ошибки: ходовое — 1, редкое — на RARE_DROP ниже, но не меньше 1. */
+const dropped = (lvl: number, rare?: boolean) => (rare ? Math.max(1, lvl - RARE_DROP) : 1);
 
 export const blankState = (): WordState => ({ lvl: 0, due: "", intro: "", right: 0, wrong: 0 });
 
-/** Знакомство: lvl=1, due=завтра, intro=сегодня. Повторное знакомство ничего не меняет. */
-export const introduce = (ws: WordState | undefined, today: string): WordState => {
+/** Знакомство: lvl=1, due=завтра (редкое — послезавтра), intro=сегодня. Повторное знакомство ничего не меняет. */
+export const introduce = (ws: WordState | undefined, today: string, rare?: boolean): WordState => {
   const s = ws ?? blankState();
   if (s.intro) return s;
-  return { ...s, lvl: 1, due: addDays(today, 1), intro: today };
+  return { ...s, lvl: 1, due: addDays(today, interval(1, rare)), intro: today };
 };
 
 export interface GradeContext {
@@ -19,28 +28,25 @@ export interface GradeContext {
   rev?: boolean;
   /** вечерняя проверка */
   eve?: boolean;
+  /** редкое слово */
+  rare?: boolean;
 }
 
 /**
  * Оценка первой попытки по слову.
- * - повторение, верно: lvl+1 (до 6), due = сегодня + IV[lvl]
- * - повторение или вечер, ошибка: lvl=1, due=завтра
+ * - повторение, верно: lvl+1 (до 6), due = сегодня + интервал нового уровня
+ * - повторение или вечер, ошибка: ходовое — lvl=1, редкое — lvl−2 (не ниже 1); due = интервал нового уровня
  * - иначе меняются только счётчики right/wrong
  */
 export const applyGrade = (ws: WordState | undefined, ok: boolean, ctx: GradeContext, today: string): WordState => {
   const s = { ...(ws ?? blankState()) };
-  if (ctx.rev) {
-    if (ok) {
-      s.lvl = Math.min(s.lvl + 1, MAX_LVL);
-      s.due = addDays(today, IV[s.lvl]);
-    } else {
-      s.lvl = 1;
-      s.due = addDays(today, 1);
-    }
+  if (ctx.rev && ok) {
+    s.lvl = Math.min(s.lvl + 1, MAX_LVL);
+    s.due = addDays(today, interval(s.lvl, ctx.rare));
   }
-  if (ctx.eve && !ok) {
-    s.lvl = 1;
-    s.due = addDays(today, 1);
+  if ((ctx.rev || ctx.eve) && !ok) {
+    s.lvl = dropped(s.lvl, ctx.rare);
+    s.due = addDays(today, interval(s.lvl, ctx.rare));
   }
   if (ok) s.right++;
   else s.wrong++;

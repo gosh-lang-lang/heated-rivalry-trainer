@@ -19,6 +19,12 @@ export interface Word {
   /** точный фрагмент example, который прячется в задании «впиши» */
   blank: string;
   correctionOfMyTranslation: boolean;
+  /**
+   * Редкое (книжное) слово: та же лестница при знакомстве, но интервалы вдвое длиннее,
+   * ошибка снижает уровень на 2, а не до 1, и вечером — не больше одного своего предложения.
+   * Нет поля — ходовое.
+   */
+  rare?: boolean;
 }
 
 export interface BankSentence {

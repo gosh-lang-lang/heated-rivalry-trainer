@@ -91,6 +91,27 @@ export const eveningWords = (deck: Deck, srs: AppState["srs"], today: string): W
     .slice(0, MAX_EVENING_TYPE);
 };
 
+export const MAX_WRITE = 3;
+/** С какого уровня редкое слово попадает в «своё предложение» — когда его уже уверенно вспоминают. */
+export const RARE_WRITE_LVL = 3;
+
+/**
+ * Слова для своих предложений: до 3 предложений по 1–2 ходовых слова из сегодняшних
+ * и не больше одного — с редким словом, которое уже на уровне 3+ (любое из колоды).
+ * Редкие слова, выученные сегодня, в предложения не идут.
+ */
+export const writeGroups = (deck: Deck, srs: AppState["srs"], ws: Word[], rng: Rng): string[][] => {
+  const rare = shuffle(
+    deck.words.filter((w) => w.rare && (srs[w.id]?.lvl ?? 0) >= RARE_WRITE_LVL),
+    rng,
+  )[0];
+  const pool = shuffle(ws.filter((w) => !w.rare), rng);
+  const groups: string[][] = [];
+  for (let n = 0; n < MAX_WRITE - (rare ? 1 : 0) && pool.length; n++) groups.push(pool.splice(0, Math.min(2, pool.length)).map((w) => w.id));
+  if (rare) groups.push([rare.id]);
+  return groups;
+};
+
 /** Вечер: type без подсказок → write ×3 → speak ×2 → reread. */
 export const eveningPlan = (deck: Deck, state: AppState, today: string, rng: Rng = Math.random): Step[] => {
   const ws = eveningWords(deck, state.srs, today);
@@ -100,12 +121,15 @@ export const eveningPlan = (deck: Deck, state: AppState, today: string, rng: Rng
     .slice(0, MAX_EVENING_TYPE)
     .forEach((w) => st.push({ t: "type", w: w.id, hint: false, eve: true }));
 
-  st.push({ t: "section", pic: "✍️", title: "Своё предложение", sub: "Напиши о своей жизни — я проверю" });
-  const pool = shuffle(ws, rng);
-  for (let n = 0; n < 3 && pool.length; n++) st.push({ t: "write", ws: pool.splice(0, Math.min(2, pool.length)).map((w) => w.id), n });
+  const writes = writeGroups(deck, state.srs, ws, rng);
+  if (writes.length) {
+    st.push({ t: "section", pic: "✍️", title: "Своё предложение", sub: "Напиши о своей жизни — я проверю" });
+    writes.forEach((g, n) => st.push({ t: "write", ws: g, n }));
+  }
 
   st.push({ t: "section", pic: "🎙️", title: "Скажи вслух", sub: "Послушай и повтори фразу" });
-  st.push({ t: "speak", n: 0, w: ws[0].id }, { t: "speak", n: 1, w: (ws[1] ?? ws[0]).id });
+  const sw = (n: number) => writes[n]?.[0] ?? (ws[n] ?? ws[0]).id;
+  st.push({ t: "speak", n: 0, w: sw(0) }, { t: "speak", n: 1, w: sw(1) });
 
   const batches = [...new Set(ws.map((w) => w.batch))];
   st.push({ t: "reread", pages: batches.map((b) => deck.batches.find((x) => x.id === b)?.pages ?? `партия ${b}`) });

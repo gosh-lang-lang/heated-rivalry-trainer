@@ -77,7 +77,7 @@ export function Words({ deck, state, onBack }: { deck: Deck; state: AppState; on
                     <details className="wrow" key={w.id}>
                       <summary>
                         <div className="em">{w.picture}</div>
-                        <div className="wen"><b>{w.en}</b><span className="ipa">{w.ipa}</span></div>
+                        <div className="wen"><b>{w.en}</b><span className="ipa">{w.ipa}</span>{w.rare && <span className="rare" title="Редкое книжное слово: повторяется вдвое реже">редкое</span>}</div>
                         <span className="mute sm wru">{w.ru}</span>
                         <div className="dots" title={`${LEVELS[levelGroup(l)]} · уровень ${l} из 6`}>{[1, 2, 3, 4, 5, 6].map((i) => <i key={i} className={i <= l ? "f" : ""} />)}</div>
                         <span className="wdue">{s?.due ? ruDate(s.due).slice(0, 5) : "—"}</span>
@@ -87,6 +87,7 @@ export function Words({ deck, state, onBack }: { deck: Deck; state: AppState; on
                         {w.note && <>{w.note}<br /></>}
                         <b style={{ color: "var(--ink)" }}>{w.example}</b> — {w.exampleRu}
                         {s?.due && <><br />Следующее повторение: {ruDate(s.due)}</>}
+                        {w.rare && <><br />Редкое книжное слово: нужно узнавать при чтении, повторяется вдвое реже.</>}
                       </div>
                     </details>
                   );

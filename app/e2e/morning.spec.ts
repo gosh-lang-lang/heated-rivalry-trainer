@@ -16,8 +16,9 @@ test.describe("утреннее занятие", () => {
     await expect(page.getByText("38 из 38 с первой попытки")).toBeVisible();
     const st = await readState(page);
     expect(st.days[TODAY].morning).toMatchObject({ score: 38, total: 38, newN: 12 });
-    const learned = DECK.words.slice(0, 12).map((w) => st.srs[w.id]);
-    for (const s of learned) expect(s).toMatchObject({ lvl: 1, intro: TODAY, due: addDays(TODAY, 1) });
+    // ходовые — повтор завтра, редкие — послезавтра
+    for (const w of DECK.words.slice(0, 12))
+      expect(st.srs[w.id]).toMatchObject({ lvl: 1, intro: TODAY, due: addDays(TODAY, w.rare ? 2 : 1) });
 
     await page.getByRole("button", { name: "На главную" }).click();
     await expect(page.getByText("Готово · 38/38")).toBeVisible();
