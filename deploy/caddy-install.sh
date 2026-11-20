@@ -16,12 +16,20 @@ cp "$CADDYFILE" "$CADDYFILE.bak.heated-rivalry"
 if [ "${1:-}" = "--remove" ]; then
   strip_block > "$CADDYFILE.new"
 else
+  # Спрашиваем авторитетные NS зоны напрямую (как Let's Encrypt), а не кэширующий резолвер:
+  # тот может сутки помнить «нет записи» (SOA minimum зоны — 86400 с).
   ME=$(curl -fsS4 --max-time 5 https://api.ipify.org || true)
-  DNS=$(getent ahostsv4 "$DOMAIN" | awk 'NR==1{print $1}')
-  if [ -z "$ME" ] || [ "$DNS" != "$ME" ]; then
-    echo "DNS ещё не готов: $DOMAIN → '${DNS:-нет записи}', сервер — '${ME:-?}'. Блок не добавлен." >&2
-    exit 2
-  fi
+  ZONE=${DOMAIN#*.}
+  NSS=$(dig +short NS "$ZONE" @1.1.1.1)
+  [ -n "$ME" ] && [ -n "$NSS" ] || { echo "Не удалось узнать IP сервера или NS зоны $ZONE" >&2; exit 2; }
+  for ns in $NSS; do
+    A=$(dig +short +norecurse A "$DOMAIN" @"$ns" | tail -n1)
+    if [ "$A" != "$ME" ]; then
+      echo "DNS ещё не готов: $ns отвечает $DOMAIN → '${A:-нет записи}', сервер — $ME. Блок не добавлен." >&2
+      exit 2
+    fi
+  done
+  echo "DNS готов: все NS зоны ($(echo $NSS | tr '\n' ' ')) указывают на $ME"
   { strip_block; printf '\n'; cat "$HERE/caddy-site.conf"; } > "$CADDYFILE.new"
 fi
 # файл смонтирован в контейнер как bind-mount одного файла: переписываем содержимое, а не заменяем inode
