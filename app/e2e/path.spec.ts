@@ -99,6 +99,10 @@ test.describe("путь", () => {
     await page.getByRole("region", { name: "Урок 1" }).getByRole("button", { name: "Слова урока" }).click();
     await expect(page.getByRole("heading", { level: 1, name: "Словарь" })).toBeVisible();
     await expect(tabButton(page, "Слова")).toHaveAttribute("aria-current", "page");
+    // словарь открыт на этом уроке
+    await expect(page.getByRole("group", { name: "Уроки" }).getByRole("button", { name: /^Урок 1/ })).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator(".wlist h3")).toHaveText(["Урок 1"]);
+    await expect(page.locator(".wlist .wrow")).toHaveCount(12);
   });
 
   test("ночью и в каждом оформлении путь рисуется", async ({ page }) => {

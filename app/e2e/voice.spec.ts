@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { DECK, goTab, openHome, openSettingsSection, readState, setup, state } from "./helpers";
 
 const SAMPLE = "Their animosity was intense. He gritted his teeth and kept playing.";
@@ -90,12 +90,17 @@ test.describe("голос", () => {
 
 test.describe("кнопка «озвучить» в словаре", () => {
   const W = DECK.words[0];
+  /** Кнопка звука слова W в «Словах»: на десктопе — в строке, на телефоне — на странице слова. */
+  const wordSpeaker = async (page: Page) => {
+    if ((page.viewportSize()?.width ?? 0) < 900) await page.locator(".wlist .wrow").filter({ hasText: W.ru }).first().click();
+    return page.locator(`.spk[data-say="${W.en}"]`).first();
+  };
 
   test("уже озвученное слово играет сразу — без запроса «озвучь»", async ({ page }) => {
     const log = await setup(page, { ready: [[W.en, "af_heart"]] });
     await openHome(page);
     await goTab(page, "Слова");
-    await page.locator(`.spk[data-say="${W.en}"]`).first().click();
+    await (await wordSpeaker(page)).click();
     await expect.poll(() => log.played.length).toBe(1);
     expect(log.requests).toEqual([]);
   });
@@ -104,7 +109,7 @@ test.describe("кнопка «озвучить» в словаре", () => {
     const log = await setup(page);
     await openHome(page);
     await goTab(page, "Слова");
-    const btn = page.locator(`.spk[data-say="${W.en}"]`).first();
+    const btn = await wordSpeaker(page);
     await btn.click();
     await expect.poll(() => log.played.length).toBe(1);
     expect(log.requests).toEqual([{ text: W.en, voice: "af_heart" }]);
@@ -124,7 +129,7 @@ test.describe("кнопка «озвучить» в словаре", () => {
     });
     await openHome(page);
     await goTab(page, "Слова");
-    const btn = page.locator(`.spk[data-say="${W.en}"]`).first();
+    const btn = await wordSpeaker(page);
     await btn.click();
     await expect(btn).toHaveAttribute("aria-pressed", "true");
     await expect(btn).toHaveAttribute("aria-busy", "true");

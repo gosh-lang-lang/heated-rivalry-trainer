@@ -7,6 +7,7 @@ import "./styles.css";
 import "./glass.css";
 import "./pull.css";
 import "./rewards.css";
+import "./words.css";
 import { initGlass, legacyLook } from "./lib/glass";
 import { applyTheme, legacyTheme } from "./lib/theme";
 

@@ -153,7 +153,7 @@ function DoneBody({ card, go }: { card: LessonCard; go: (v: View) => void }) {
         <div className="dp-tx"><small>Карточка {cardNo(card.pos)} · {card.cat}</small><b>{card.name}</b><span>{card.line}</span></div>
       </div>
       <div className="dp-btns">
-        <button className="btn ghost" onClick={() => go({ name: "words" })}>Слова урока</button>
+        <button className="btn ghost" onClick={() => go({ name: "words", lesson: card.lesson })}>Слова урока</button>
         <button className="btn ghost" onClick={() => go({ name: "card", no: card.no, from: { name: "path" } })}>Карточка</button>
       </div>
     </>

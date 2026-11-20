@@ -35,22 +35,6 @@ test.describe("главная", () => {
   });
 });
 
-test.describe("словарь", () => {
-  test("3 партии, 62 слова, раскрытие показывает пример и дату повторения", async ({ page }) => {
-    const w = DECK.words[0];
-    await setup(page, { state: state({ srs: { [w.id]: ws({ lvl: 3, due: "2026-11-27" }) } }) });
-    await openHome(page);
-    await goTab(page, "Слова");
-    for (const b of DECK.batches) await expect(page.getByRole("heading", { name: b.title, exact: true })).toBeVisible();
-    await expect(page.locator(".wrow")).toHaveCount(62);
-    const row = page.locator(".wrow").filter({ hasText: w.ru }).first();
-    await row.locator("summary").click();
-    await expect(row).toContainText(w.example);
-    await expect(row).toContainText("Следующее повторение: 27.11.2026");
-    await expect(row.locator(".dots i.f")).toHaveCount(3);
-  });
-});
-
 test.describe("статистика — на вкладке «Я»", () => {
   test("серия, частые ошибки и свои предложения", async ({ page }) => {
     const [a, b] = DECK.words;

@@ -1,0 +1,80 @@
+/* ================= «Слова»: словарь по урокам и страница слова =================
+   Телефон: поиск и уроки-таблетки сверху, строка — слово + транскрипция, перевод; справа полоска уровня и дата повтора;
+   нажатие — страница слова. Десктоп (≥ 900px): слева поиск, уроки и уровни; таблица СЛОВО · ПЕРЕВОД · УРОВЕНЬ · ПОВТОР. */
+
+.words .card{padding:14px 16px 6px}
+.bsub{margin:3px 0 6px;color:var(--mute);font-size:14px;font-weight:700}
+.bno.ahead{background:none;box-shadow:inset 0 0 0 2px var(--line2)}
+.ftag{display:inline-block;padding:1px 7px;border-radius:999px;background:var(--blue);color:#fff;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.04em}
+
+/* строка слова — телефон: кнопка на всю ширину */
+.words .wrow{width:100%;display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"en lv" "ru due";column-gap:12px;row-gap:2px;align-items:baseline;
+  padding:10px 0;border:0;border-bottom:1px solid var(--line);background:none;color:inherit;text-align:left;font:inherit;border-radius:0}
+.words .wrow:last-child{border-bottom:0}
+.words button.wrow:active{background:light-dark(rgba(18,48,107,.05),rgba(255,255,255,.05))}
+.words .wen{grid-area:en;min-width:0}
+.words .wen b{display:inline;font-size:17px;font-weight:900}
+.words .wen .ipa{font-size:14px;margin-left:6px}
+.words .wen .rare{margin-left:6px}
+.words .wru{grid-area:ru;color:var(--mute);font-size:15px;font-weight:600;line-height:1.3}
+.words .wrow .dots{grid-area:lv;margin:0;gap:2px;align-self:center;justify-self:end}
+.words .wrow .dots i{width:7px;height:6px}
+.words .wdue{grid-area:due;justify-self:end;color:var(--mute);font-size:13px;font-weight:800;white-space:nowrap;font-variant-numeric:tabular-nums}
+
+/* страница слова */
+.wp-head{flex-wrap:nowrap;align-items:center;gap:12px}
+.wp-back{width:44px;height:44px;flex:none;border-radius:14px;border:2px solid var(--line);background:var(--card);color:var(--ink);display:grid;place-items:center;align-self:center}
+.wp-back svg{width:22px;height:22px}
+.wp-head h1{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wrap.wp{display:grid;gap:14px;padding-top:14px}
+.wp-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.wp-top h2{font-size:clamp(32px,10vw,44px);line-height:1.05;letter-spacing:-.01em;overflow-wrap:anywhere}
+.wp-word .ipa{margin-top:6px}
+.wp-ru{margin-top:12px;font-size:22px;font-weight:900;color:var(--blue);line-height:1.25}
+.wp-tags:empty{display:none}
+.wp-tags{margin-top:8px}.wp-tags .rare:first-child{margin-left:0}
+.wp-word .exs b{display:block;font-size:17px}
+.wp-stat{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.wp-stat small{display:block;font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);margin-bottom:8px}
+.wp-stat b{display:block;font-size:17px;font-weight:900}
+.wp-stat span{display:block;color:var(--mute);font-size:14px;font-weight:700;margin-top:2px}
+.wp-stat .wp-due{font-size:22px}
+.wp-lv{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px;margin-bottom:8px}
+.wp-lv i{height:7px;border-radius:4px;background:var(--line)}.wp-lv i.f{background:var(--ok)}
+.wp-nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.wp-nav .btn{min-height:52px;display:flex;align-items:center;justify-content:flex-start;gap:6px;padding:8px 12px;font-size:16px;min-width:0}
+.wp-nav .btn.nx{justify-content:flex-end;grid-column:2}
+.wp-nav .btn svg{width:18px;height:18px;flex:none}
+.wp-nav .btn.nx svg{transform:scaleX(-1)}
+.wp-nav .btn{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+
+@media(min-width:900px){
+  /* фильтры слева */
+  .words .filters .fl button{gap:8px}
+  .words .card{padding:20px 22px 10px}
+  .bsub{font-size:15px}
+  /* таблица */
+  .whead,.words .wrow{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) 96px 112px 40px;column-gap:16px;align-items:center}
+  .whead{font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);padding:10px 8px;border-bottom:2px solid var(--line)}
+  .words .wrow{grid-template-areas:none;padding:0;border-bottom:1px solid var(--line)}
+  .words .wrow summary{display:contents}
+  .words .wen,.words .wru,.words .wrow .dots,.words .wdue{grid-area:auto}
+  .words .wrow > summary > *{padding-block:9px}
+  .words .wrow .wen{padding-left:8px}
+  .words .wrow:hover,.words .wrow[open]{background:light-dark(#f5f8fc,#17233a)}
+  .words .wru{font-size:16px;color:var(--ink)}
+  .words .wrow .dots{justify-self:start;gap:3px}
+  .words .wrow .dots i{width:11px}
+  .words .wdue{justify-self:start;font-size:15px;font-weight:700}
+  .words .wrow .spk{margin-right:8px}
+  .words .wrow .det{grid-column:1/-1;padding:2px 8px 12px;color:var(--mute);font-size:15px}
+  .words .wrow .det p{margin:0 0 6px}
+  .words .wrow .det b{display:inline;font-size:inherit;color:var(--ink)}
+  /* страница слова — колонкой по центру */
+  .wpage .pagehead,.wpage .wrap{--w:720px}
+  .wp-top h2{font-size:52px}
+}
+@media(min-width:900px) and (max-width:1099px){
+  .whead,.words .wrow{grid-template-columns:minmax(0,1.1fr) minmax(0,1fr) 84px 100px 40px;column-gap:12px}
+  .words .wen .ipa{display:none}
+}

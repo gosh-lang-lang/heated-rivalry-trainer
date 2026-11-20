@@ -17,7 +17,8 @@ import { Me } from "./screens/Me";
 import { Collection } from "./screens/Collection";
 import { CardViewer } from "./screens/CardViewer";
 import { earnedCards } from "./core/cards";
-import { Words } from "./screens/Words";
+import { WordPage, Words } from "./screens/Words";
+import type { LessonKey } from "./core/vocab";
 import { Settings } from "./screens/Settings";
 import { PullRefresh, TabBar, TopNav, useWide, type Section } from "./ui";
 
@@ -28,7 +29,10 @@ import { PullRefresh, TabBar, TopNav, useWide, type Section } from "./ui";
 export type View =
   | { name: "home" }
   | { name: "path" }
-  | { name: "words" }
+  /** lesson — сразу открыть этот урок словаря («Слова урока» на «Пути») */
+  | { name: "words"; lesson?: LessonKey }
+  /** страница слова в словаре */
+  | { name: "word"; id: string }
   | { name: "me" }
   /** season — открытая вкладка сезона; без него — текущий сезон */
   | { name: "collection"; season?: number }
@@ -46,14 +50,14 @@ export type SetState = (next: AppState) => void;
 
 /** Вкладка, к которой относится экран (подсвечена в навигации). */
 export const sectionOf = (v: View): Section =>
-  v.name === "card" ? sectionOf(v.from) : v.name === "collection" || v.name === "settings" || v.name === "me" ? "me" : v.name === "path" || v.name === "words" ? v.name : "home";
+  v.name === "card" ? sectionOf(v.from) : v.name === "collection" || v.name === "settings" || v.name === "me" ? "me" : v.name === "path" || v.name === "words" ? v.name : v.name === "word" ? "words" : "home";
 
 /**
- * Глубина экрана в истории браузера: вкладки, занятие и итог — 0; коллекция и настройки — 1 (подстраницы «Я»);
+ * Глубина экрана в истории браузера: вкладки, занятие и итог — 0; коллекция и настройки — 1 (подстраницы «Я»), страница слова — 1;
  * раздел настроек на телефоне — 2 (на десктопе список и раздел рядом — 1); карточка — на 1 глубже экрана под ней.
  */
 export const depthOf = (v: View, wide: boolean): number =>
-  v.name === "card" ? depthOf(v.from, wide) + 1 : v.name === "collection" ? 1 : v.name === "settings" ? (v.section && !wide ? 2 : 1) : 0;
+  v.name === "card" ? depthOf(v.from, wide) + 1 : v.name === "collection" || v.name === "word" ? 1 : v.name === "settings" ? (v.section && !wide ? 2 : 1) : 0;
 
 /** Запись в истории браузера: d — сколько записей приложения над базовой, v — экран. */
 type Entry = { d: number; v: View };
@@ -213,7 +217,9 @@ export default function App({ user, name = null }: { user: string | null; name?:
   const screen = (v: View): ReactNode => {
     switch (v.name) {
       case "words":
-        return <Words deck={DECK} state={state} onBack={() => go({ name: "home" })} />;
+        return <Words deck={DECK} state={state} go={go} wide={wide} lesson={v.lesson} />;
+      case "word":
+        return <WordPage deck={DECK} state={state} id={v.id} go={go} />;
       case "path":
         return <PathScreen deck={DECK} state={state} go={go} wide={wide} />;
       case "me":
