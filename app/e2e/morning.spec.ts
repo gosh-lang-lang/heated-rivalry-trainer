@@ -1,12 +1,12 @@
 import { expect, test } from "@playwright/test";
 import { addDays, afterMorning, DECK, openHome, playSession, readState, setup, state, TODAY, ws } from "./helpers";
 
-test.describe("утреннее занятие", () => {
+test.describe("часть 1 урока — учим", () => {
   test("первый день: 12 новых слов, 38 заданий, всё верно → 100%", async ({ page }) => {
     await setup(page);
     await openHome(page);
     await expect(page.getByText("12 новых · ~15 мин")).toBeVisible();
-    await page.getByRole("button", { name: "Начать утреннее" }).click();
+    await page.getByRole("button", { name: "Начать часть 1" }).click();
     await expect(page.locator(".sect h2")).toHaveText("Новые слова · блок 1");
 
     const r = await playSession(page);
@@ -28,7 +28,7 @@ test.describe("утреннее занятие", () => {
   test("ошибка возвращается в конец и не портит счёт второй попыткой", async ({ page }) => {
     await setup(page, { state: state({ settings: { newPerDay: 6 } }) });
     await openHome(page);
-    await page.getByRole("button", { name: "Начать утреннее" }).click();
+    await page.getByRole("button", { name: "Начать часть 1" }).click();
     const r = await playSession(page, { mistakes: 1 });
     expect(r.wrong).toEqual(["Выбери перевод"]);
     // повтор того же задания появился в конце
@@ -40,7 +40,7 @@ test.describe("утреннее занятие", () => {
   test("неверный ответ: красная панель с правильным вариантом", async ({ page }) => {
     await setup(page, { state: state({ settings: { newPerDay: 6 } }) });
     await openHome(page);
-    await page.getByRole("button", { name: "Начать утреннее" }).click();
+    await page.getByRole("button", { name: "Начать часть 1" }).click();
     await page.getByRole("button", { name: "Поехали" }).click();
     for (let i = 0; i < 6; i++) await page.locator("#next").click();
     const en = (await page.locator(".word h2").textContent())!.trim();
@@ -56,7 +56,7 @@ test.describe("утреннее занятие", () => {
     const srs = Object.fromEntries(DECK.words.slice(0, 2).map((w) => [w.id, ws({ lvl: 3, due: TODAY, intro: "2026-11-01" })]));
     await setup(page, { state: state({ srs, settings: { newPerDay: 6 } }) });
     await openHome(page);
-    await page.getByRole("button", { name: "Начать утреннее" }).click();
+    await page.getByRole("button", { name: "Начать часть 1" }).click();
     await expect(page.locator(".sect h2")).toHaveText("Разминка: повторение");
     await page.getByRole("button", { name: "Поехали" }).click();
 
@@ -86,7 +86,7 @@ test.describe("утреннее занятие", () => {
     await setup(page, { state: state({ srs, settings: { newPerDay: 6 } }) });
     await openHome(page);
     await expect(page.getByText("3 на повторение · 6 новых · ~15 мин")).toBeVisible();
-    await page.getByRole("button", { name: "Начать утреннее" }).click();
+    await page.getByRole("button", { name: "Начать часть 1" }).click();
     const r = await playSession(page);
     expect(r.steps[0]).toBe("Разминка: повторение");
     expect(r.steps.slice(1, 4).every((s) => s.startsWith("Повторение · "))).toBe(true);
@@ -94,7 +94,7 @@ test.describe("утреннее занятие", () => {
     for (const w of DECK.words.slice(0, 3)) expect(st.srs[w.id]).toMatchObject({ lvl: 2, due: addDays(TODAY, 3) });
   });
 
-  test("«Ещё 6 новых» после утра — только новые слова", async ({ page }) => {
+  test("«Ещё 6 новых» после части 1 — только новые слова", async ({ page }) => {
     await setup(page, { state: afterMorning(12) });
     await openHome(page);
     await page.getByRole("button", { name: "Ещё 6 новых слов" }).click();
@@ -109,12 +109,12 @@ test.describe("утреннее занятие", () => {
   test("выход посреди занятия сохраняет уже пройденное", async ({ page }) => {
     await setup(page, { state: state({ settings: { newPerDay: 6 } }) });
     await openHome(page);
-    await page.getByRole("button", { name: "Начать утреннее" }).click();
+    await page.getByRole("button", { name: "Начать часть 1" }).click();
     await page.getByRole("button", { name: "Поехали" }).click();
     await page.locator("#next").click();
     await page.locator("#next").click();
     await page.getByRole("button", { name: "Выйти" }).click();
-    await expect(page.getByRole("button", { name: "Начать утреннее" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Начать часть 1" })).toBeVisible();
     const st = await readState(page);
     // показанное слово считается знакомым: Поехали → слово 1 → слово 2 → слово 3 на экране
     expect(Object.values(st.srs).filter((s) => s.intro === TODAY)).toHaveLength(3);
@@ -125,7 +125,7 @@ test.describe("утреннее занятие", () => {
     test.skip(isMobile, "физическая клавиатура — только на десктопе");
     await setup(page, { state: state({ settings: { newPerDay: 6 } }) });
     await openHome(page);
-    await page.getByRole("button", { name: "Начать утреннее" }).click();
+    await page.getByRole("button", { name: "Начать часть 1" }).click();
     for (let i = 0; i < 7; i++) await page.keyboard.press("Enter");
     await expect(page.locator(".lbl")).toHaveText("Выбери перевод");
     await page.keyboard.press("2");

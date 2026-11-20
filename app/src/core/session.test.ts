@@ -72,6 +72,16 @@ describe("движок занятия", () => {
     expect(f.state.days[TODAY].morning).toBe(f.result);
   });
 
+  it("часть 2, перенесённая со вчера, записывается в день урока", () => {
+    const y = "2026-11-19";
+    const st = state({ days: { [y]: { morning: { score: 1, total: 1, mins: 1, newN: 1, at: "" } } } });
+    const s = { ...startSession("evening", steps, 0)!, graded: 2, right: 2 };
+    const f = finishSession(s, st, y, new Date("2026-11-20T06:00:00Z"));
+    expect(f.day).toBe(y);
+    expect(f.state.days[y].evening).toMatchObject({ score: 2, total: 2, at: "2026-11-20T06:00:00.000Z" });
+    expect(f.state.days[TODAY]).toBeUndefined();
+  });
+
   it("«ещё 6» копятся списком", () => {
     let st = state();
     const s = startSession("extra", steps, 0)!;

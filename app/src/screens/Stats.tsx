@@ -53,13 +53,13 @@ export function Stats({ deck, state, onBack }: { deck: Deck; state: AppState; on
         <div className="stats-grid">
         <section className="card chart">
           <h3>Последние 2 недели</h3>
-          <p className="mute sm" style={{ margin: "4px 0" }}>Жёлтый — утро, синий — вечер, % верно с первой попытки</p>
+          <p className="mute sm" style={{ margin: "4px 0" }}>Жёлтый — часть 1, синий — часть 2, % верно с первой попытки</p>
           <div className="hchart">
           {rows.map(([k, m, e]) => (
             <div className="hrow" key={k} data-today={k === t || undefined}>
               <span>{k.slice(8)}<small>.{k.slice(5, 7)}</small></span>
-              <div className="hb" title={`Утро ${m ? `${m.score}/${m.total}` : "—"}`}><i className="m" style={{ "--p": `${p(m)}%` } as CSSProperties} /></div>
-              <div className="hb" title={`Вечер ${e ? `${e.score}/${e.total}` : "—"}`}><i className="e" style={{ "--p": `${p(e)}%` } as CSSProperties} /></div>
+              <div className="hb" title={`Часть 1 ${m ? `${m.score}/${m.total}` : "—"}`}><i className="m" style={{ "--p": `${p(m)}%` } as CSSProperties} /></div>
+              <div className="hb" title={`Часть 2 ${e ? `${e.score}/${e.total}` : "—"}`}><i className="e" style={{ "--p": `${p(e)}%` } as CSSProperties} /></div>
             </div>
           ))}
           </div>
@@ -99,7 +99,7 @@ export function Stats({ deck, state, onBack }: { deck: Deck; state: AppState; on
                 </div>
               ))
           ) : (
-            <p className="mute">Появятся после вечернего занятия</p>
+            <p className="mute">Появятся после части 2 урока</p>
           )}
         </section>
       </div>

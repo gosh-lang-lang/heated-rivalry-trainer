@@ -50,7 +50,7 @@ test.describe("голос", () => {
 
     // занятие говорит выбранным голосом
     await goTab(page, "Главная");
-    await page.getByRole("button", { name: "Начать утреннее" }).click();
+    await page.getByRole("button", { name: "Начать часть 1" }).click();
     await page.getByRole("button", { name: "Поехали" }).click();
     await expect.poll(() => log.requests.some((r) => r.text === DECK.words[0].en && r.voice === "bf_emma")).toBe(true);
   });
@@ -75,7 +75,7 @@ test.describe("голос", () => {
   test("новое слово озвучивается сервером, следующий шаг подгружается заранее", async ({ page }) => {
     const log = await setup(page, { state: state({ settings: { newPerDay: 6 } }) });
     await openHome(page);
-    await page.getByRole("button", { name: "Начать утреннее" }).click();
+    await page.getByRole("button", { name: "Начать часть 1" }).click();
     const audio = page.waitForRequest((r) => r.url().endsWith(".mp3"));
     await page.getByRole("button", { name: "Поехали" }).click();
     await audio;

@@ -1,11 +1,14 @@
 import type { ReactNode } from "react";
 import { todayKey } from "../core/dates";
+import { lessonNo } from "../core/lesson";
 import { pct, type Finished } from "../core/session";
 import { streak } from "../core/srs";
 import type { AppState } from "../core/types";
 
 export function Result({ fin, state, onHome }: { fin: Finished; state: AppState; onHome: () => void }) {
-  const { result: res, prev, kind } = fin;
+  const { result: res, prev, kind, day } = fin;
+  const n = lessonNo(fin.state.days, day);
+  const title = kind === "morning" ? `Урок ${n} · часть 1 готова` : kind === "evening" ? `Урок ${n} · часть 2 готова` : "Занятие готово";
   const p = pct(res);
   let cmp: ReactNode = null;
   if (prev && prev.total) {
@@ -16,7 +19,7 @@ export function Result({ fin, state, onHome }: { fin: Finished; state: AppState;
     <>
       <main className="stage result">
         <div className="sect" style={{ paddingTop: 20 }}><div className="big">{p >= 90 ? "🏆" : p >= 70 ? "🥅" : "💪"}</div></div>
-        <h2 style={{ fontSize: 30 }}>{kind === "evening" ? "Вечернее занятие готово" : "Занятие готово"}</h2>
+        <h2 style={{ fontSize: 30 }}>{title}</h2>
         <div className="score">{p}%</div>
         <p className="mute">
           {res.score} из {res.total} с первой попытки

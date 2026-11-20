@@ -1,10 +1,12 @@
+import { useEffect, useState } from "react";
 import type { View } from "../App";
-import { addDays, todayKey } from "../core/dates";
-import { eveningWords, MAX_REVIEW, newToday } from "../core/plans";
+import { addDays } from "../core/dates";
+import { hhmm, lessonStatus, untilText, type LessonPart } from "../core/lesson";
+import { MAX_REVIEW, newToday } from "../core/plans";
 import { dueList, groups, isHard, levelGroup, streak, unseen } from "../core/srs";
 import { plural } from "../core/text";
-import type { AppState, Deck } from "../core/types";
-import { Check, Flame, Moon, Rink, Sun } from "../lib/icons";
+import type { AppState, Deck, SessionResult } from "../core/types";
+import { Check, Flame, Rink } from "../lib/icons";
 import { useVoices } from "../lib/speech";
 import { ThemeToggle } from "../ui";
 
@@ -18,9 +20,30 @@ interface Props {
 
 const WD = ["вс", "пн", "вт", "ср", "чт", "пт", "сб"];
 
+/** Текущее время, раз в минуту (на границе минуты) и при возвращении в приложение — для отсчёта до части 2. */
+function useNow(): Date {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    let id = 0;
+    const tick = () => {
+      setNow(new Date());
+      id = window.setTimeout(tick, 60_000 - (Date.now() % 60_000));
+    };
+    id = window.setTimeout(tick, 60_000 - (Date.now() % 60_000));
+    const onShow = () => document.visibilityState === "visible" && setNow(new Date());
+    document.addEventListener("visibilitychange", onShow);
+    return () => {
+      clearTimeout(id);
+      document.removeEventListener("visibilitychange", onShow);
+    };
+  }, []);
+  return now;
+}
+
 export function Home({ deck, state, go, wide = false }: Props) {
-  const t = todayKey();
-  const d = state.days[t] ?? {};
+  const clock = useNow();
+  const ls = lessonStatus(state, deck, clock);
+  const t = ls.today;
   const nt = newToday(deck, state, t);
   const due = nt.due;
   const nu = unseen(deck.words, state.srs).length;
@@ -29,32 +52,71 @@ export function Home({ deck, state, go, wide = false }: Props) {
   const tot = deck.words.length;
   const sk = streak(state.days, t);
   const tomorrow = dueList(deck.words, state.srs, addDays(t, 1)).length;
-  const m = d.morning,
-    e = d.evening;
-  const ew = eveningWords(deck, state.srs, t).length;
 
-  const mSub = m ? (
-    <span className="done-tag"><Check /> Готово · {m.score}/{m.total}</span>
-  ) : due || np ? (
-    <>
-      {`${due ? `${Math.min(due, MAX_REVIEW)} на повторение · ` : ""}${np ? `${np} ${plural(np, "новое", "новых", "новых")}` : nu ? "без новых" : "новые слова закончились"} · ~15 мин`}
-      {nt.why && <span className="why">{nt.why[0].toUpperCase() + nt.why.slice(1)}</span>}
-    </>
-  ) : nu ? (
-    "На сегодня повторений нет"
-  ) : (
-    "Новых слов нет — пришли новую партию в чат"
-  );
-  const eSub = e ? (
-    <span className="done-tag"><Check /> Готово · {e.score}/{e.total}</span>
-  ) : ew ? (
-    m ? "Проверка, своё предложение, говорение · ~15 мин" : "Лучше после утреннего занятия"
-  ) : (
-    "Сначала пройди утреннее занятие"
-  );
+  const doneTag = (r: SessionResult) => <span className="done-tag"><Check /> Готово · {r.score}/{r.total}</span>;
 
-  // какое занятие сейчас главное — его карточку выделяем
-  const now: "m" | "e" | "" = !m && (due || np) ? "m" : !e && ew && m ? "e" : "";
+  /** Часть 1 — учим: повторения и новые слова. */
+  const part1 = (p: LessonPart) => {
+    const sub = p.done ? (
+      doneTag(p.done)
+    ) : due || np ? (
+      <>
+        {`${due ? `${Math.min(due, MAX_REVIEW)} на повторение · ` : ""}${np ? `${np} ${plural(np, "новое", "новых", "новых")}` : nu ? "без новых" : "новые слова закончились"} · ~15 мин`}
+        {nt.why && <span className="why">{nt.why[0].toUpperCase() + nt.why.slice(1)}</span>}
+        {p.secondary && <span className="why">Лучше после части 2 урока {p.n - 1}</span>}
+      </>
+    ) : nu ? (
+      "На сегодня повторений нет"
+    ) : (
+      "Новых слов нет — пришли новую партию в чат"
+    );
+    return (
+      <section key="p1" className={`card sess am${ls.focus === 1 ? " now" : ""}${p.done ? " done" : ""}`}>
+        <div className="ic sun">{p.done ? <Check /> : <b className="pn" aria-hidden="true">1</b>}</div>
+        <div className="stx"><h2>Урок {p.n} · часть 1 — учим</h2><div className="mute sm">{sub}</div></div>
+        <div className="acts">
+          {p.can ? <button className={`btn wide${p.secondary ? " ghost" : ""}`} onClick={() => go({ name: "session", kind: "morning" })}>Начать часть 1</button> : null}
+          {p.done && nu && !due ? <button className="btn ghost wide" onClick={() => go({ name: "session", kind: "extra" })}>Ещё 6 новых слов</button> : null}
+        </div>
+      </section>
+    );
+  };
+
+  /** Часть 2 — применяем: после паузы от конца части 1; перенесённая со вчера — первой. */
+  const part2 = (p: LessonPart) => {
+    const start = (label: string, ghost: boolean) => (
+      <button className={`btn wide${ghost ? " ghost" : ""}`} onClick={() => go({ name: "session", kind: "evening", ...(p.carried ? { day: p.day } : {}) })}>{label}</button>
+    );
+    const sub = p.done ? (
+      doneTag(p.done)
+    ) : !p.can ? (
+      "Сначала пройди часть 1"
+    ) : p.advice === "late" ? (
+      "Сегодня уже поздно — часть 2 лучше завтра первым делом"
+    ) : p.advice === "wait" && p.after ? (
+      <>
+        Лучше после {hhmm(p.after)}
+        <span className="why">{untilText(clock, p.after)} · можно и сейчас</span>
+      </>
+    ) : p.carried ? (
+      <>
+        Осталась с прошлого раза — начни с неё
+        <span className="why">Проверка, своё предложение, говорение · ~15 мин</span>
+      </>
+    ) : (
+      "Проверка, своё предложение, говорение · ~15 мин"
+    );
+    return (
+      <section key="p2" className={`card sess pm${ls.focus === 2 ? " now" : ""}${p.advice === "wait" ? " wait" : ""}${p.done ? " done" : ""}`}>
+        <div className="ic moon">{p.done ? <Check /> : <b className="pn" aria-hidden="true">2</b>}</div>
+        <div className="stx"><h2>Урок {p.n} · часть 2 — применяем</h2><div className="mute sm">{sub}</div></div>
+        <div className="acts">
+          {p.can ? (p.advice === "late" ? start("Всё равно сейчас", true) : start("Начать часть 2", p.advice === "wait")) : null}
+        </div>
+      </section>
+    );
+  };
+
   const week = Array.from({ length: 7 }, (_, i) => {
     const k = addDays(t, i - 6);
     const dd = state.days[k] ?? {};
@@ -66,25 +128,25 @@ export function Home({ deck, state, go, wide = false }: Props) {
     .filter((w) => isHard(state.srs[w.id]))
     .sort((a, b) => state.srs[b.id].wrong - state.srs[a.id].wrong)
     .slice(0, 4);
-  const today = new Date().toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" });
+  const today = clock.toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" });
 
   const weekCard = (
     <section className="card week">
       <div className="wk-head">
         <h3>Неделя</h3>
-        <span className="mute sm">{weekDone} из 14 занятий</span>
+        <span className="mute sm">{weekDone} из 14 частей</span>
       </div>
       <ol className="wk">
         {week.map((x) => (
           <li key={x.k} data-today={x.k === t || undefined}>
             <span className="wd">{x.wd}</span>
-            <i className={`dot am${x.m ? " on" : ""}`} title={x.m ? "Утро пройдено" : "Утро —"} />
-            <i className={`dot pm${x.e ? " on" : ""}`} title={x.e ? "Вечер пройден" : "Вечер —"} />
+            <i className={`dot am${x.m ? " on" : ""}`} title={x.m ? "Часть 1 пройдена" : "Часть 1 —"} />
+            <i className={`dot pm${x.e ? " on" : ""}`} title={x.e ? "Часть 2 пройдена" : "Часть 2 —"} />
             <span className="dn">{+x.k.slice(8)}</span>
           </li>
         ))}
       </ol>
-      <p className="mute sm wk-legend"><i className="dot am on" /> утро <i className="dot pm on" /> вечер</p>
+      <p className="mute sm wk-legend"><i className="dot am on" /> часть 1 <i className="dot pm on" /> часть 2</p>
     </section>
   );
 
@@ -99,28 +161,14 @@ export function Home({ deck, state, go, wide = false }: Props) {
             <span className="chip"><Flame />{sk} {plural(sk, "день", "дня", "дней")}</span>
             {!wide && <ThemeToggle />}
           </div>
-          <h1>{new Date().getHours() < 16 ? "Доброе утро" : "Добрый вечер"}, Евгений</h1>
-          <p>{now ? "Два занятия по 15 минут: утром учим, вечером применяем." : "На сегодня всё — отличная смена. До завтра!"}</p>
+          <h1>{clock.getHours() < 16 ? "Доброе утро" : "Добрый вечер"}, Евгений</h1>
+          <p>{ls.focus ? "Урок из двух частей по ~15 минут: сначала учим, потом применяем." : "На сегодня всё — отличная смена. До завтра!"}</p>
         </div>
       </header>
-      <div className={`wrap home${now ? "" : " all-done"}`}>
+      <div className={`wrap home${ls.focus ? "" : " all-done"}`}>
         <div className="main-col">
           <div className="today">
-            <section className={`card sess am${now === "m" ? " now" : ""}${m ? " done" : ""}`}>
-              <div className="ic sun"><Sun /></div>
-              <div className="stx"><h2>Утро · учим</h2><div className="mute sm">{mSub}</div></div>
-              <div className="acts">
-                {!m && (due || np) ? <button className="btn wide" onClick={() => go({ name: "session", kind: "morning" })}>Начать утреннее</button> : null}
-                {m && nu && !due ? <button className="btn ghost wide" onClick={() => go({ name: "session", kind: "extra" })}>Ещё 6 новых слов</button> : null}
-              </div>
-            </section>
-            <section className={`card sess pm${now === "e" ? " now" : ""}${e ? " done" : ""}`}>
-              <div className="ic moon"><Moon /></div>
-              <div className="stx"><h2>Вечер · применяем</h2><div className="mute sm">{eSub}</div></div>
-              <div className="acts">
-                {!e && ew ? <button className={`btn wide${m ? "" : " ghost"}`} onClick={() => go({ name: "session", kind: "evening" })}>Начать вечернее</button> : null}
-              </div>
-            </section>
+            {ls.cards.map((p) => (p.part === 1 ? part1(p) : part2(p)))}
           </div>
           {!wide && weekCard}
           <section className="card mywords">
@@ -183,7 +231,7 @@ function SettingsSummary({ state, go }: { state: AppState; go: (v: View) => void
   return (
     <section className="card setsum">
       <dl>
-        <div><dt>Новых слов за утро</dt><dd>{state.settings.newPerDay}</dd></div>
+        <div><dt>Новых слов за урок</dt><dd>{state.settings.newPerDay}</dd></div>
         <div><dt>Голос</dt><dd>{v?.name ?? "—"}</dd></div>
       </dl>
       <button className="btn ghost" onClick={() => go({ name: "settings" })}>Изменить</button>

@@ -48,13 +48,13 @@ export interface TtsLog {
 /**
  * Готовит страницу: фиксированное время, детерминированный Math.random, моки сервера озвучки и прогресса.
  * state — прогресс на устройстве (как до переезда на сервер: его заберёт вошедший пользователь),
- * remote — прогресс на сервере, sync: "down" — сервер прогресса недоступен. Вызывать до page.goto.
+ * remote — прогресс на сервере, sync: "down" — сервер прогресса недоступен, now — свои часы вместо NOW. Вызывать до page.goto.
  */
 export const setup = async (
   page: Page,
-  opts: { state?: unknown; remote?: unknown; voice?: string; tts?: "ok" | "down"; sync?: "ok" | "down" } = {},
+  opts: { state?: unknown; remote?: unknown; voice?: string; tts?: "ok" | "down"; sync?: "ok" | "down"; now?: Date } = {},
 ): Promise<TtsLog> => {
-  await page.clock.setFixedTime(NOW);
+  await page.clock.setFixedTime(opts.now ?? NOW);
   await page.addInitScript(
     ({ state, voice }) => {
       // повторяемый «случай»: одни и те же варианты ответов и порядок шагов
@@ -133,7 +133,7 @@ export interface WS {
 }
 export const ws = (p: Partial<WS> = {}): WS => ({ lvl: 1, due: addDays(TODAY, 1), intro: TODAY, right: 0, wrong: 0, ...p });
 export const state = (p: Record<string, unknown> = {}) => ({ upd: 1, settings: { newPerDay: 12 }, srs: {}, days: {}, sent: [], ...p });
-/** Первые n слов изучены сегодня утром. */
+/** Первые n слов изучены сегодня: часть 1 урока пройдена в 09:00 (NOW). */
 export const afterMorning = (n = 12) =>
   state({
     srs: Object.fromEntries(DECK.words.slice(0, n).map((w) => [w.id, ws()])),
@@ -247,7 +247,7 @@ export const goTab = async (page: Page, name: "Главная" | "Словарь
   await page.getByRole("navigation", { name: "Разделы" }).getByRole("button", { name, exact: true }).click();
 };
 
-/** Открыть «Настройки»: новые слова за утро, голос, перенос данных. */
+/** Открыть «Настройки»: новые слова за урок, голос, перенос данных. */
 export const openSettings = async (page: Page) => {
   await goTab(page, "Настройки");
   await expect(page.getByRole("heading", { level: 1, name: "Настройки" })).toBeVisible();

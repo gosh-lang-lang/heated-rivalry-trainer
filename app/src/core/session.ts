@@ -97,8 +97,11 @@ export interface Finished {
   /** результат прошлого такого же занятия */
   prev: SessionResult | null;
   kind: SessionKind;
+  /** день, в который записан итог (для перенесённой части 2 — день урока) */
+  day: string;
 }
 
+/** Итог занятия → state.days[today]. Для части 2, перенесённой со вчера, `today` — день урока. */
 export const finishSession = (sess: Session, state: AppState, today: string, now = new Date()): Finished => {
   const kind = sess.kind;
   const result: SessionResult = {
@@ -119,5 +122,5 @@ export const finishSession = (sess: Session, state: AppState, today: string, now
   const d = { ...(state.days[today] ?? {}) };
   if (kind === "extra") d.extra = [...(d.extra ?? []), result];
   else d[kind] = result;
-  return { state: { ...state, days: { ...state.days, [today]: d } }, result, prev, kind };
+  return { state: { ...state, days: { ...state.days, [today]: d } }, result, prev, kind, day: today };
 };
