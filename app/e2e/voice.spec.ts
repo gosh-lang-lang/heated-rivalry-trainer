@@ -42,7 +42,7 @@ test.describe("голос", () => {
     await expect(page.getByRole("radiogroup", { name: "Голос озвучки" }).locator('[role=radio][aria-checked="true"]')).toContainText("Emma");
 
     // занятие говорит выбранным голосом
-    await goTab(page, "Главная");
+    await goTab(page, "Сегодня");
     await page.getByRole("button", { name: "Начать часть 1" }).click();
     await page.getByRole("button", { name: "Поехали" }).click();
     await expect.poll(() => log.requests.some((r) => r.text === DECK.words[0].en && r.voice === "bf_emma")).toBe(true);
@@ -94,7 +94,7 @@ test.describe("кнопка «озвучить» в словаре", () => {
   test("уже озвученное слово играет сразу — без запроса «озвучь»", async ({ page }) => {
     const log = await setup(page, { ready: [[W.en, "af_heart"]] });
     await openHome(page);
-    await goTab(page, "Словарь");
+    await goTab(page, "Слова");
     await page.locator(`.spk[data-say="${W.en}"]`).first().click();
     await expect.poll(() => log.played.length).toBe(1);
     expect(log.requests).toEqual([]);
@@ -103,7 +103,7 @@ test.describe("кнопка «озвучить» в словаре", () => {
   test("ещё не озвученное — сервер озвучивает, второй раз — сразу файл", async ({ page }) => {
     const log = await setup(page);
     await openHome(page);
-    await goTab(page, "Словарь");
+    await goTab(page, "Слова");
     const btn = page.locator(`.spk[data-say="${W.en}"]`).first();
     await btn.click();
     await expect.poll(() => log.played.length).toBe(1);
@@ -123,7 +123,7 @@ test.describe("кнопка «озвучить» в словаре", () => {
       await route.fallback();
     });
     await openHome(page);
-    await goTab(page, "Словарь");
+    await goTab(page, "Слова");
     const btn = page.locator(`.spk[data-say="${W.en}"]`).first();
     await btn.click();
     await expect(btn).toHaveAttribute("aria-pressed", "true");

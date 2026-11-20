@@ -23,7 +23,7 @@ interface Props {
 const WD = ["вс", "пн", "вт", "ср", "чт", "пт", "сб"];
 
 /** Текущее время, раз в минуту (на границе минуты) и при возвращении в приложение — для отсчёта до части 2. */
-function useNow(): Date {
+export function useNow(): Date {
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
     let id = 0;

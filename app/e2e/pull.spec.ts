@@ -134,7 +134,7 @@ test.describe("потяни, чтобы обновить", () => {
   test("обычная прокрутка не тронута: страница не наверху, жест вверх и вбок", async ({ page }) => {
     await setup(page);
     await openHome(page);
-    await page.getByRole("button", { name: "Словарь" }).first().click();
+    await page.getByRole("navigation", { name: "Разделы" }).getByRole("button", { name: "Слова", exact: true }).click();
     await expect(page.locator(".wrow").first()).toBeVisible();
 
     // палец вверх (прокрутка вниз) — не наш жест, событие не отменяем

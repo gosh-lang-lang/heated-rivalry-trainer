@@ -6,6 +6,7 @@ import { lastUser, lastUserName, peekSettings, rememberUser } from "./lib/storag
 import "./styles.css";
 import "./glass.css";
 import "./pull.css";
+import "./rewards.css";
 import { initGlass, legacyLook } from "./lib/glass";
 import { applyTheme, legacyTheme } from "./lib/theme";
 

@@ -187,6 +187,25 @@ export const afterMorning = (n = 12) =>
     days: { [TODAY]: { morning: { score: 30, total: 38, mins: 14, newN: n, at: NOW.toISOString() } } },
   });
 
+/**
+ * Сезон в разгаре: уроки 1–4 пройдены целиком (16–19 ноября, по 12 слов, часть 2 — в 19:00), сегодня часть 1 урока 5
+ * пройдена в 09:00 (NOW) — часть 2 лучше после 10:30. Карточек 4 из 10.
+ */
+export const seasonState = () => {
+  const msk = (day: string, hm: string) => new Date(`${day}T${hm}:00+03:00`).toISOString();
+  const srs: Record<string, WS> = {};
+  const days: Record<string, unknown> = {};
+  for (let i = 0; i < 5; i++) {
+    const day = addDays(TODAY, i - 4);
+    for (const w of DECK.words.slice(i * 12, i * 12 + 12)) srs[w.id] = ws({ intro: day, due: addDays(TODAY, 1) });
+    days[day] = {
+      morning: { score: 34, total: 38, mins: 16, newN: 12, at: msk(day, "09:00") },
+      ...(i < 4 ? { evening: { score: 12, total: 12, mins: 14, newN: 0, at: msk(day, "19:00") } } : {}),
+    };
+  }
+  return state({ srs, days });
+};
+
 /** Прогресс в кэше устройства (вошедший в тестах — evgeny). */
 export const readState = (page: Page) =>
   page.evaluate(() => JSON.parse(localStorage.getItem("hr2_state:evgeny") ?? "null")) as Promise<{
@@ -289,14 +308,20 @@ export const openHome = async (page: Page) => {
   await expect(page.getByRole("heading", { level: 1 })).toContainText("Евгений");
 };
 
-/** Перейти в раздел через навигацию (нижний таб-бар на телефоне, верхнее меню на десктопе). */
-export const goTab = async (page: Page, name: "Главная" | "Словарь" | "Статистика" | "Настройки") => {
-  await page.getByRole("navigation", { name: "Разделы" }).getByRole("button", { name, exact: true }).click();
+export type Tab = "Сегодня" | "Путь" | "Слова" | "Я";
+
+/** Вкладка в навигации (нижний таб-бар на телефоне, верхнее меню на десктопе). */
+export const tabButton = (page: Page, name: Tab) => page.getByRole("navigation", { name: "Разделы" }).getByRole("button", { name, exact: true });
+
+/** Перейти в раздел через навигацию: «Сегодня · Путь · Слова · Я». */
+export const goTab = async (page: Page, name: Tab) => {
+  await tabButton(page, name).click();
 };
 
-/** Открыть «Настройки» — корень: список разделов (на десктопе рядом — первый раздел, «Занятия»). */
+/** Открыть «Настройки» — шестерёнкой в шапке «Я»; корень: список разделов (на десктопе рядом — первый раздел, «Занятия»). */
 export const openSettings = async (page: Page) => {
-  await goTab(page, "Настройки");
+  await goTab(page, "Я");
+  await page.getByRole("button", { name: "Настройки", exact: true }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Настройки" })).toBeVisible();
 };
 

@@ -24,9 +24,10 @@ test.describe("часть 2 урока — применяем", () => {
       "Скажи вслух",
       "Перечитай страницы",
     ]);
-    // 12 «впиши» + 2 «скажи вслух»; предложения без автопроверки в счёт не идут
-    await expect(page.getByText("14 из 14 с первой попытки")).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Урок 1 · часть 2 готова" })).toBeVisible();
+    // часть 2 закрыла урок — итог с карточкой: 12 «впиши» + 2 «скажи вслух» верно, предложения без автопроверки в счёт не идут
+    await expect(page.locator(".rw-kick")).toHaveText("Урок 1 · часть 2 готова");
+    await expect(page.getByRole("heading", { name: "Урок 1 пройден!" })).toBeVisible();
+    await expect(page.locator(".reward .stats3 div").first()).toHaveText("100%верно");
 
     const st = await readState(page);
     expect(st.days[TODAY].reread).toBe(true);

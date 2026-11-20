@@ -310,8 +310,9 @@ test("устройства: оба видны, на другом можно вы
   await expect(devices(laptop)).toHaveCount(1);
   expect(cli("sessions", "evgeny")).not.toContain("iPhone");
   // телефон при следующем действии оказывается на странице входа
-  await phone.getByRole("navigation", { name: "Разделы" }).getByRole("button", { name: "Главная", exact: true }).click();
-  await phone.getByRole("navigation", { name: "Разделы" }).getByRole("button", { name: "Настройки", exact: true }).click();
+  await phone.getByRole("navigation", { name: "Разделы" }).getByRole("button", { name: "Сегодня", exact: true }).click();
+  await phone.getByRole("navigation", { name: "Разделы" }).getByRole("button", { name: "Я", exact: true }).click();
+  await phone.getByRole("button", { name: "Настройки", exact: true }).click();
   await expect(phone).toHaveURL(/\/login/);
   expect((await phone.request.get("/api/auth/me")).status()).toBe(401);
   // ноутбук и Анна остались

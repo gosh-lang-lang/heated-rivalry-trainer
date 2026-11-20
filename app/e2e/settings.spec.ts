@@ -8,7 +8,9 @@ import { goTab, MOCK_DEVICES, openHome, openSettings, openSettingsSection, setti
 
 const wide = (page: Page) => (page.viewportSize()?.width ?? 0) >= 900;
 const rootHeading = (page: Page) => page.getByRole("heading", { level: 1, name: "Настройки" });
-const tab = (page: Page) => page.getByRole("navigation", { name: "Разделы" }).getByRole("button", { name: "Настройки", exact: true });
+/** Настройки — подстраница «Я»: в навигации выбрана вкладка «Я». */
+const tab = (page: Page) => page.getByRole("navigation", { name: "Разделы" }).getByRole("button", { name: "Я", exact: true });
+const depth = (page: Page) => page.evaluate(() => (history.state as { d?: number } | null)?.d ?? 0);
 
 test("корень: четыре раздела с текущими значениями, имя вошедшего над входом", async ({ page }) => {
   await setup(page);
@@ -50,7 +52,7 @@ test("значения на корне меняются вслед за выбо
   await expect(settingsRow(page, "Вход и устройства")).toContainText("2 устройства");
 
   // день/ночь — тумблером в шапке; на корне настроек — тоже видно
-  await goTab(page, "Главная");
+  await goTab(page, "Сегодня");
   await page.getByRole("switch", { name: "Ночная тема" }).click();
   await openSettings(page);
   await expect(settingsRow(page, "Оформление")).toContainText("Классика · ночь");
@@ -69,12 +71,12 @@ test.describe("телефон: раздел — своя страница", () =
     await expect(page.getByRole("heading", { level: 1, name: "Озвучка" })).toBeVisible();
     await expect(page.getByRole("radiogroup", { name: "Голос озвучки" })).toBeVisible();
     await expect(page.locator(".srow")).toHaveCount(0);
-    await expect(tab(page)).toHaveAttribute("aria-current", "page"); // всё ещё внутри «Настроек»
+    await expect(tab(page)).toHaveAttribute("aria-current", "page"); // всё ещё внутри «Я» → «Настройки»
 
     await page.getByRole("button", { name: "Назад в настройки" }).click();
     await expect(rootHeading(page)).toBeVisible();
     await expect(page.locator(".srow")).toHaveCount(4);
-    expect(await page.evaluate(() => history.state)).toBeNull(); // запись раздела снята — «назад» не стоит на месте
+    expect(await depth(page)).toBe(1); // запись раздела снята — «назад» не стоит на месте, остаётся запись «Настроек»
   });
 
   test("«назад» браузера (жест в Safari) из раздела — к списку настроек, «вперёд» — снова в раздел", async ({ page }) => {
@@ -105,19 +107,21 @@ test.describe("телефон: раздел — своя страница", () =
     await expect(rootHeading(page)).toBeVisible();
   });
 
-  test("вкладка «Настройки» из раздела — к списку; ушёл на другую вкладку — история не держит раздел", async ({ page }) => {
+  test("вкладка «Я» из раздела — на «Я»; ушёл на другую вкладку — история не держит раздел", async ({ page }) => {
     await setup(page);
     await openHome(page);
     await openSettings(page);
     await settingsRow(page, "Занятия").click();
     await expect(page.getByRole("heading", { level: 1, name: "Занятия" })).toBeVisible();
     await tab(page).click();
-    await expect(rootHeading(page)).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Евгений" })).toBeVisible();
+    await expect.poll(() => depth(page)).toBe(0);
 
+    await openSettings(page);
     await settingsRow(page, "Озвучка").click();
-    await goTab(page, "Словарь");
+    await goTab(page, "Слова");
     await expect(page.getByRole("heading", { level: 1, name: "Словарь" })).toBeVisible();
-    await expect.poll(() => page.evaluate(() => history.state)).toBeNull();
+    await expect.poll(() => depth(page)).toBe(0);
     await openSettings(page); // снова — со списка, а не с последнего раздела
     await expect(page.locator(".srow")).toHaveCount(4);
   });
@@ -133,6 +137,7 @@ test("десктоп: список слева, раздел справа — п�
   await expect(settingsRow(page, "Занятия")).toHaveAttribute("aria-current", "true");
   await expect(page.getByRole("button", { name: "12", exact: true })).toHaveAttribute("aria-pressed", "true");
 
+  const len = await page.evaluate(() => history.length);
   await settingsRow(page, "Озвучка").click();
   await expect(detail.getByRole("heading", { level: 2, name: "Озвучка" })).toBeVisible();
   await expect(detail.getByRole("radiogroup", { name: "Голос озвучки" }).locator('[role=radio][aria-checked="true"]')).toContainText("Heart");
@@ -140,7 +145,8 @@ test("десктоп: список слева, раздел справа — п�
   await expect(settingsRow(page, "Занятия")).not.toHaveAttribute("aria-current", "true");
   await expect(rootHeading(page)).toBeVisible(); // список остаётся на месте
   await expect(page.locator(".srow")).toHaveCount(4);
-  expect(await page.evaluate(() => history.state)).toBeNull();
+  expect(await page.evaluate(() => history.length)).toBe(len);
+  expect(await depth(page)).toBe(1); // только запись самих «Настроек»
 
   // список и раздел — рядом
   const nav = await page.locator(".set-nav").boundingBox();
