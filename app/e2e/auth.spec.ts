@@ -1,6 +1,6 @@
 import type { Browser, Page } from "@playwright/test";
 import { expect, test } from "./auth-fixture";
-import { DECK } from "./helpers";
+import { DECK, openSettingsSection, type SettingsSectionTitle } from "./helpers";
 
 /**
  * Вход по passkey на продакшен-сервере (npm run e2e -- --project=auth).
@@ -77,7 +77,7 @@ test("привязка по одноразовой ссылке → прилож
   await other.close();
 
   // выход
-  await page.getByRole("navigation", { name: "Разделы" }).getByRole("button", { name: "Настройки", exact: true }).click();
+  await openSettingsSection(page, "Вход и устройства");
   await expect(page.locator(".account")).toContainText("Passkey: 1");
   await page.getByRole("button", { name: "Выйти" }).click();
   await expect(page).toHaveURL(/\/login$/);
@@ -128,10 +128,8 @@ const newDevice = async (browser: Browser, origin: string, link: string, before?
   await expect(page.getByRole("button", { name: "Начать часть 1" })).toBeVisible();
   return page;
 };
-const settings = async (page: Page) => {
-  await page.getByRole("navigation", { name: "Разделы" }).getByRole("button", { name: "Настройки", exact: true }).click();
-  await expect(page.getByRole("heading", { level: 1, name: "Настройки" })).toBeVisible();
-};
+/** Вкладка «Настройки» → раздел (по умолчанию «Занятия»: «новых слов за урок»). */
+const settings = (page: Page, section: SettingsSectionTitle = "Занятия") => openSettingsSection(page, section);
 const perDay = (page: Page, n: number) => page.getByRole("button", { name: String(n), exact: true });
 
 test("прогресс на сервере: переезжает из браузера, виден на другом устройстве, у каждого свой", async ({ browser, auth }) => {
@@ -192,11 +190,13 @@ test("личные настройки одинаковы на всех устр�
   await laptop.getByRole("button", { name: "Поехали" }).click();
 
   // телефон: выбрали голос и число новых слов
-  await settings(phone);
+  await settings(phone, "Озвучка");
   await phone.locator(".vsel").click();
   await phone.getByRole("radio", { name: /Emma/ }).click();
-  await perDay(phone, 24).click();
   await expect(phone.locator(".vsel")).toContainText("Emma");
+  await settings(phone, "Занятия");
+  await perDay(phone, 24).click();
+  await settings(phone, "Оформление");
   await phone.getByRole("radiogroup", { name: "Оформление" }).getByRole("radio", { name: /Матч/ }).click();
   await phone.getByRole("switch", { name: "Ночная тема" }).click(); // система — светлая, выбрали ночь
   await expect(phone.locator("html")).toHaveAttribute("data-theme", "dark");
@@ -211,9 +211,11 @@ test("личные настройки одинаковы на всех устр�
   // везде — выбор с телефона, а прогресс занятия ноутбука сохранён
   for (const page of [phone, laptop]) {
     await page.reload();
-    await settings(page);
+    await settings(page, "Озвучка");
     await expect(page.locator(".vsel"), "голос").toContainText("Emma");
+    await settings(page, "Занятия");
     await expect(perDay(page, 24), "новых слов").toHaveAttribute("aria-pressed", "true");
+    await settings(page, "Оформление");
     await expect(page.getByRole("radio", { name: /Матч/ }), "оформление").toHaveAttribute("aria-checked", "true");
     await expect(page.locator("html"), "оформление").toHaveAttribute("data-players", "on");
     await expect(page.getByRole("switch", { name: "Ночная тема" }), "день/ночь").toHaveAttribute("aria-checked", "true");
@@ -223,8 +225,9 @@ test("личные настройки одинаковы на всех устр�
 
   // новое устройство сразу получает те же настройки
   const tablet = await newDevice(browser, origin, link());
-  await settings(tablet);
+  await settings(tablet, "Озвучка");
   await expect(tablet.locator(".vsel")).toContainText("Emma");
+  await settings(tablet, "Занятия");
   await expect(perDay(tablet, 24)).toHaveAttribute("aria-pressed", "true");
   await expect(tablet.locator("html")).toHaveAttribute("data-players", "on");
   await expect(tablet.locator("html")).toHaveAttribute("data-theme", "dark");
@@ -289,7 +292,7 @@ test("устройства: оба видны, на другом можно вы
   const anna = await newDevice(browser, origin, link("anna"), undefined, UA_WIN);
 
   // ноутбук видит оба своих устройства (и не видит чужие), своё — первым и помечено
-  await settings(laptop);
+  await settings(laptop, "Вход и устройства");
   await expect(devices(laptop)).toHaveCount(2);
   await expect(devices(laptop).nth(0)).toContainText("Mac · Chrome");
   await expect(devices(laptop).nth(0)).toContainText("это устройство · сейчас");
@@ -300,7 +303,7 @@ test("устройства: оба видны, на другом можно вы
   expect(cli("sessions", "evgeny").trim().split("\n").map((l) => l.split("\t")[2]).sort()).toEqual(["Mac · Chrome", "iPhone · Safari"]);
 
   // на телефоне тот же список, «это устройство» — телефон
-  await settings(phone);
+  await settings(phone, "Вход и устройства");
   await expect(devices(phone).filter({ hasText: "это устройство" })).toContainText("iPhone · Safari");
 
   // ноутбук выходит на телефоне
@@ -326,7 +329,7 @@ test("устройства: «Выйти везде, кроме этого» —
   const phone = await newDevice(browser, origin, link(), undefined, UA_IPHONE);
   const tablet = await newDevice(browser, origin, link(), undefined, UA_WIN);
 
-  await settings(laptop);
+  await settings(laptop, "Вход и устройства");
   await expect(devices(laptop)).toHaveCount(3);
   await laptop.getByRole("button", { name: "Выйти везде, кроме этого" }).click();
   await expect(laptop.getByText("Выйти на других устройствах (2)?")).toBeVisible();

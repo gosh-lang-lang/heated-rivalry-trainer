@@ -294,8 +294,23 @@ export const goTab = async (page: Page, name: "Главная" | "Словарь
   await page.getByRole("navigation", { name: "Разделы" }).getByRole("button", { name, exact: true }).click();
 };
 
-/** Открыть «Настройки»: новые слова за урок, голос, перенос данных. */
+/** Открыть «Настройки» — корень: список разделов (на десктопе рядом — первый раздел, «Занятия»). */
 export const openSettings = async (page: Page) => {
   await goTab(page, "Настройки");
   await expect(page.getByRole("heading", { level: 1, name: "Настройки" })).toBeVisible();
+};
+
+export type SettingsSectionTitle = "Занятия" | "Озвучка" | "Оформление" | "Вход и устройства";
+
+/** Строка раздела на корне «Настроек»: её имя — название раздела и текущее значение («Занятия 12 новых слов за урок»). */
+export const settingsRow = (page: Page, title: SettingsSectionTitle) => page.getByRole("button", { name: new RegExp(`^${title}`) });
+
+/**
+ * Открыть раздел настроек: вкладка «Настройки» → строка раздела. На телефоне раздел — своя страница (h1 — название),
+ * на десктопе — правая колонка рядом со списком (h2).
+ */
+export const openSettingsSection = async (page: Page, title: SettingsSectionTitle) => {
+  await openSettings(page);
+  await settingsRow(page, title).click();
+  await expect(page.getByRole("heading", { name: title, exact: true })).toBeVisible();
 };

@@ -58,3 +58,13 @@ export const Key = (p: P) => (
 export const Play = (p: P) => (
   <svg viewBox="0 0 24 24" fill="currentColor" {...p}><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z" /></svg>
 );
+/* разделы настроек — значки строк на корне «Настроек» */
+export const Book = (p: P) => (
+  <svg {...base} strokeWidth={2.2} {...p}><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z" /><path d="M4 20.5A2.5 2.5 0 0 1 6.5 18H20v3H6.5" /></svg>
+);
+export const Palette = (p: P) => (
+  <svg {...base} strokeWidth={2.2} {...p}>
+    <path d="M12 3a9 9 0 0 0 0 18c1.1 0 1.8-.8 1.8-1.7 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.2 0-.9.8-1.7 1.7-1.7H16a5 5 0 0 0 5-5c0-4-4-7.2-9-7.2z" />
+    <circle cx="7.5" cy="11" r=".9" fill="currentColor" /><circle cx="10.5" cy="7.2" r=".9" fill="currentColor" /><circle cx="15.2" cy="7.8" r=".9" fill="currentColor" />
+  </svg>
+);

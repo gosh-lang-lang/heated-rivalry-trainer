@@ -21,12 +21,18 @@ export type View =
   | { name: "home" }
   | { name: "words" }
   | { name: "stats" }
-  | { name: "settings" }
+  /** section — открытый раздел настроек; без него на телефоне — список разделов (на десктопе — первый раздел) */
+  | { name: "settings"; section?: SettingsSection }
   /** day — день урока для части 2, перенесённой со вчера */
   | { name: "session"; kind: SessionKind; day?: string }
   | { name: "result"; fin: Finished };
 
+export type SettingsSection = "lessons" | "voice" | "look" | "account";
+
 export type SetState = (next: AppState) => void;
+
+/** Метка записи в истории браузера: на телефоне открыт раздел настроек (App.go). */
+const sectionInHistory = (): SettingsSection | undefined => (history.state as { settings?: SettingsSection } | null)?.settings;
 
 /**
  * @param user — кто вошёл; null — неизвестно (без сети и без прошлого входа): только кэш, без сервера
@@ -92,9 +98,51 @@ export default function App({ user, name = null }: { user: string | null; name?:
     return () => window.removeEventListener("storage", onStorage);
   }, [user]);
 
+  const wideRef = useRef(wide);
+  wideRef.current = wide;
+  const viewRef = useRef(view);
+  viewRef.current = view;
+  /** go() сам отступил на запись назад (history.back асинхронный) — ближайший popstate его, а не пользователя */
+  const ownBack = useRef(false);
+
+  /**
+   * Переход между экранами. Раздел настроек на телефоне — отдельная запись в истории браузера: «назад» (жест в Safari,
+   * кнопка браузера) возвращает к списку настроек, а не уводит из них. Уходим со страницы раздела иначе
+   * (кнопка «‹ Настройки», вкладка) — снимаем эту запись, чтобы «назад» потом не стоял на месте.
+   * На десктопе (список и раздел рядом) выбор раздела в историю не пишется.
+   */
   const go = useCallback((v: View) => {
+    const toSection = v.name === "settings" ? v.section : undefined;
+    const inHistory = sectionInHistory();
+    if (ownBack.current) {
+      /* история ещё отступает — запись для нового раздела добавит onPop */
+    } else if (toSection && inHistory) history.replaceState({ settings: toSection }, "");
+    else if (toSection && !wideRef.current) history.pushState({ settings: toSection }, "");
+    else if (!toSection && inHistory) {
+      ownBack.current = true;
+      history.back();
+    }
+    viewRef.current = v;
     setView(v);
     window.scrollTo(0, 0);
+  }, []);
+
+  // «назад» / «вперёд» в истории: внутри настроек — к списку или снова в раздел; на других экранах ничего не меняем
+  useEffect(() => {
+    // перезагрузка на странице раздела: приложение начинает с главной, метка в истории больше ничего не значит
+    if (sectionInHistory()) history.replaceState(null, "");
+    const onPop = () => {
+      if (ownBack.current) {
+        ownBack.current = false;
+        const v = viewRef.current; // пока отступали, успели открыть раздел — его запись
+        if (v.name === "settings" && v.section && !wideRef.current) history.pushState({ settings: v.section }, "");
+        return;
+      }
+      const section = sectionInHistory();
+      setView((v) => (v.name === "settings" && v.section !== section ? { name: "settings", section } : v));
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
   }, []);
 
   switch (view.name) {
@@ -125,7 +173,14 @@ export default function App({ user, name = null }: { user: string | null; name?:
       ) : section === "stats" ? (
         <Stats deck={DECK} state={state} onBack={() => go({ name: "home" })} />
       ) : section === "settings" ? (
-        <Settings state={state} setState={setState} onBack={() => go({ name: "home" })} />
+        <Settings
+          state={state}
+          setState={setState}
+          section={view.name === "settings" ? view.section : undefined}
+          wide={wide}
+          go={go}
+          onBack={() => go({ name: "home" })}
+        />
       ) : (
         <Home deck={DECK} state={state} go={go} wide={wide} name={name} />
       )}

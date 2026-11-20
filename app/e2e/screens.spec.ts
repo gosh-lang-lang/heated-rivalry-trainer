@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { afterMorning, DECK, goTab, MOCK_DEVICES, openHome, openSettings, setup, state, TODAY, ws } from "./helpers";
+import { afterMorning, DECK, goTab, MOCK_DEVICES, openHome, openSettings, openSettingsSection, setup, state, TODAY, ws, type SettingsSectionTitle } from "./helpers";
 
 test.describe("главная", () => {
   test("новый пользователь: приветствие, 62 новых слова, серия 0", async ({ page }) => {
@@ -25,7 +25,7 @@ test.describe("главная", () => {
   test("настройка «новых слов за урок» сохраняется", async ({ page }) => {
     await setup(page);
     await openHome(page);
-    await openSettings(page);
+    await openSettingsSection(page, "Занятия");
     await page.getByRole("button", { name: "18", exact: true }).click();
     await expect(page.getByRole("button", { name: "18", exact: true })).toHaveAttribute("aria-pressed", "true");
     await goTab(page, "Главная");
@@ -89,8 +89,14 @@ test.describe("вёрстка", () => {
       if (name === "словарь") await page.getByRole("button", { name: "Словарь" }).first().click();
       if (name === "статистика") await page.getByRole("button", { name: "Статистика" }).first().click();
       if (name === "настройки") await openSettings(page);
-      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
-      expect(overflow).toBeLessThanOrEqual(0);
+      const overflow = () => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+      expect(await overflow()).toBeLessThanOrEqual(0);
+      // и каждый раздел настроек
+      if (name === "настройки")
+        for (const s of ["Занятия", "Озвучка", "Оформление", "Вход и устройства"] as SettingsSectionTitle[]) {
+          await openSettingsSection(page, s);
+          expect(await overflow(), s).toBeLessThanOrEqual(0);
+        }
     });
   }
 
@@ -156,7 +162,7 @@ test.describe("оформление", () => {
   test("три темы в настройках: выбор применяется сразу и запоминается; в «Матче» катаются хоккеисты", async ({ page }) => {
     await setup(page);
     await openHome(page);
-    await openSettings(page);
+    await openSettingsSection(page, "Оформление");
     const looks = page.getByRole("radiogroup", { name: "Оформление" });
     await expect(looks.getByRole("radio")).toHaveCount(3);
     const html = page.locator("html");
@@ -219,7 +225,7 @@ test("вход: устройства — список, выйти на одно�
   expect(Object.keys(sent).sort()).toEqual(["standalone", "touch"]);
   expect(Object.values(sent).every((v) => typeof v === "boolean")).toBe(true);
 
-  await openSettings(page);
+  await openSettingsSection(page, "Вход и устройства");
   const devs = page.getByRole("list", { name: "Где выполнен вход" }).getByRole("listitem");
   await expect(devs).toHaveCount(3);
   await expect(devs.nth(0)).toContainText("iPhone · приложение");

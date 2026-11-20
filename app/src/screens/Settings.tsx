@@ -1,18 +1,103 @@
-import { Fragment, useState } from "react";
-import type { SetState } from "../App";
+import { Fragment, useState, type ComponentType, type SVGProps } from "react";
+import type { SetState, SettingsSection, View } from "../App";
 import { NEW_PER_DAY_OPTIONS } from "../core/state";
-import type { AppState } from "../core/types";
+import type { AppState, ThemePref } from "../core/types";
 import { ACCENT_LABEL, VOICE_SAMPLE, voiceMeta, type TtsVoice } from "../core/tts";
-import { Back, Check, Chevron, Key, Laptop, Phone, Play, Tablet } from "../lib/icons";
-import { logout, revokeDevice, revokeOtherDevices, useDevices, useMe, type Devices } from "../lib/auth";
+import { Back, Book, Check, Chevron, Key, Laptop, Palette, Phone, Play, Speaker, Tablet } from "../lib/icons";
+import { logout, revokeDevice, revokeOtherDevices, useDevices, useMe, type Devices, type Me } from "../lib/auth";
 import { seenAgo, type DeviceKind } from "../core/device";
+import { plural } from "../core/text";
 import { say, useVoices } from "../lib/speech";
 import { LOOKS, useLook } from "../lib/glass";
 import { SKATER_BLACK, SKATER_RED } from "../lib/skaters";
 import { changeSetting } from "../core/state";
 
-/** Настройки: новые слова за урок, голос озвучки, оформление, вход. На телефоне — вкладка «Настройки», на десктопе — пункт верхнего меню. */
-export function Settings({ state, setState, onBack }: { state: AppState; setState: SetState; onBack: () => void }) {
+/** Разделы настроек — в порядке строк на корне. Цвет значка — styles.css → .s-ic.t-<id>. */
+const SECTIONS: { id: SettingsSection; title: string; Icon: ComponentType<SVGProps<SVGSVGElement>> }[] = [
+  { id: "lessons", title: "Занятия", Icon: Book },
+  { id: "voice", title: "Озвучка", Icon: Speaker },
+  { id: "look", title: "Оформление", Icon: Palette },
+  { id: "account", title: "Вход и устройства", Icon: Key },
+];
+const THEME_LABEL: Record<ThemePref, string> = { system: "как в системе", light: "день", dark: "ночь" };
+
+/**
+ * Настройки, как в iOS: корень — сгруппированный список разделов (значок, название, текущее значение, ›),
+ * раздел — своя страница внутри настроек с кнопкой «‹ Настройки». Открытый раздел — в состоянии вида (View.section)
+ * и в истории браузера (App.go): жест «назад» в Safari и кнопка «назад» браузера возвращают к списку, а не из настроек.
+ * На десктопе — список слева, выбранный раздел справа (по умолчанию первый); в историю не пишется.
+ * На телефоне — вкладка «Настройки», на десктопе — пункт верхнего меню.
+ */
+export function Settings({
+  state,
+  setState,
+  section,
+  wide,
+  go,
+  onBack,
+}: {
+  state: AppState;
+  setState: SetState;
+  section?: SettingsSection;
+  wide: boolean;
+  go: (v: View) => void;
+  onBack: () => void;
+}) {
+  // один запрос на весь экран: список устройств нужен и строке на корне, и разделу «Вход и устройства»
+  const me = useMe();
+  const devices = useDevices();
+  const { voices } = useVoices();
+  const open = section ?? (wide ? SECTIONS[0].id : undefined);
+
+  const { newPerDay, voice, look, theme } = state.settings;
+  const count = devices.data?.sessions.length ?? 0;
+  const value: Record<SettingsSection, string> = {
+    lessons: `${newPerDay} ${plural(newPerDay, "новое слово", "новых слова", "новых слов")} за урок`,
+    voice: (voices.find((v) => v.id === voice) ?? voices[0])?.name ?? "",
+    look: `${LOOKS.find(([id]) => id === look)?.[1] ?? ""} · ${THEME_LABEL[theme]}`,
+    account: devices.data ? `${count} ${plural(count, "устройство", "устройства", "устройств")}` : devices.failed ? "нет связи" : "…",
+  };
+
+  const body = (id: SettingsSection) =>
+    id === "lessons" ? (
+      <NewPerDay state={state} setState={setState} />
+    ) : id === "voice" ? (
+      <VoicePicker value={voice} onPick={(v) => setState(changeSetting(state, "voice", v))} />
+    ) : id === "look" ? (
+      <LookPicker />
+    ) : (
+      <Account me={me} devices={devices} />
+    );
+
+  const row = ({ id, title, Icon }: (typeof SECTIONS)[number]) => (
+    <button key={id} className="srow" aria-current={wide && open === id ? "true" : undefined} onClick={() => go({ name: "settings", section: id })}>
+      <span className={`s-ic t-${id}`} aria-hidden="true"><Icon /></span>
+      <span className="s-tx">
+        <span className="s-t">{title}</span>{" "}
+        <span className="s-v">{value[id]}</span>
+      </span>
+      <Chevron className="s-ch" aria-hidden="true" />
+    </button>
+  );
+
+  // телефон и планшет: открыт раздел — его страница с возвратом к списку
+  if (!wide && open) {
+    const s = SECTIONS.find((x) => x.id === open)!;
+    return (
+      <>
+        <div className="pagehead set-head">
+          <button className="sback" aria-label="Назад в настройки" onClick={() => go({ name: "settings" })}>
+            <Back aria-hidden="true" />
+            Настройки
+          </button>
+          <h1>{s.title}</h1>
+        </div>
+        <div className="wrap settings-page">{body(open)}</div>
+      </>
+    );
+  }
+
+  const detail = open && SECTIONS.find((x) => x.id === open);
   return (
     <>
       <div className="pagehead">
@@ -20,18 +105,17 @@ export function Settings({ state, setState, onBack }: { state: AppState; setStat
         <h1>Настройки</h1>
       </div>
       <div className="wrap settings-page">
-        <div className="set-col">
-          <div className="sgroup">Занятия</div>
-          <NewPerDay state={state} setState={setState} />
-          <div className="sgroup">Озвучка</div>
-          <VoicePicker value={state.settings.voice} onPick={(id) => setState(changeSetting(state, "voice", id))} />
-          <div className="sgroup">Оформление</div>
-          <LookPicker />
+        <div className="set-nav">
+          <div className="card slist">{SECTIONS.slice(0, 3).map(row)}</div>
+          <div className="sgroup">{me ? me.user.displayName : "Аккаунт"}</div>
+          <div className="card slist">{SECTIONS.slice(3).map(row)}</div>
         </div>
-        <div className="set-col">
-          <div className="sgroup">Вход</div>
-          <Account />
-        </div>
+        {detail && (
+          <section className="set-detail" aria-labelledby="set-detail-h">
+            <h2 id="set-detail-h">{detail.title}</h2>
+            {body(detail.id)}
+          </section>
+        )}
       </div>
     </>
   );
@@ -77,12 +161,11 @@ const passkeyNote = ({ count, synced }: Devices["passkeys"]) =>
       })`;
 
 /**
- * «Вход»: устройства, где выполнен вход (сессии), — выйти на любом из них или везде, кроме этого; passkey — только для сведения.
+ * «Вход и устройства»: устройства, где выполнен вход (сессии), — выйти на любом из них или везде, кроме этого; passkey — только для сведения.
  * Удалять passkey отсюда нельзя: passkey из iCloud один на все устройства Apple — удалив его, не войдёшь нигде (отзыв — server/cli.ts).
  */
-function Account() {
-  const me = useMe();
-  const { data, failed, reload } = useDevices();
+function Account({ me, devices }: { me: Me | null; devices: ReturnType<typeof useDevices> }) {
+  const { data, failed, reload } = devices;
   const [busy, setBusy] = useState<string | null>(null);
   const [confirm, setConfirm] = useState(false);
   const [err, setErr] = useState("");

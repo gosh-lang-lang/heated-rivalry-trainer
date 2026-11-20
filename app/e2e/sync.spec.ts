@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { afterMorning, NOW, openHome, openSettings, readState, setup } from "./helpers";
+import { afterMorning, NOW, openHome, openSettingsSection, readState, setup } from "./helpers";
 
 /**
  * Прогресс живёт на сервере, браузер — только кэш (src/lib/sync.ts).
@@ -39,7 +39,7 @@ test("на сервере новее, чем на устройстве, — бе
 test("изменение сразу уходит на сервер", async ({ page }) => {
   const log = await setup(page, { remote: { ...afterMorning(2), upd: 5 } });
   await openHome(page);
-  await openSettings(page);
+  await openSettingsSection(page, "Занятия");
   await perDay(page, 18).click();
   await expect.poll(() => (log.server.state as { settings?: { newPerDay: number } }).settings?.newPerDay).toBe(18);
 });
@@ -47,7 +47,7 @@ test("изменение сразу уходит на сервер", async ({ pa
 test("вернулся в приложение — подхватил сделанное на другом устройстве", async ({ page }) => {
   const log = await setup(page, { remote: { ...afterMorning(2), upd: 5 } });
   await openHome(page);
-  await openSettings(page);
+  await openSettingsSection(page, "Занятия");
   await expect(perDay(page, 12)).toHaveAttribute("aria-pressed", "true");
   // на телефоне поменяли настройку
   log.server.state = { ...afterMorning(2), settings: { newPerDay: 24 }, upd: NOW.getTime() + 60_000 };
@@ -60,7 +60,7 @@ test("без сети работаем с кэшем, а когда сеть п�
   const down = (route: { abort: (e: string) => Promise<void> }) => route.abort("internetdisconnected");
   await page.route("**/api/state", down); // поверх мока: сервер недоступен
   await page.goto("/");
-  await openSettings(page);
+  await openSettingsSection(page, "Занятия");
   await perDay(page, 6).click();
   await page.waitForTimeout(1200); // задержка отправки прошла — отправить не удалось
   expect((await readState(page)).settings.newPerDay).toBe(6);
