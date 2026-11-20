@@ -2,6 +2,7 @@ import { expect, type Page, type Request } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { mergeStates, parseState } from "../src/core/state.ts";
 
 /* ---------- данные ---------- */
 
@@ -78,14 +79,14 @@ export const setup = async (
   await page.route("**/api/auth/me", (route) => route.fulfill({ json: { user: { name: "evgeny", displayName: "Евгений" }, passkeys: 1 } }));
 
   const log: TtsLog = { requests: [], server: { state: (opts.remote as { upd: number }) ?? null, puts: 0 } };
-  // сервер прогресса — как server/progress.ts: более старое не перезаписывает новое
+  // сервер прогресса — как server/progress.ts: сливает присланное с тем, что лежит (core/state.ts mergeStates)
   await page.route("**/api/state", async (route) => {
     if (opts.sync === "down") return route.abort("connectionrefused");
     const srv = log.server;
     if (route.request().method() === "PUT") {
       const { state } = route.request().postDataJSON() as { state: { upd: number } };
       srv.puts++;
-      if (!srv.state || state.upd > srv.state.upd) srv.state = state;
+      srv.state = srv.state ? mergeStates(parseState(srv.state), parseState(state)) : parseState(state);
     }
     await route.fulfill({ json: { state: srv.state } });
   });
@@ -145,7 +146,8 @@ export const readState = (page: Page) =>
     srs: Record<string, WS>;
     days: Record<string, Record<string, unknown>>;
     sent: { text: string; pending?: boolean; words: string[] }[];
-    settings: { newPerDay: number };
+    settings: { newPerDay: number; voice: string };
+    settingsAt: { newPerDay: number; voice: number };
   }>;
 
 /* ---------- прохождение занятия ---------- */

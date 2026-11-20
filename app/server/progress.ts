@@ -5,10 +5,11 @@
  *   GET /api/state            → { state: AppState | null }
  *   PUT /api/state { state }  → { state }  — то, что теперь на сервере
  *
- * Слияние «кто новее» по upd (как между вкладками): более старое состояние не перезаписывает новое.
+ * Слияние — core/state.ts mergeStates: прогресс «кто новее» по upd (старое не перезаписывает новое),
+ * личные настройки — по пунктам (пункт, изменённый позже, побеждает, с какого бы устройства ни пришёл).
  */
 import type { DatabaseSync } from "node:sqlite";
-import { parseState } from "../src/core/state.ts";
+import { mergeStates, parseState, sameState } from "../src/core/state.ts";
 import type { AppState } from "../src/core/types.ts";
 
 /** Состояние одного пользователя — десятки КБ; запас на годы занятий. */
@@ -31,17 +32,24 @@ export const openProgress = (db: DatabaseSync, now: () => number = Date.now) => 
 
   return {
     get,
-    /** Сохраняет, если новее того, что уже лежит. Возвращает актуальное состояние и сохранилось ли присланное. */
+    /** Сливает присланное с тем, что уже лежит. Возвращает итог и изменилось ли что-то на сервере. */
     put(userId: number, s: AppState): { state: AppState; saved: boolean } {
-      const saved =
-        db
-          .prepare(
+      db.exec("BEGIN IMMEDIATE");
+      try {
+        const stored = get(userId);
+        const merged = stored ? mergeStates(stored, s) : s;
+        const saved = !stored || !sameState(stored, merged);
+        if (saved)
+          db.prepare(
             `INSERT INTO progress (user_id, state, upd, saved_at) VALUES (?, ?, ?, ?)
-             ON CONFLICT(user_id) DO UPDATE SET state = excluded.state, upd = excluded.upd, saved_at = excluded.saved_at
-             WHERE excluded.upd > progress.upd`,
-          )
-          .run(userId, JSON.stringify(s), s.upd, now()).changes === 1;
-      return { state: get(userId)!, saved };
+             ON CONFLICT(user_id) DO UPDATE SET state = excluded.state, upd = excluded.upd, saved_at = excluded.saved_at`,
+          ).run(userId, JSON.stringify(merged), merged.upd, now());
+        db.exec("COMMIT");
+        return { state: merged, saved };
+      } catch (e) {
+        db.exec("ROLLBACK");
+        throw e;
+      }
     },
     /** Для командной строки: кто когда сохранял. */
     summary: () =>

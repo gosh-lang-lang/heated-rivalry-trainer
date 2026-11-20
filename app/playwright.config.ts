@@ -1,6 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const PORT = 5174;
+/** E2E_PORT / E2E_FRESH=1 — свой порт и всегда свой dev-сервер (deploy.sh проверяет чистую копию коммита). */
+const PORT = Number(process.env.E2E_PORT ?? 5174);
 
 
 /**
@@ -42,7 +43,7 @@ export default defineConfig({
   webServer: {
     command: `npm run dev -- --port ${PORT} --strictPort`,
     url: `http://localhost:${PORT}`,
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: !process.env.CI && !process.env.E2E_FRESH,
     timeout: 60_000,
   },
 });

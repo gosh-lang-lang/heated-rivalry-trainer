@@ -1,6 +1,6 @@
 /**
  * Скрипты деплоя (deploy/*.sh) — без сервера: ssh, npm и curl подменены записывающими заглушками.
- *   deploy.sh — не выкатит ничего, чего нет на GitHub, и ничего с красными тестами.
+ *   deploy.sh — выкатывает ровно origin/main (проверяет его чистую копию), ничего с красными тестами.
  *   backup.sh — проверяет копию до ротации, хранит KEEP последних дней.
  */
 import { execFileSync, spawnSync } from "node:child_process";
@@ -33,7 +33,8 @@ const fakeBin = (root: string) => {
   script(
     join(bin, "ssh"),
     `if [[ "$*" == *"docker inspect"* ]]; then echo "\${FAKE_PROD_REV:-unknown} healthy"; exit 0; fi
-cat > /dev/null; echo "ssh $(echo "\${@: -1}" | tr '\\n' ' ')" >> "${log}"`,
+if [[ "\${@: -1}" == *"tar -x"* ]]; then cat > "${root}/shipped.tar"; else cat > /dev/null; fi
+echo "ssh $(echo "\${@: -1}" | tr '\\n' ' ')" >> "${log}"`,
   );
   script(join(bin, "curl"), `if [[ "$*" == *api/health* ]]; then echo 200; else echo 302; fi`);
   return { bin, log, calls: () => (existsSync(log) ? readFileSync(log, "utf8") : "") };
@@ -66,58 +67,67 @@ describe("deploy.sh", () => {
     return { root, git, run, calls: f.calls };
   };
 
-  it("всё на GitHub и тесты зелёные: проверки → бэкап → выкатка этого коммита → проверка прода", () => {
-    const { git, run, calls } = repo();
+  const shipped = (root: string) => execFileSync("tar", ["-tf", join(root, "shipped.tar")], { encoding: "utf8" }).trim().split("\n").sort();
+
+  it("всё на GitHub и тесты зелёные: проверки чистой копии → бэкап → выкатка этого коммита → проверка прода", () => {
+    const { root, git, run, calls } = repo();
     const rev = git("rev-parse", "HEAD");
     const r = run({ FAKE_PROD_REV: rev });
     expect(r.out).toContain(`прод на ${rev.slice(0, 7)}`);
     expect(r.code).toBe(0);
     const lines = calls().trim().split("\n");
-    expect(lines.map((l) => l.split(" ").slice(0, 4).join(" "))).toEqual([
-      "npm --prefix app run",
-      "npm --prefix app test",
-      "npm --prefix app run",
-      "backup",
-      expect.stringMatching(/^ssh set -e;/),
-      expect.stringMatching(/^ssh cd \/opt\/heated-rivalry\/src\/deploy/),
+    const npm = lines.filter((l) => l.startsWith("npm"));
+    // проверки идут в отдельной копии коммита, не в рабочей папке
+    expect(npm.every((l) => l.startsWith("npm --prefix ") && !l.startsWith(`npm --prefix app `) && l.includes("/src/app"))).toBe(true);
+    expect(npm.map((l) => l.split(" ").slice(3).join(" "))).toEqual([
+      "ci --no-audit --no-fund", // node_modules в заглушке нет — ставим
+      "run -s typecheck",
+      "test --silent",
+      "run -s e2e -- --reporter=dot",
     ]);
-    expect(lines[0]).toContain("typecheck");
-    expect(lines[2]).toContain("e2e");
-    expect(lines[5]).toContain(`APP_VERSION=${rev} docker compose up -d --build`);
+    expect(lines.slice(4).map((l) => l.split(" ")[0])).toEqual(["backup", "ssh", "ssh"]);
+    expect(lines[6]).toContain(`APP_VERSION=${rev} docker compose up -d --build`);
+    expect(shipped(root)).toEqual(["deploy/", "deploy/backup.sh", "deploy/deploy.sh"]);
+    expect(git("worktree", "list").split("\n")).toHaveLength(1); // временная копия убрана
   });
 
-  it("незакоммиченные изменения — отказ до любых действий", () => {
-    const { root, run, calls } = repo();
-    writeFileSync(join(root, "work/new.txt"), "x");
-    const r = run();
-    expect(r.code).toBe(1);
-    expect(r.out).toContain("незакоммиченные");
-    expect(calls()).toBe("");
+  it("незакоммиченное в рабочей папке не мешает и на прод не попадает", () => {
+    const { root, git, run } = repo();
+    writeFileSync(join(root, "work/draft.css"), "чужая работа");
+    writeFileSync(join(root, "work/deploy/backup.sh"), "#!/bin/bash\necho backup\n"); // и правка отслеживаемого файла
+    const r = run({ FAKE_PROD_REV: git("rev-parse", "HEAD") });
+    expect(r.code).toBe(0);
+    expect(r.out).toContain("незакоммиченных файлов — на прод они не попадут");
+    expect(shipped(root)).not.toContain("draft.css");
+    expect(readFileSync(join(root, "work/draft.css"), "utf8")).toBe("чужая работа"); // рабочую папку не трогали
   });
 
-  it("коммит не отправлен на GitHub — отказ", () => {
+  it("коммит не отправлен на GitHub — отказ до любых действий", () => {
     const { root, git, run, calls } = repo();
     writeFileSync(join(root, "work/new.txt"), "x");
     git("add", "-A");
     git("commit", "-qm", "local only");
     const r = run();
     expect(r.code).toBe(1);
-    expect(r.out).toContain("git push");
+    expect(r.out).toContain("незапушенных коммитов");
     expect(calls()).toBe("");
   });
 
-  it("не ветка main — отказ", () => {
-    const { git, run, calls } = repo();
+  it("с другой ветки выкатывается всё равно origin/main", () => {
+    const { root, git, run } = repo();
+    const rev = git("rev-parse", "HEAD");
     git("checkout", "-q", "-b", "feature");
-    const r = run();
-    expect(r.code).toBe(1);
-    expect(r.out).toContain("только ветку main");
-    expect(calls()).toBe("");
+    writeFileSync(join(root, "work/feature.txt"), "x");
+    git("add", "-A");
+    git("commit", "-qm", "feature");
+    const r = run({ FAKE_PROD_REV: rev });
+    expect(r.code).toBe(0);
+    expect(shipped(root)).not.toContain("feature.txt");
   });
 
-  it.each(["typecheck", "test", "e2e"])("красный %s — ни бэкапа, ни выкатки", (step) => {
-    const { run, calls } = repo();
-    const r = run({ FAKE_NPM_FAIL: step });
+  it.each(["typecheck", "test --silent", "e2e"])("красный %s — ни бэкапа, ни выкатки", (step) => {
+    const { git, run, calls } = repo();
+    const r = run({ FAKE_NPM_FAIL: step, FAKE_PROD_REV: git("rev-parse", "HEAD") });
     expect(r.code).not.toBe(0);
     expect(calls()).not.toContain("backup");
     expect(calls()).not.toContain("ssh");

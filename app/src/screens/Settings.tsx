@@ -5,7 +5,8 @@ import type { AppState } from "../core/types";
 import { ACCENT_LABEL, VOICE_SAMPLE, voiceMeta, type TtsVoice } from "../core/tts";
 import { Back, Check, Chevron, Play } from "../lib/icons";
 import { logout, useMe } from "../lib/auth";
-import { say, setVoice, useVoices } from "../lib/speech";
+import { say, useVoices } from "../lib/speech";
+import { changeSetting } from "../core/state";
 
 /** Настройки: новые слова за утро, голос озвучки, вход. На телефоне — вкладка «Настройки», на десктопе — пункт верхнего меню. */
 export function Settings({ state, setState, onBack }: { state: AppState; setState: SetState; onBack: () => void }) {
@@ -20,7 +21,7 @@ export function Settings({ state, setState, onBack }: { state: AppState; setStat
           <div className="sgroup">Занятия</div>
           <NewPerDay state={state} setState={setState} />
           <div className="sgroup">Озвучка</div>
-          <VoicePicker />
+          <VoicePicker value={state.settings.voice} onPick={(id) => setState(changeSetting(state, "voice", id))} />
         </div>
         <div className="set-col">
           <div className="sgroup">Вход</div>
@@ -50,7 +51,7 @@ export function NewPerDay({ state, setState }: { state: AppState; setState: SetS
       <h3>Новых слов за утро</h3>
       <div className="seg">
         {NEW_PER_DAY_OPTIONS.map((n) => (
-          <button key={n} aria-pressed={state.settings.newPerDay === n} onClick={() => setState({ ...state, settings: { ...state.settings, newPerDay: n } })}>{n}</button>
+          <button key={n} aria-pressed={state.settings.newPerDay === n} onClick={() => setState(changeSetting(state, "newPerDay", n))}>{n}</button>
         ))}
       </div>
       <p className="mute sm" style={{ margin: "10px 0 0" }}>Новую партию слов из книги присылай в чат фотографией — я добавлю её сюда.</p>
@@ -58,8 +59,10 @@ export function NewPerDay({ state, setState }: { state: AppState; setState: SetS
   );
 }
 
-export function VoicePicker() {
-  const { voices, current, server, fallback, playing } = useVoices();
+/** Выбор голоса. value — из личных настроек (общих для всех устройств), onPick — изменить их. */
+export function VoicePicker({ value, onPick }: { value: string; onPick: (id: string) => void }) {
+  const { voices, server, fallback, playing } = useVoices();
+  const current = value;
   const [open, setOpen] = useState(false);
   const cur = voices.find((v) => v.id === current) ?? voices[0];
 
@@ -99,7 +102,7 @@ export function VoicePicker() {
                         role="radio"
                         aria-checked={on}
                         onClick={() => {
-                          setVoice(v.id);
+                          onPick(v.id);
                           say(VOICE_SAMPLE, v.id);
                           setOpen(false);
                         }}

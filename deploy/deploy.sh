@@ -2,9 +2,11 @@
 # Выкатка на прод — только этим скриптом и только того, что уже лежит на GitHub.
 #   deploy/deploy.sh          проверки → бэкап → выкатка коммита origin/main → проверка, что прод на нём
 #   deploy/deploy.sh status   какие версии сейчас: локальная, GitHub, прод
-# Не выкатит, если: не ветка main, есть незакоммиченные или неотправленные изменения,
-# не проходят typecheck / unit / e2e. На проде в образе остаётся метка коммита
-# (org.opencontainers.image.revision); unknown — значит собрали в обход скрипта.
+# Выкатывается ровно origin/main: его отдельная чистая копия (git worktree) проходит typecheck / unit / e2e,
+# из неё же собирается архив. Незакоммиченное в рабочей папке (в том числе правки параллельных сессий)
+# на прод не попадает и выкатку не блокирует. Не выкатит, если в локальном main есть незапушенные коммиты
+# (значит, на GitHub ещё не то, что задумано) или проверки красные.
+# На проде в образе остаётся метка коммита (org.opencontainers.image.revision); unknown — собрали в обход скрипта.
 # Переменные: HR_HOST (root@195.133.197.130).
 set -euo pipefail
 HOST="${HR_HOST:-root@195.133.197.130}"
@@ -34,18 +36,28 @@ if [[ "${1:-}" == "status" ]]; then
 fi
 [[ $# -eq 0 ]] || fail "неизвестный аргумент: $1 (есть только status)"
 
-say "Git: всё закоммичено и отправлено на GitHub"
-[[ "$(git rev-parse --abbrev-ref HEAD)" == "main" ]] || fail "выкатываем только ветку main"
-[[ -z "$(git status --porcelain)" ]] || { git status --short; fail "есть незакоммиченные изменения — сначала коммит и push"; }
+say "Что выкатываем: origin/main"
 git fetch -q origin main
-REV=$(git rev-parse HEAD)
-[[ "$REV" == "$(git rev-parse origin/main)" ]] || fail "локальный main и GitHub расходятся — сначала git push (или git pull)"
-echo "коммит ${REV:0:7}: $(git log -1 --format=%s)"
+REV=$(git rev-parse origin/main)
+ahead=$(git rev-list --count origin/main..main 2>/dev/null || echo 0)
+[[ "$ahead" == 0 ]] || fail "в локальном main $ahead незапушенных коммитов — сначала git push"
+echo "коммит ${REV:0:7}: $(git log -1 --format=%s "$REV")"
+dirty=$(git status --porcelain | wc -l | tr -d ' ')
+[[ "$dirty" == 0 ]] || echo "в рабочей папке $dirty незакоммиченных файлов — на прод они не попадут"
 
-say "Проверки: typecheck, unit, e2e"
-npm --prefix app run -s typecheck
-npm --prefix app test --silent
-npm --prefix app run -s e2e -- --reporter=dot
+say "Проверки чистой копии коммита: typecheck, unit, e2e"
+WT="$(mktemp -d)/src"
+trap 'git -C "$ROOT" worktree remove --force "$WT" >/dev/null 2>&1 || true; git -C "$ROOT" worktree prune' EXIT
+git worktree add -q --detach "$WT" "$REV"
+# зависимости — копия node_modules рабочей папки (на APFS мгновенно), если lock-файл тот же; иначе — npm ci
+if [[ -d app/node_modules ]] && cmp -s app/package-lock.json "$WT/app/package-lock.json"; then
+  cp -Rc app/node_modules "$WT/app/" 2>/dev/null || cp -R app/node_modules "$WT/app/"
+else
+  npm --prefix "$WT/app" ci --no-audit --no-fund
+fi
+npm --prefix "$WT/app" run -s typecheck
+npm --prefix "$WT/app" test --silent
+E2E_PORT=5190 E2E_FRESH=1 npm --prefix "$WT/app" run -s e2e -- --reporter=dot
 
 say "Бэкап базы с прода"
 "$ROOT/deploy/backup.sh"

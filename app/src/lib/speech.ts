@@ -9,18 +9,23 @@ import { goLogin } from "./auth";
  * 2) Если сервер недоступен — лучший системный английский голос (speechSynthesis).
  */
 
-/* ---------- выбор голоса (на устройство) ---------- */
+/* ---------- выбор голоса ---------- */
 
-const VOICE_KEY = "hr2_tts_voice";
-const readVoice = (): string => {
+// Выбор хранится в личных настройках (AppState.settings.voice) и один на все устройства;
+// App передаёт его сюда через applyVoice. Здесь — только текущий голос для озвучки.
+let ttsVoice = DEFAULT_VOICE;
+
+/** Голос, выбранный до переезда настроек на сервер (жил только в этом браузере). Читается один раз и стирается. */
+const LEGACY_VOICE_KEY = "hr2_tts_voice";
+export const takeLegacyVoice = (): string | null => {
   try {
-    const v = localStorage.getItem(VOICE_KEY);
-    return isTtsVoice(v) ? v : DEFAULT_VOICE;
+    const v = localStorage.getItem(LEGACY_VOICE_KEY);
+    localStorage.removeItem(LEGACY_VOICE_KEY);
+    return isTtsVoice(v) ? v : null;
   } catch {
-    return DEFAULT_VOICE;
+    return null;
   }
 };
-let ttsVoice = readVoice();
 
 /* ---------- состояние для экрана настроек ---------- */
 
@@ -163,14 +168,11 @@ export const prefetch = (text: string) => {
   if (Date.now() >= retryAt) serverUrl(text, ttsVoice).catch(() => {});
 };
 
-export const setVoice = (id: string) => {
-  if (!isTtsVoice(id)) return;
-  ttsVoice = id;
-  try {
-    localStorage.setItem(VOICE_KEY, id);
-  } catch {
-    /* выбор действует до перезагрузки */
-  }
+/** Применить голос из настроек (App вызывает при каждом изменении настроек). */
+export const applyVoice = (id: string) => {
+  const v = isTtsVoice(id) ? id : DEFAULT_VOICE;
+  if (v === ttsVoice) return;
+  ttsVoice = v;
   retryAt = 0;
   notify();
 };

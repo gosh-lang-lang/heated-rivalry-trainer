@@ -94,14 +94,20 @@ export interface SentenceRecord {
   pending?: boolean;
 }
 
+/** Личные настройки — общие для всех устройств пользователя (синхронизируются вместе с прогрессом). */
 export interface Settings {
   newPerDay: number;
+  /** голос озвучки (id из TTS_VOICES) */
+  voice: string;
 }
+/** Когда менялся каждый пункт настроек (ms; 0 — ни разу). Слияние — по пунктам, см. core/state.ts mergeStates. */
+export type SettingsAt = Record<keyof Settings, number>;
 
 export interface AppState {
   /** ms — для слияния «кто новее» */
   upd: number;
   settings: Settings;
+  settingsAt: SettingsAt;
   srs: Record<string, WordState>;
   days: Record<string, DayLog>;
   sent: SentenceRecord[];

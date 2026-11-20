@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { pickNewer, parseState } from "./core/state";
+import { changeSetting, mergeStates, parseState, sameState } from "./core/state";
 import type { Finished } from "./core/session";
 import type { AppState, SessionKind } from "./core/types";
 import { DECK } from "./data";
 import { cacheKey, loadState, saveState } from "./lib/storage";
+import { applyVoice, takeLegacyVoice } from "./lib/speech";
 import { useServerSync } from "./lib/sync";
 import { Home } from "./screens/Home";
 import { Result } from "./screens/Result";
@@ -27,7 +28,7 @@ export type SetState = (next: AppState) => void;
  * @param user — кто вошёл; null — неизвестно (без сети и без прошлого входа): только кэш, без сервера
  */
 export default function App({ user }: { user: string | null }) {
-  const [state, setRaw] = useState<AppState>(() => loadState(user));
+  const [state, setRaw] = useState<AppState>(() => withLegacyVoice(user, loadState(user)));
   const [view, setView] = useState<View>({ name: "home" });
   const wide = useWide();
   const current = useRef(state);
@@ -55,16 +56,19 @@ export default function App({ user }: { user: string | null }) {
     [adopt, schedulePush],
   );
 
-  // прогресс из другой вкладки — берём, если он новее
+  // голос озвучки — из личных настроек (общих для всех устройств)
+  useEffect(() => applyVoice(state.settings.voice), [state.settings.voice]);
+
+  // прогресс и настройки из другой вкладки — сливаем с нашими
   useEffect(() => {
     const key = cacheKey(user);
     const onStorage = (e: StorageEvent) => {
       if (e.key !== key || !e.newValue) return;
       try {
-        const other = parseState(e.newValue);
-        if (pickNewer(current.current, other) === other) {
-          current.current = other;
-          setRaw(other);
+        const merged = mergeStates(current.current, parseState(e.newValue));
+        if (!sameState(merged, current.current)) {
+          current.current = merged;
+          setRaw(merged);
         }
       } catch {
         /* чужие данные — игнорируем */
@@ -112,4 +116,16 @@ export default function App({ user }: { user: string | null }) {
       {!wide && <TabBar current={section} go={go} />}
     </div>
   );
+}
+
+/**
+ * Голос, выбранный в этом браузере до того, как настройки стали общими (жил в localStorage).
+ * Переносим в настройки с самой ранней меткой: если на другом устройстве голос уже выбирали, победит тот выбор.
+ */
+function withLegacyVoice(user: string | null, s: AppState): AppState {
+  const legacy = takeLegacyVoice();
+  if (!legacy || s.settingsAt.voice > 0) return s;
+  const next = { ...changeSetting(s, "voice", legacy, 1), upd: Math.max(s.upd, 1) };
+  saveState(user, next);
+  return next;
 }

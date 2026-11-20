@@ -178,3 +178,45 @@ test("прогресс на сервере: переезжает из брауз
   expect(cli("progress")).not.toContain("evgeny");
   for (const p of [laptop, phone, anna]) await p.context().close();
 });
+
+test("личные настройки одинаковы на всех устройствах и не затираются чужим занятием", async ({ browser, auth }) => {
+  const { cli, origin } = auth;
+  cli("user:add", "evgeny", "Евгений");
+  const link = () => cli("enroll", "evgeny").trim().split("\n").pop()!;
+  const laptop = await newDevice(browser, origin, link());
+  const phone = await newDevice(browser, origin, link());
+
+  // ноутбук: идёт утреннее занятие (настройки на нём — старые)
+  await laptop.getByRole("button", { name: "Начать утреннее" }).click();
+  await laptop.getByRole("button", { name: "Поехали" }).click();
+
+  // телефон: выбрали голос и число новых слов
+  await settings(phone);
+  await phone.locator(".vsel").click();
+  await phone.getByRole("radio", { name: /Emma/ }).click();
+  await perDay(phone, 24).click();
+  await expect(phone.locator(".vsel")).toContainText("Emma");
+  await phone.waitForTimeout(1500); // ушло на сервер
+
+  // ноутбук продолжает занятие — его прогресс новее, но настройки телефона не трогает
+  await laptop.locator("#next").click();
+  await laptop.locator("#next").click();
+  await laptop.getByRole("button", { name: "Выйти" }).click();
+  await laptop.waitForTimeout(1500);
+
+  // везде — выбор с телефона, а прогресс занятия ноутбука сохранён
+  for (const page of [phone, laptop]) {
+    await page.reload();
+    await settings(page);
+    await expect(page.locator(".vsel"), "голос").toContainText("Emma");
+    await expect(perDay(page, 24), "новых слов").toHaveAttribute("aria-pressed", "true");
+  }
+  await expect.poll(() => cli("progress")).toMatch(/^evgeny\tслов: 3\t/);
+
+  // новое устройство сразу получает те же настройки
+  const tablet = await newDevice(browser, origin, link());
+  await settings(tablet);
+  await expect(tablet.locator(".vsel")).toContainText("Emma");
+  await expect(perDay(tablet, 24)).toHaveAttribute("aria-pressed", "true");
+  for (const p of [laptop, phone, tablet]) await p.context().close();
+});

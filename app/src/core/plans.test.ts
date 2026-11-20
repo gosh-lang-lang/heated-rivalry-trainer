@@ -34,14 +34,14 @@ describe("утро", () => {
   });
 
   it("порядок лестницы внутри блока", () => {
-    const st = morningPlan(deck, state({ settings: { newPerDay: 6 } }), TODAY, { rng: seeded(2) });
+    const st = morningPlan(deck, state({ settings: { newPerDay: 6, voice: "af_heart" } }), TODAY, { rng: seeded(2) });
     const order = types(st).filter((t, i, a) => t !== a[i - 1]);
     expect(order).toEqual(["section", "intro", "pick", "pairs", "listen", "type", "build"]);
     expect(st.filter((s) => s.t === "type").every((s) => s.t === "type" && s.hint)).toBe(true);
   });
 
   it("новые слова идут в порядке словаря", () => {
-    const st = morningPlan(deck, state({ settings: { newPerDay: 6 } }), TODAY, { rng: seeded(3) });
+    const st = morningPlan(deck, state({ settings: { newPerDay: 6, voice: "af_heart" } }), TODAY, { rng: seeded(3) });
     expect(st.filter((s) => s.t === "intro").map((s) => (s.t === "intro" ? s.w : ""))).toEqual(deck.words.slice(0, 6).map((w) => w.id));
   });
 

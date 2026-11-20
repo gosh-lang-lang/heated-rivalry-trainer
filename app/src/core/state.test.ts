@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseState, pickNewer } from "./state";
+import { changeSetting, emptyState, mergeStates, parseState } from "./state";
 import { state } from "./fixtures";
 
 const prototypeExport = {
@@ -36,8 +36,46 @@ describe("импорт состояния", () => {
   });
   it("слияние по upd", () => {
     const a = state({ upd: 5 }),
-      b = state({ upd: 7 });
-    expect(pickNewer(a, b)).toBe(b);
-    expect(pickNewer(b, a)).toBe(b);
+      b = state({ upd: 7, srs: { x: { lvl: 1, due: "", intro: "", right: 0, wrong: 0 } } });
+    expect(mergeStates(a, b)).toEqual(b);
+    expect(mergeStates(b, a)).toEqual(b);
+  });
+});
+
+describe("слияние копий: прогресс — кто новее, настройки — по пунктам", () => {
+  const base = { ...emptyState(), srs: { a: { lvl: 1, due: "2026-11-21", intro: "2026-11-20", right: 1, wrong: 0 } } };
+  const laptop = { ...changeSetting(base, "newPerDay", 6, 1000), upd: 5000 }; // занимался позже
+  const phone = { ...changeSetting(changeSetting(emptyState(), "voice", "bf_emma", 3000), "newPerDay", 24, 3000), upd: 3000 };
+
+  it("прогресс — из более новой копии, каждый пункт настроек — изменённый позже", () => {
+    const m = mergeStates(laptop, phone);
+    expect(m.upd).toBe(5000);
+    expect(m.srs).toEqual(laptop.srs);
+    expect(m.settings).toEqual({ newPerDay: 24, voice: "bf_emma" });
+    expect(m.settingsAt).toEqual({ newPerDay: 3000, voice: 3000 });
+  });
+
+  it("порядок не важен, повторное слияние ничего не меняет", () => {
+    expect(mergeStates(phone, laptop)).toEqual(mergeStates(laptop, phone));
+    const m = mergeStates(laptop, phone);
+    expect(mergeStates(m, phone)).toEqual(m);
+    expect(mergeStates(m, laptop)).toEqual(m);
+    const tie = { ...phone, upd: laptop.upd };
+    expect(mergeStates(tie, laptop)).toEqual(mergeStates(laptop, tie));
+  });
+
+  it("изменение пункта: новое значение и метка, даже если часы ушли назад", () => {
+    const s = changeSetting(changeSetting(emptyState(), "voice", "bf_emma", 5000), "voice", "am_adam", 4000);
+    expect(s.settings.voice).toBe("am_adam");
+    expect(s.settingsAt.voice).toBe(5001);
+    expect(s.settingsAt.newPerDay).toBe(0);
+  });
+
+  it("старые копии без меток и голоса читаются: голос по умолчанию, метки — 0; неизвестный голос отбрасывается", () => {
+    const s = parseState({ upd: 1, settings: { newPerDay: 18 }, srs: {} });
+    expect(s.settings).toEqual({ newPerDay: 18, voice: "af_heart" });
+    expect(s.settingsAt).toEqual({ newPerDay: 0, voice: 0 });
+    expect(parseState({ srs: {}, settings: { voice: "robot" } }).settings.voice).toBe("af_heart");
+    expect(parseState({ srs: {}, settings: { voice: "bm_george" }, settingsAt: { voice: 7 } })).toMatchObject({ settings: { voice: "bm_george" }, settingsAt: { voice: 7 } });
   });
 });

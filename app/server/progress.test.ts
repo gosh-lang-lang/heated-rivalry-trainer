@@ -12,7 +12,7 @@ const setup = () => {
 const st = (upd: number, newPerDay = 12): AppState => ({
   ...emptyState(),
   upd,
-  settings: { newPerDay },
+  settings: { newPerDay, voice: "af_heart" },
   srs: { sacred: { lvl: 2, due: "2026-11-22", intro: "2026-11-20", right: 3, wrong: 1 } },
 });
 
@@ -33,8 +33,25 @@ describe("прогресс на сервере", () => {
     progress.put(a.id, st(10, 6));
     expect(progress.put(a.id, st(20, 18))).toEqual({ state: st(20, 18), saved: true });
     expect(progress.put(a.id, st(15, 24))).toEqual({ state: st(20, 18), saved: false });
-    expect(progress.put(a.id, st(20, 24)).saved).toBe(false);
+    expect(progress.put(a.id, st(20, 18)).saved).toBe(false); // то же самое — не перезаписываем
     expect(progress.get(a.id)!.settings.newPerDay).toBe(18);
+  });
+
+  it("настройки сливаются по пунктам: старый прогресс с новой настройкой и наоборот", () => {
+    const { progress, a } = setup();
+    const at = (s: AppState, newPerDay: number, voice: number) => ({ ...s, settingsAt: { newPerDay, voice } });
+    progress.put(a.id, at(st(10, 6), 100, 0));
+    // устройство со старым прогрессом, но только что выбранным голосом
+    const r1 = progress.put(a.id, at({ ...st(5, 12), srs: {}, settings: { newPerDay: 12, voice: "bf_emma" } }, 50, 200));
+    expect(r1.saved).toBe(true);
+    expect(r1.state.upd).toBe(10);
+    expect(Object.keys(r1.state.srs)).toEqual(["sacred"]); // прогресс — новее, остался
+    expect(r1.state.settings).toEqual({ newPerDay: 6, voice: "bf_emma" }); // 6 — поменяли позже, чем 12
+    // устройство с новым прогрессом (занятие), но старыми настройками — настройки не трогает
+    const r2 = progress.put(a.id, at({ ...st(30, 24), settings: { newPerDay: 24, voice: "af_heart" } }, 0, 0));
+    expect(r2.state.upd).toBe(30);
+    expect(r2.state.settings).toEqual({ newPerDay: 6, voice: "bf_emma" });
+    expect(progress.get(a.id)).toEqual(r2.state);
   });
 
   it("у каждого пользователя свой прогресс", () => {

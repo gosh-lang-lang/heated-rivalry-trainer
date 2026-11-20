@@ -46,12 +46,13 @@ ssh root@195.133.197.130 'docker start heated-rivalry'
 ## Обновить
 **Только скриптом** и только то, что уже на GitHub:
 ```sh
-deploy/deploy.sh          # main чистый и = origin/main → typecheck, unit, e2e → бэкап → выкатка → проверка
+deploy/deploy.sh          # origin/main → его чистая копия: typecheck, unit, e2e → бэкап → выкатка → проверка
 deploy/deploy.sh status   # версии: локально / GitHub / прод (метка коммита в образе)
 ```
-Скрипт откажется, если есть незакоммиченные или незапушенные изменения или падает хоть один тест.
-Образ помечен коммитом (`org.opencontainers.image.revision`); `unknown` на проде — собрали в обход скрипта.
-Руками (`git archive … | ssh …`, `docker compose up --build` на сервере) не выкатываем.
+Выкатывается ровно `origin/main`; проверки идут на его отдельной копии (git worktree), из неё же собирается архив.
+Незакоммиченное в рабочей папке на прод не попадает. Скрипт откажется, если в локальном main есть незапушенные коммиты
+или падает хоть один тест. Образ помечен коммитом (`org.opencontainers.image.revision`); `unknown` на проде — собрали
+в обход скрипта. Руками (`git archive … | ssh`, `docker compose up --build` на сервере) не выкатываем.
 
 ## Подключить домен
 После DNS-записи `A heated-rivalry-trainer → 195.133.197.130`: `/opt/heated-rivalry/src/deploy/caddy-install.sh`

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { DECK, goTab, openHome, openSettings, setup, state } from "./helpers";
+import { DECK, goTab, openHome, openSettings, readState, setup, state } from "./helpers";
 
 const SAMPLE = "Their animosity was intense. He gritted his teeth and kept playing.";
 
@@ -38,7 +38,9 @@ test.describe("голос", () => {
     await page.getByRole("radio", { name: /Emma/ }).click();
     await expect(page.locator(".vlist")).toHaveCount(0);
     await expect(page.locator(".vsel")).toContainText("Emma");
-    expect(await page.evaluate(() => localStorage.getItem("hr2_tts_voice"))).toBe("bf_emma");
+    // выбор — в личных настройках: в кэше устройства и на сервере (оттуда — на остальные устройства)
+    expect((await readState(page)).settings.voice).toBe("bf_emma");
+    await expect.poll(() => (log.server.state as { settings?: { voice: string } } | null)?.settings?.voice).toBe("bf_emma");
 
     await page.reload();
     await openSettings(page);
@@ -49,6 +51,23 @@ test.describe("голос", () => {
     await page.getByRole("button", { name: "Начать утреннее" }).click();
     await page.getByRole("button", { name: "Поехали" }).click();
     await expect.poll(() => log.requests.some((r) => r.text === DECK.words[0].en && r.voice === "bf_emma")).toBe(true);
+  });
+
+  test("голос, выбранный раньше только в этом браузере, переезжает в общие настройки", async ({ page }) => {
+    const log = await setup(page, { voice: "bm_george" });
+    await openHome(page);
+    await openSettings(page);
+    await expect(page.locator(".vsel")).toContainText("George");
+    await expect.poll(() => (log.server.state as { settings?: { voice: string } } | null)?.settings?.voice).toBe("bm_george");
+    expect(await page.evaluate(() => localStorage.getItem("hr2_tts_voice"))).toBeNull();
+  });
+
+  test("голос с другого устройства: выбор там новее — применяется здесь", async ({ page }) => {
+    const log = await setup(page, { voice: "bm_george" }); // здесь когда-то выбирали George
+    log.server.state = { ...state({ upd: 50 }), settings: { newPerDay: 12, voice: "bf_emma" }, settingsAt: { newPerDay: 0, voice: 40 } };
+    await openHome(page);
+    await openSettings(page);
+    await expect(page.locator(".vsel")).toContainText("Emma");
   });
 
   test("новое слово озвучивается сервером, следующий шаг подгружается заранее", async ({ page }) => {
