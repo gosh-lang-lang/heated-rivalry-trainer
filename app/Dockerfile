@@ -13,13 +13,13 @@ COPY app/ ./
 RUN npm run build
 
 FROM ${NODE_IMAGE}
-ENV NODE_ENV=production PORT=8787 TTS_CACHE_DIR=/data/tts npm_config_onnxruntime_node_install_cuda=skip
+ENV NODE_ENV=production PORT=8787 TTS_CACHE_DIR=/data/tts AUTH_DB=/data/auth/auth.db npm_config_onnxruntime_node_install_cuda=skip
 WORKDIR /srv/app
 COPY app/package.json app/package-lock.json ./
 RUN npm ci --omit=dev --no-audit --no-fund && npm cache clean --force
 # Модель Kokoro — в образ: контейнер работает без доступа в интернет и не качает её при каждом запуске
 RUN node --input-type=module -e "import { KokoroTTS } from 'kokoro-js'; await KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX', { dtype: 'fp32', device: 'cpu' }); console.log('model ok')"
-RUN mkdir -p /data/tts && chown node:node /data/tts
+RUN mkdir -p /data/tts /data/auth && chown node:node /data/tts /data/auth
 COPY words.json /srv/words.json
 COPY --from=build /srv/app/dist ./dist
 COPY app/server ./server
@@ -28,4 +28,4 @@ USER node
 EXPOSE 8787
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s \
   CMD node -e "fetch('http://127.0.0.1:8787/api/health').then(r => process.exit(r.ok ? 0 : 1), () => process.exit(1))"
-CMD ["node", "server/index.ts"]
+CMD ["node", "--disable-warning=ExperimentalWarning", "server/index.ts"]

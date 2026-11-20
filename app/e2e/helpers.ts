@@ -71,6 +71,9 @@ export const setup = async (
     { state: opts.state ?? null, voice: opts.voice ?? null },
   );
 
+  // вход выполнен (настоящий вход проверяет e2e/auth.spec.ts на продакшен-сервере)
+  await page.route("**/api/auth/me", (route) => route.fulfill({ json: { user: { name: "evgeny", displayName: "Евгений" }, passkeys: 1 } }));
+
   const log: TtsLog = { requests: [] };
   await page.route("**/api/tts", async (route) => {
     if (opts.tts === "down") return route.abort("connectionrefused");

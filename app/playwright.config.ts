@@ -2,6 +2,7 @@ import { defineConfig, devices } from "@playwright/test";
 
 const PORT = 5174;
 
+
 /**
  * Регрессионные e2e-тесты. Озвучка (/api/tts) замокана в тестах — Kokoro-сервер не нужен.
  *   npm run e2e            — все проекты
@@ -22,12 +23,21 @@ export default defineConfig({
     screenshot: "only-on-failure",
   },
   projects: [
+    // вход по passkey: на каждый тест свой продакшен-сервер и своя база (e2e/auth-fixture.ts)
+    { name: "auth-build", testMatch: /auth\.setup\.ts/ },
+    {
+      name: "auth",
+      testMatch: /auth\.spec\.ts/,
+      dependencies: ["auth-build"],
+      use: { ...devices["Desktop Chrome"], serviceWorkers: "block" },
+    },
     {
       name: "desktop-chrome",
+      testIgnore: /auth\.(spec|setup)\.ts/,
       use: { ...devices["Desktop Chrome"], launchOptions: { args: ["--autoplay-policy=no-user-gesture-required"] } },
     },
     // устройства пользователя — Apple: проверяем движок Safari на размере телефона
-    { name: "iphone", use: { ...devices["iPhone 13"] } },
+    { name: "iphone", testIgnore: /auth\.(spec|setup)\.ts/, use: { ...devices["iPhone 13"] } },
   ],
   webServer: {
     command: `npm run dev -- --port ${PORT} --strictPort`,

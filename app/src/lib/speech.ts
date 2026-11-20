@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { DEFAULT_VOICE, isTtsVoice, TTS_VOICES, type TtsVoice } from "../core/tts";
 import { rankVoices } from "../core/voices";
+import { goLogin } from "./auth";
 
 /*
  * Озвучка.
@@ -102,7 +103,10 @@ const serverUrl = (text: string, voice: string): Promise<string> => {
   let p = urls.get(k);
   if (!p) {
     p = fetch("/api/tts", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text, voice }) })
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .then((r) => {
+        if (r.status === 401) goLogin(); // сессия закончилась
+        return r.ok ? r.json() : Promise.reject(new Error(String(r.status)));
+      })
       .then((j: { url: string }) => j.url);
     p.catch(() => urls.delete(k));
     urls.set(k, p);

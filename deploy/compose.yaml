@@ -11,10 +11,12 @@ services:
     mem_limit: ${APP_MEM_LIMIT:-1536m}
     cpus: ${APP_CPUS:-1.5}
     environment:
+      AUTH_ORIGIN: https://heated-rivalry-trainer.spill-the-tea.xyz
       TTS_DTYPE: ${TTS_DTYPE:-fp32}
       TTS_RATE_LIMIT: ${TTS_RATE_LIMIT:-120}
     volumes:
       - tts:/data/tts
+      - auth:/data/auth
     networks: [edge]
 
 networks:
@@ -26,3 +28,6 @@ networks:
 volumes:
   tts:
     name: heated_rivalry_tts
+  # пользователи, passkey и сессии (SQLite) — не терять при пересоздании контейнера
+  auth:
+    name: heated_rivalry_auth

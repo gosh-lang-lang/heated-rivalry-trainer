@@ -7,7 +7,20 @@
 - Модель Kokoro зашита в образ, кэш озвучки — том `heated_rivalry_tts`.
 - Caddy подключается к сети таймером `heated-rivalry-edge.timer` (файлы spillthetea/motivator не меняются).
 - Сайт — помеченный блок в `/opt/spillthetea/caddy/Caddyfile` (текст — `deploy/caddy-site.conf`).
-  **Сейчас закрыт: на любой запрос 500**, пока нет авторизации.
+- **Вход только по passkey.** Регистрации нет: пользователей и одноразовые ссылки привязки создаёт команда на сервере.
+  База входа — том `heated_rivalry_auth` (`/data/auth/auth.db`).
+
+## Пользователи и passkey
+```sh
+H="docker exec heated-rivalry node --disable-warning=ExperimentalWarning server/cli.ts"
+$H user:add evgeny Евгений      # создать пользователя
+$H enroll evgeny 60             # одноразовая ссылка привязки passkey (60 минут)
+$H users                        # пользователи, сколько passkey и сессий
+$H passkeys evgeny              # привязанные passkey
+$H passkey:remove <начало id>   # отозвать passkey (потерянное устройство)
+$H logout evgeny                # завершить все сессии
+```
+Passkey из связки ключей iCloud синхронизируется на все устройства с тем же Apple ID — привязывать каждое не нужно.
 
 ## Обновить
 ```sh
@@ -20,9 +33,8 @@ ssh root@195.133.197.130 'cd /opt/heated-rivalry/src/deploy && docker compose up
 После DNS-записи `A heated-rivalry-trainer → 195.133.197.130`: `/opt/heated-rivalry/src/deploy/caddy-install.sh`
 (сам проверит, что DNS уже указывает на сервер; если нет — ничего не меняет). Откат: `caddy-install.sh --remove`.
 
-## Открыть сайт (когда будет авторизация)
-В `/opt/spillthetea/caddy/Caddyfile`, в блоке heated-rivalry: удалить `handle { … respond 500 }`, раскомментировать
-`encode` и `reverse_proxy`, затем `/opt/heated-rivalry/src/deploy/caddy-reload.sh`.
+## Закрыть сайт целиком (аварийно)
+В блоке heated-rivalry в Caddyfile заменить `encode`/`reverse_proxy` на `respond 500`, затем `caddy-reload.sh`.
 
 ## Откатить
 `caddy-install.sh --remove`; `systemctl disable --now heated-rivalry-edge.timer`;

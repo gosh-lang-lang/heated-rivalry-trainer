@@ -5,6 +5,7 @@ import { exportState, NEW_PER_DAY_OPTIONS, parseState } from "../core/state";
 import type { AppState } from "../core/types";
 import { ACCENT_LABEL, VOICE_SAMPLE, voiceMeta, type TtsVoice } from "../core/tts";
 import { Back, Check, Chevron, Play } from "../lib/icons";
+import { logout, useMe } from "../lib/auth";
 import { say, setVoice, useVoices } from "../lib/speech";
 
 /** Настройки: новые слова за утро, голос озвучки, перенос данных. На телефоне — вкладка «Настройки», на десктопе — пункт верхнего меню. */
@@ -25,9 +26,24 @@ export function Settings({ state, setState, onBack }: { state: AppState; setStat
         <div className="set-col">
           <div className="sgroup">Данные</div>
           <DataTransfer state={state} setState={setState} />
+          <div className="sgroup">Вход</div>
+          <Account />
         </div>
       </div>
     </>
+  );
+}
+
+function Account() {
+  const me = useMe();
+  return (
+    <section className="card account">
+      <h3>{me ? me.user.displayName : "Аккаунт"}</h3>
+      <p className="mute sm" style={{ margin: "4px 0 12px" }}>
+        {me ? `Вход по passkey · привязано: ${me.passkeys}. Новое устройство с тем же Apple ID получит passkey само.` : "Вход по passkey."}
+      </p>
+      <button className="btn ghost wide" onClick={() => void logout()}>Выйти</button>
+    </section>
   );
 }
 

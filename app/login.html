@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#12306b" />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="referrer" content="no-referrer" />
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;800;900&display=swap" rel="stylesheet" />
+    <title>Вход — Heated Rivalry</title>
+    <style>
+      :root{color-scheme:light dark;
+        --bg:light-dark(#eef3f9,#0a111d);--card:light-dark(#fff,#131d2e);--ink:light-dark(#0f1b2d,#eaf0f8);--mute:light-dark(#5a6a80,#94a5bb);
+        --line:light-dark(#d6e0ec,#24344b);--navy:#12306b;--blue:light-dark(#1f5fd1,#78a6ff);--blueD:light-dark(#1747a0,#4f7fdc);--btnInk:light-dark(#fff,#0a111d);
+        --red:light-dark(#d9233a,#ff6b7c);--redSoft:light-dark(#fde6e9,#3a1a22);--ok:light-dark(#178a4c,#5ad48f);--okSoft:light-dark(#e1f5e9,#12301f)}
+      *{box-sizing:border-box}
+      html,body{margin:0;min-height:100%}
+      body{background:var(--bg);color:var(--ink);font:17px/1.5 Nunito,system-ui,sans-serif;min-height:100dvh;display:grid;grid-template-rows:auto 1fr}
+      header{background:var(--navy);color:#fff;padding:28px 20px 84px;position:relative;overflow:hidden}
+      header svg{position:absolute;right:-70px;top:-60px;width:260px;height:260px;opacity:.14}
+      .in{max-width:440px;margin:0 auto;position:relative}
+      .brand{display:flex;align-items:center;gap:10px;font-weight:900;font-size:15px;opacity:.9}
+      .brand i{width:30px;height:20px;border:2.4px solid currentColor;border-radius:10px;position:relative;display:inline-block}
+      .brand i::after{content:"";position:absolute;inset:4px 9px;border-radius:50%;border:2.2px solid #ff6b7c}
+      h1{font-size:clamp(30px,8vw,40px);line-height:1.05;margin:18px 0 6px;font-weight:900}
+      header p{margin:0;opacity:.85}
+      main{padding:0 16px 40px}
+      .card{max-width:440px;margin:-56px auto 0;background:var(--card);border:2px solid var(--line);border-bottom-width:4px;border-radius:24px;padding:22px;position:relative}
+      h2{margin:0 0 6px;font-size:22px;font-weight:900}
+      .mute{color:var(--mute)}
+      .sm{font-size:15px}
+      .btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:58px;border:0;border-radius:18px;background:var(--blue);color:var(--btnInk);font:inherit;font-weight:900;font-size:18px;box-shadow:0 4px 0 var(--blueD);cursor:pointer;text-decoration:none;margin-top:16px;transition:transform .08s}
+      .btn:active{transform:translateY(3px);box-shadow:0 1px 0 var(--blueD)}
+      .btn:disabled{opacity:.6;cursor:default;transform:none}
+      .btn svg{width:24px;height:24px}
+      .btn:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
+      .msg{margin:14px 0 0;padding:10px 14px;border-radius:14px;font-weight:700;font-size:15px}
+      .msg.err{background:var(--redSoft);color:var(--red)}
+      .msg.ok{background:var(--okSoft);color:var(--ok)}
+      .msg:empty{display:none}
+      .who{display:inline-block;margin-top:4px;padding:2px 10px;border-radius:999px;background:light-dark(#e3edfd,#17294a);color:var(--blue);font-weight:900}
+      .steps{margin:14px 0 0;padding:0;list-style:none;display:grid;gap:8px;font-size:15px;color:var(--mute)}
+      .steps li{display:flex;gap:10px}
+      .steps b{flex:none;width:22px;height:22px;border-radius:50%;background:var(--line);color:var(--ink);display:grid;place-items:center;font-size:13px}
+      [hidden]{display:none!important}
+      .spin{width:18px;height:18px;border:3px solid currentColor;border-right-color:transparent;border-radius:50%;animation:sp 1s linear infinite}
+      @keyframes sp{to{transform:rotate(360deg)}}
+      @media(prefers-reduced-motion:reduce){.spin{animation:none}.btn{transition:none}}
+    </style>
+  </head>
+  <body>
+    <header>
+      <svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="44" fill="none" stroke="#fff" stroke-width="3" /><circle cx="50" cy="50" r="4" fill="#fff" /><path d="M18 36h12M18 64h12M70 36h12M70 64h12M50 0v100" stroke="#fff" stroke-width="3" /></svg>
+      <div class="in">
+        <div class="brand"><i aria-hidden="true"></i>Heated Rivalry · английский</div>
+        <h1>Тренажёр по книге</h1>
+        <p>Утром учим, вечером применяем.</p>
+      </div>
+    </header>
+    <main>
+      <section class="card" id="login">
+        <h2>Вход</h2>
+        <p class="mute sm" style="margin:0">Только для своих: войти можно с passkey, привязанным к этому сайту.</p>
+        <button class="btn" id="signin" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="15" r="4" /><path d="M10.8 12.2 20 3M17 6l3 3M14.5 8.5l2 2" /></svg>
+          <span>Войти с passkey</span>
+        </button>
+        <p class="mute sm" style="margin:10px 0 0;text-align:center">Touch ID, Face ID или пароль устройства</p>
+        <p class="msg" id="login-msg" role="alert"></p>
+      </section>
+
+      <section class="card" id="enroll" hidden>
+        <h2>Привязка passkey</h2>
+        <p class="mute sm" style="margin:0" id="enroll-for" hidden>Для пользователя <span class="who" id="enroll-name"></span></p>
+        <ol class="steps" id="enroll-steps">
+          <li><b>1</b>Нажми кнопку — устройство попросит Touch ID или Face ID.</li>
+          <li><b>2</b>Passkey сохранится в связке ключей iCloud и сам появится на iPhone и iPad.</li>
+        </ol>
+        <button class="btn" id="create" type="button" disabled><span>Создать passkey</span></button>
+        <p class="msg" id="enroll-msg" role="alert"></p>
+        <a class="btn" id="open" href="/" hidden>Открыть тренажёр</a>
+      </section>
+      <noscript><p class="card">Для входа нужен JavaScript.</p></noscript>
+    </main>
+    <script type="module" src="/src/login/main.ts"></script>
+  </body>
+</html>
