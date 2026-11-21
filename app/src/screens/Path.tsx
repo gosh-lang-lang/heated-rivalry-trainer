@@ -3,15 +3,15 @@ import type { View } from "../App";
 import { SEASON, seasonView, type LessonCard, type SeasonView } from "../core/cards";
 import { hhmm, lessonStatus, resumeLabel, type LessonPart, type LessonStatus } from "../core/lesson";
 import { MAX_REVIEW, newToday } from "../core/plans";
-import { streak, unseen } from "../core/srs";
+import { dayParts, streak, unseen } from "../core/srs";
 import { plural } from "../core/text";
 import type { AppState, Deck, SessionResult } from "../core/types";
-import { Cards, Check, Flame, Lock } from "../lib/icons";
+import { Cards, Check, Lock, StreakFlame } from "../lib/icons";
 import { CardFront, CardLocked, cardNo, ruDay } from "./cards";
 import { useNow } from "./Home";
 import { Fan } from "./Me";
 import { PathPlayer } from "./PathPlayer";
-import { StreakSheet } from "./streak";
+import { StreakSheet, streakLabel, useIgnite } from "./streak";
 
 /*
  * «Путь»: сезон из 10 уроков нарисован катком. Каждая точка — урок (место карточки в сезоне): пройден / сейчас / закрыт;
@@ -431,9 +431,13 @@ export function PathScreen({ deck, state, go, wide }: { deck: Deck; state: AppSt
   const sv = seasonView(state, deck, ls.today);
   const cur = currentLesson(ls, sv, state, deck);
   const sk = streak(state.days, ls.today);
+  const parts = dayParts(state.days, ls.today);
+  const ignite = useIgnite(parts, ls.today);
+  const p2today = ls.cards.find((c) => c.part === 2 && c.day === ls.today && c.can && !c.done);
+  const part2View: View | null = p2today ? { name: "session", kind: "evening", from: "path" } : null;
   const [sel, setSel] = useState<number | null>(null);
   const [streakOpen, setStreakOpen] = useState(false);
-  const streakSheet = streakOpen && <StreakSheet days={state.days} today={ls.today} go={go} onClose={() => setStreakOpen(false)} />;
+  const streakSheet = streakOpen && <StreakSheet days={state.days} today={ls.today} go={go} part2={part2View} onClose={() => setStreakOpen(false)} />;
   const selCard = sel ? (sv.got.find((c) => c.pos === sel) ?? null) : null;
   const [wrapRef, W0] = useWidth<HTMLDivElement>(wide ? 1152 : 390);
   const [popRef, popH] = useHeight<HTMLElement>(300);
@@ -456,7 +460,7 @@ export function PathScreen({ deck, state, go, wide }: { deck: Deck; state: AppSt
   }, [sel]);
   const chips = (long: boolean) => (
     <>
-      <button className={`hchip${sk ? "" : " zero"}`} aria-haspopup="dialog" aria-label={`${sk} ${plural(sk, "день", "дня", "дней")} подряд — подробнее о серии`} onClick={() => setStreakOpen(true)}><Flame aria-hidden="true" />{sk}{long ? ` ${plural(sk, "день", "дня", "дней")} подряд` : ""}</button>
+      <button className={`hchip${sk ? "" : " zero"}`} aria-haspopup="dialog" aria-label={streakLabel(sk, parts)} onClick={() => setStreakOpen(true)}><StreakFlame level={parts} ignite={ignite} aria-hidden="true" />{sk}{long ? ` ${plural(sk, "день", "дня", "дней")} подряд` : ""}</button>
       <button className="hchip cards" aria-label={`Карточек: ${sv.got.length} из ${SEASON} — открыть коллекцию`} onClick={() => go({ name: "collection" })}><Cards aria-hidden="true" />{sv.got.length}/{SEASON}</button>
       {streakSheet}
     </>

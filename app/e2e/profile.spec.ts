@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { goTab, openHome, readState, seasonState, setup } from "./helpers";
+import { addDays, DECK, goTab, openHome, readState, seasonState, setup, state, TODAY, ws } from "./helpers";
 
 /**
  * Аватарка в «Я» (core/avatar.ts, screens/avatar.tsx) и значки в шапке: 🔥 — панель серии (screens/streak.tsx),
@@ -110,14 +110,21 @@ test.describe("значки в шапке", () => {
     await setup(page, { state: seasonState() }); // уроки 16–20 ноября каждый день: серия 5, сегодня часть 1 есть
     await openHome(page);
     await goTab(page, "Путь");
-    await page.getByRole("button", { name: "5 дней подряд — подробнее о серии" }).click();
+    // сегодня пройдена только часть 1: огонь налит наполовину, в подписи — «одна часть из двух»
+    const chip = page.getByRole("button", { name: "5 дней подряд — подробнее о серии. Сегодня пройдена одна часть из двух" });
+    await expect(chip.locator("svg.sf")).toHaveAttribute("data-parts", "1");
+    await chip.click();
     const s = sheet(page, "Серия дней");
     await expect(s.locator(".sk-hero")).toContainText("5дней подряд");
-    await expect(s).toContainText("Сегодня урок есть — серия продолжается. Завтра станет 6.");
+    await expect(s.locator(".sk-hero svg.sf")).toHaveAttribute("data-parts", "1");
+    await expect(s).toContainText("Одна часть есть — день засчитан, серия 5. Пройди вторую — урок закроется");
     const week = s.getByRole("list", { name: "Последние 7 дней" });
     await expect(week.locator("li")).toHaveCount(7);
     await expect(week.locator("li.on")).toHaveCount(5);
-    await expect(week.locator("li").last()).toHaveAccessibleName("сегодня — был урок");
+    await expect(week.locator("li").last()).toHaveAccessibleName("сегодня — одна часть урока");
+    await expect(week.locator("li").nth(-2)).toHaveAccessibleName(/— урок закрыт$/);
+    await expect(week.locator("li").last().locator("svg.sf")).toHaveAttribute("data-parts", "1");
+    await expect(week.locator("li").nth(-2).locator("svg.sf")).toHaveAttribute("data-parts", "2");
     await expect(week.locator("li").first()).toHaveAccessibleName("суббота, 14 ноября — без урока");
     await expect(s.locator(".sk-stats")).toContainText("5дней — рекорд");
     await expect(s.locator(".sk-stats")).toContainText("2до достижения «7 дней»");
@@ -126,6 +133,39 @@ test.describe("значки в шапке", () => {
 
     await page.getByRole("button", { name: "Карточек: 4 из 10 — открыть коллекцию" }).click();
     await expect(page.getByRole("heading", { level: 1, name: "Коллекция" })).toBeVisible();
+  });
+
+  const res = (h: string) => ({ score: 30, total: 32, mins: 14, newN: 6, at: `${TODAY}T${h}:00:00.000Z` });
+  const learned = () => Object.fromEntries(DECK.words.slice(0, 6).map((w) => [w.id, ws({ intro: TODAY, due: addDays(TODAY, 1) })]));
+
+  test("огонь серии: пройдена часть 1 — налит наполовину, в панели кнопка «Начать часть 2»", async ({ page }) => {
+    await setup(page, { state: state({ srs: learned(), days: { [addDays(TODAY, -1)]: { morning: res("06") }, [TODAY]: { morning: res("06") } } }) });
+    await openHome(page);
+    const chip = page.locator("button.chip");
+    await expect(chip).toHaveAccessibleName("2 дня подряд — подробнее о серии. Сегодня пройдена одна часть из двух");
+    await expect(chip.locator("svg.sf")).toHaveAttribute("data-parts", "1");
+    await expect(chip.locator("svg.sf")).not.toHaveClass(/sf-ignite/);
+    await chip.click();
+    const s = sheet(page, "Серия дней");
+    await s.getByRole("button", { name: "Начать часть 2 — применяем" }).click();
+    await expect(s).toBeHidden();
+    await expect(page.locator(".sect h2")).toHaveText("Проверка без подсказок");
+  });
+
+  test("огонь серии: обе части — горит целиком и «зажигается» один раз в день", async ({ page }) => {
+    await setup(page, { state: state({ srs: learned(), days: { [TODAY]: { morning: res("06"), evening: res("09") } } }) });
+    await openHome(page);
+    const chip = page.locator("button.chip");
+    await expect(chip).toHaveAccessibleName("1 день подряд — подробнее о серии. Сегодня урок закрыт");
+    await expect(chip.locator("svg.sf")).toHaveAttribute("data-parts", "2");
+    await expect(chip.locator("svg.sf")).toHaveClass(/sf-ignite/);
+    await page.reload();
+    await expect(page.locator("button.chip svg.sf")).toHaveAttribute("data-parts", "2");
+    await expect(page.locator("button.chip svg.sf")).not.toHaveClass(/sf-ignite/);
+    await page.locator("button.chip").click();
+    const s = sheet(page, "Серия дней");
+    await expect(s).toContainText("Урок закрыт — обе части пройдены. Завтра серия станет 2.");
+    await expect(s.getByRole("button", { name: /Начать часть 2/ })).toHaveCount(0);
   });
 
   test("главная: серия 0 — подсказка, как начать; «Достижения серии» ведут в «Я»", async ({ page }) => {

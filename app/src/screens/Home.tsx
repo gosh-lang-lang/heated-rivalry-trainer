@@ -3,14 +3,14 @@ import type { View } from "../App";
 import { addDays, greeting } from "../core/dates";
 import { hhmm, lessonStatus, resumeLabel, untilText, type LessonPart } from "../core/lesson";
 import { MAX_REVIEW, newToday } from "../core/plans";
-import { dueList, groups, isHard, levelGroup, streak, unseen } from "../core/srs";
+import { dayParts, dueList, groups, isHard, levelGroup, streak, unseen } from "../core/srs";
 import { plural } from "../core/text";
 import type { AppState, Deck, SessionResult } from "../core/types";
-import { Check, Flame, Rink } from "../lib/icons";
+import { Check, Rink, StreakFlame } from "../lib/icons";
 import { AWAY_CITIES, CITIES_SVG } from "../lib/scenes";
 import { useVoices } from "../lib/speech";
 import { ThemeToggle } from "../ui";
-import { StreakSheet } from "./streak";
+import { StreakSheet, streakLabel, useIgnite } from "./streak";
 
 interface Props {
   deck: Deck;
@@ -59,6 +59,11 @@ export function Home({ deck, state, go, wide = false, name = null }: Props) {
   const g = groups(deck.words, state.srs);
   const tot = deck.words.length;
   const sk = streak(state.days, t);
+  const parts = dayParts(state.days, t);
+  const ignite = useIgnite(parts, t);
+  // кнопка «Начать часть 2» в панели серии — когда сегодняшнюю часть 2 можно начать
+  const p2today = ls.cards.find((c) => c.part === 2 && c.day === t && c.can && !c.done);
+  const part2View: View | null = p2today ? { name: "session", kind: "evening" } : null;
   const tomorrow = dueList(deck.words, state.srs, addDays(t, 1)).length;
 
   const doneTag = (r: SessionResult) => <span className="done-tag"><Check /> Готово · {r.score}/{r.total}</span>;
@@ -212,7 +217,7 @@ export function Home({ deck, state, go, wide = false, name = null }: Props) {
           <div className="top">
             <span className="kick">Heated Rivalry · английский</span>
             {!wide && <span className="hdate">{today}</span>}
-            <button className={`chip${sk ? "" : " zero"}`} aria-haspopup="dialog" aria-label={`${sk} ${plural(sk, "день", "дня", "дней")} подряд — подробнее о серии`} onClick={() => setStreakOpen(true)}><Flame aria-hidden="true" />{sk} {plural(sk, "день", "дня", "дней")}</button>
+            <button className={`chip${sk ? "" : " zero"}`} aria-haspopup="dialog" aria-label={streakLabel(sk, parts)} onClick={() => setStreakOpen(true)}><StreakFlame level={parts} ignite={ignite} aria-hidden="true" />{sk} {plural(sk, "день", "дня", "дней")}</button>
             {!wide && <ThemeToggle />}
           </div>
           <h1>{greeting(clock)}{name ? `, ${name}` : ""}</h1>
@@ -220,7 +225,7 @@ export function Home({ deck, state, go, wide = false, name = null }: Props) {
           {board}
         </div>
       </header>
-      {streakOpen && <StreakSheet days={state.days} today={t} go={go} onClose={() => setStreakOpen(false)} />}
+      {streakOpen && <StreakSheet days={state.days} today={t} go={go} part2={part2View} onClose={() => setStreakOpen(false)} />}
       <div className={`wrap home${ls.focus ? "" : " all-done"}`}>
         <div className="main-col">
           <div className="today">

@@ -24,6 +24,35 @@ button.hchip:active,button.chip:active{transform:scale(.96)}
 .hchip.zero svg,.chip.zero svg{filter:grayscale(1);opacity:.55}
 .hchip.zero{color:var(--mute)}
 
+/* Огонь серии — сосуд (StreakFlame в lib/icons.tsx): 0 — пустой контур, 1 — налит до середины (верх — заметная
+   «пустота»), 2 — горит целиком: крупнее на 20% (transform — раскладка и число не сдвигаются), ярче, с ореолом. */
+.sf{display:block;overflow:visible;flex:none}
+.sf-e{fill:var(--sf-e)}
+.sf-ke{fill:none;stroke:var(--sf-ke);stroke-width:1.5;stroke-linejoin:round}
+.sf-h{fill:var(--sf-hollow)}
+.sf-f{fill:#ffb02e}
+.sf-lvl{fill:none;stroke:#ff7a1a;stroke-width:1.1}
+.sf-kf{fill:none;stroke:#ff7a1a;stroke-width:1.5;stroke-linejoin:round}
+.sf-kf3{stroke:#ff7410}
+.sf-core{fill:#fff1b8}
+.sf.sf-s2{transform:scale(1.2);transform-origin:50% 62%;filter:drop-shadow(0 0 1.5px var(--sf-glow1)) drop-shadow(0 0 4px var(--sf-glow2))}
+:root{--sf-e:light-dark(#fff2dc,rgba(255,255,255,.08));--sf-ke:light-dark(#ffb45c,rgba(255,165,80,.6));--sf-hollow:light-dark(#fff,#0b1424);
+  --sf-glow1:rgba(255,150,20,.85);--sf-glow2:light-dark(rgba(255,170,40,.75),rgba(255,160,40,.55))}
+/* на цветной шапке главной (синей, красной) — свои «пустота» и ореол */
+.chip{--sf-e:rgba(255,255,255,.13);--sf-ke:rgba(255,255,255,.62);--sf-hollow:rgba(6,14,36,.5);--sf-glow1:rgba(255,200,70,.9);--sf-glow2:rgba(255,190,60,.55)}
+/* «зажигание» один раз после второй части: волна доливается до верха, вспышка, ореол разгорается (~0,6 с) */
+@media (prefers-reduced-motion:no-preference){
+  .sf.sf-s2.sf-ignite{animation:sf-ignite .62s cubic-bezier(.3,1.4,.5,1) .25s both}
+  .sf.sf-s2.sf-ignite .sf-core{animation:sf-core .62s ease-out .25s both}
+}
+@keyframes sf-ignite{
+  0%{transform:scale(1);filter:drop-shadow(0 0 0 transparent) drop-shadow(0 0 0 transparent);clip-path:inset(42% -40% -40% -40%)}
+  35%{clip-path:inset(-40% -40% -40% -40%)}
+  55%{transform:scale(1.32);filter:drop-shadow(0 0 2.5px var(--sf-glow1)) drop-shadow(0 0 7px var(--sf-glow2))}
+  100%{transform:scale(1.2);filter:drop-shadow(0 0 1.5px var(--sf-glow1)) drop-shadow(0 0 4px var(--sf-glow2));clip-path:inset(-40% -40% -40% -40%)}
+}
+@keyframes sf-core{0%,40%{fill:#ffb02e}60%{fill:#fffbe6}100%{fill:#fff1b8}}
+
 /* ================= Аватарка ================= */
 .ava-btn{position:relative;width:52px;height:52px;padding:0;border:0;background:none;border-radius:50%}
 .ava-edit{position:absolute;right:-5px;bottom:-5px;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:var(--blue);color:#fff;
@@ -58,6 +87,7 @@ button.hchip:active,button.chip:active{transform:scale(.96)}
 /* ================= Серия дней ================= */
 .sk-hero{display:flex;align-items:center;gap:10px;padding:4px 0 2px}
 .sk-hero svg{width:44px;height:44px;flex:none}
+.sk-go{margin:-4px 0 18px}
 .sk-hero b{font-size:48px;font-weight:900;line-height:1;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
 .sk-hero span{font-size:18px;font-weight:800;color:var(--mute);margin-top:12px}
 .sk-hero.zero svg{filter:grayscale(1);opacity:.5}

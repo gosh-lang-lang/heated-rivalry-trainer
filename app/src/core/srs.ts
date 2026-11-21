@@ -118,3 +118,9 @@ export const bestStreak = (days: AppState["days"]): number => {
 
 /** Был ли в день k урок (часть 1 или часть 2) — для серии. */
 export const activeDay = (days: AppState["days"], k: string): boolean => active(days[k]);
+
+/** Сколько частей урока пройдено в день k: 0 — ни одной, 1 — одна (день в серии засчитан), 2 — обе (урок закрыт). */
+export const dayParts = (days: AppState["days"], k: string): 0 | 1 | 2 => {
+  const d = days[k];
+  return ((d?.morning ? 1 : 0) + (d?.evening ? 1 : 0)) as 0 | 1 | 2;
+};

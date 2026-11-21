@@ -1,4 +1,4 @@
-import type { SVGProps } from "react";
+import { useId, type SVGProps } from "react";
 
 type P = SVGProps<SVGSVGElement>;
 const base = { viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeLinecap: "round", strokeLinejoin: "round" } as const;
@@ -20,6 +20,55 @@ export const Flame = (p: P) => (
     <path d="M12 22c4 0 7-2.7 7-6.6 0-3.5-2.4-5.6-3.6-8.4-.4 1.9-1.4 3-2.6 3.4.3-3.2-1-6.3-3.8-8.4.2 3.6-1.6 5.4-3.2 7.3C4.6 11.3 5 13 5 15.4 5 19.3 8 22 12 22z" />
   </svg>
 );
+const FLAME = "M12 22c4 0 7-2.7 7-6.6 0-3.5-2.4-5.6-3.6-8.4-.4 1.9-1.4 3-2.6 3.4.3-3.2-1-6.3-3.8-8.4.2 3.6-1.6 5.4-3.2 7.3C4.6 11.3 5 13 5 15.4 5 19.3 8 22 12 22z";
+const CORE = "M12 20.1c-1.8 0-3.1-1.1-3.1-2.8 0-1.5.9-2.4 1.8-3.5.3 1 .8 1.5 1.5 1.7-.1-1.1.4-2.2 1.1-2.9.5 1.6 1.8 2.6 1.8 4.5 0 1.8-1.3 3-3.1 3z";
+/** поверхность «налитого» огня — волна, а не линейка уровня (уровень 14.3 из 24 ≈ половина площади пламени) */
+const WAVE = "M-1.5 14.3 q2.25 -2.3 4.5 0 t4.5 0 t4.5 0 t4.5 0 t4.5 0 t4.5 0";
+
+/**
+ * Огонь серии — сосуд (стили в sheet.css, .sf-*): 0 — сегодня урока нет (пустой контур), 1 — пройдена часть 1
+ * (налит до середины, верх пустой), 2 — пройдены обе части (горит целиком: крупнее, ярче, с ореолом).
+ * ignite — один раз «зажечься» при показе (переход 1 → 2), только без «Уменьшить движение».
+ */
+export function StreakFlame({ level, ignite, className = "", ...p }: P & { level: 0 | 1 | 2; ignite?: boolean }) {
+  const id = useId().replace(/:/g, "");
+  const cls = `sf sf-s${level}${ignite ? " sf-ignite" : ""} ${className}`;
+  if (level === 0)
+    return (
+      <svg viewBox="0 0 24 24" className={cls} data-parts={0} {...p}>
+        <path d={FLAME} className="sf-e" />
+        <path d={FLAME} className="sf-ke" />
+      </svg>
+    );
+  if (level === 1)
+    return (
+      <svg viewBox="0 0 24 24" className={cls} data-parts={1} {...p}>
+        <defs>
+          <clipPath id={`${id}l`}><path d={`${WAVE} V30 H-1.5z`} /></clipPath>
+          <clipPath id={`${id}c`}><path d={FLAME} /></clipPath>
+        </defs>
+        <path d={FLAME} className="sf-h" />
+        <path d={FLAME} className="sf-f" clipPath={`url(#${id}l)`} />
+        <path d={WAVE} className="sf-lvl" clipPath={`url(#${id}c)`} />
+        <path d={FLAME} className="sf-kf" />
+      </svg>
+    );
+  return (
+    <svg viewBox="0 0 24 24" className={cls} data-parts={2} {...p}>
+      <defs>
+        <linearGradient id={`${id}g`} x1="0" y1="2" x2="0" y2="22" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="#ffd23a" />
+          <stop offset=".55" stopColor="#ffab1f" />
+          <stop offset="1" stopColor="#ff8a12" />
+        </linearGradient>
+      </defs>
+      <path d={FLAME} fill={`url(#${id}g)`} />
+      <path d={CORE} className="sf-core" />
+      <path d={FLAME} className="sf-kf sf-kf3" />
+    </svg>
+  );
+}
+
 export const Check = (p: P) => (
   <svg {...base} strokeWidth={3} {...p}><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
 );

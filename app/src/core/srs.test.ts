@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { addDays } from "./dates";
-import { applyGrade, blankState, dueList, groups, introduce, IV, IV_RARE, levelGroup, streak, bestStreak, activeDay, unseen } from "./srs";
+import { applyGrade, blankState, dueList, groups, introduce, IV, IV_RARE, levelGroup, streak, bestStreak, activeDay, dayParts, unseen } from "./srs";
 import { deck, TODAY } from "./fixtures";
 
 describe("даты", () => {
@@ -103,6 +103,16 @@ describe("интервальное повторение", () => {
     expect(streak({ ...days, [TODAY]: { morning: r } }, TODAY)).toBe(3);
     expect(streak({ "2026-11-17": { morning: r } }, TODAY)).toBe(0);
     expect(streak({ [TODAY]: { reread: true } }, TODAY)).toBe(0);
+  });
+
+  it("части дня для огня серии: 0 — ничего, 1 — одна часть (день засчитан), 2 — обе (урок закрыт)", () => {
+    const r = { score: 1, total: 1, mins: 1, newN: 0, at: "" };
+    expect(dayParts({}, TODAY)).toBe(0);
+    expect(dayParts({ [TODAY]: { reread: true } }, TODAY)).toBe(0);
+    expect(dayParts({ [TODAY]: { morning: r } }, TODAY)).toBe(1);
+    expect(dayParts({ [TODAY]: { evening: r } }, TODAY)).toBe(1);
+    expect(dayParts({ [TODAY]: { morning: r, evening: r } }, TODAY)).toBe(2);
+    expect(dayParts({ "2026-11-19": { morning: r, evening: r } }, TODAY)).toBe(0);
   });
 
   it("рекорд серии — самая длинная за всё время, даже если потом прервалась", () => {
