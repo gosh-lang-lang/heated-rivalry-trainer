@@ -9,6 +9,7 @@ import { DatabaseSync } from "node:sqlite";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { STATE_MAX_BYTES } from "./progress.ts";
 
 const DEPLOY = resolve(import.meta.dirname, "../../deploy");
 const dirs: string[] = [];
@@ -196,5 +197,14 @@ describe("backup.sh", () => {
     expect(r.status).toBe(1);
     expect(r.stderr).toContain("повреждена");
     expect(readdirSync(dir, { withFileTypes: false }).sort()).toEqual(["auth-2020-01-01.db", "auth-2020-01-02.db", "auth-2020-01-03.db"]);
+  });
+});
+
+describe("caddy-site.conf", () => {
+  it("Caddy пропускает прогресс того размера, что принимает сервер (иначе синхронизация молча встанет)", () => {
+    const m = readFileSync(join(DEPLOY, "caddy-site.conf"), "utf8").match(/max_size\s+(\d+)(KB|MB)/);
+    expect(m).not.toBeNull();
+    const bytes = Number(m![1]) * (m![2] === "MB" ? 1024 * 1024 : 1024);
+    expect(bytes).toBeGreaterThanOrEqual(STATE_MAX_BYTES);
   });
 });

@@ -68,6 +68,11 @@ deploy/deploy.sh status   # версии: локально / GitHub / прод (
 После DNS-записи `A heated-rivalry-trainer → 195.133.197.130`: `/opt/heated-rivalry/src/deploy/caddy-install.sh`
 (сам проверит, что DNS уже указывает на сервер; если нет — ничего не меняет). Откат: `caddy-install.sh --remove`.
 
+## Изменился `deploy/caddy-site.conf`
+`deploy.sh` Caddy не трогает. После выкатки — `/opt/heated-rivalry/src/deploy/caddy-install.sh` (заменит помеченный блок
+и перезагрузит Caddy; при ошибке вернёт прежний). Предел тела запроса (`max_size`) — не ниже `STATE_MAX_BYTES`
+сервера (2 МБ), иначе синхронизация прогресса молча встанет, когда он перерастёт предел.
+
 ## Закрыть сайт целиком (аварийно)
 В блоке heated-rivalry в Caddyfile заменить `encode`/`reverse_proxy` на `respond 500`, затем `caddy-reload.sh`.
 

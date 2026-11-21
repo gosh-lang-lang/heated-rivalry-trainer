@@ -68,7 +68,6 @@ h1,h2,h3{margin:0;line-height:1.1;font-weight:900}
 .legend div{font-size:14px;color:var(--mute)}.legend b{display:block;font-size:22px;color:var(--ink);font-weight:900}
 .legend span{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px}
 .c0{background:var(--line2)}.c1{background:#f59e0b}.c2{background:var(--blue)}.c3{background:#16a34a}
-.row2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .seg{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
 .seg button{min-height:44px;min-width:56px;border-radius:12px;border:2px solid var(--line);background:var(--card);font-weight:800}
 .seg button[aria-pressed=true]{border-color:var(--blue);background:var(--blueSoft);color:var(--blue)}
@@ -165,7 +164,6 @@ textarea.inp{min-height:110px;resize:vertical;font-size:18px;font-weight:600}
 .wrow:last-child{border-bottom:0}
 .wrow .em{font-size:34px;text-align:center}
 .wrow b{display:block;font-size:18px}
-.dots{display:flex;gap:3px;margin-top:4px}.dots i{width:14px;height:6px;border-radius:3px;background:var(--line)}.dots i.f{background:var(--ok)}
 details summary{list-style:none;cursor:pointer}details summary::-webkit-details-marker{display:none}
 .det{grid-column:1/-1;font-size:15px;color:var(--mute);padding:0 0 6px 64px}
 .hrow{display:grid;grid-template-columns:4.6em minmax(0,1fr) minmax(0,1fr);gap:8px;align-items:center;font-size:14px;color:var(--mute);margin-top:8px}
@@ -176,13 +174,8 @@ details summary{list-style:none;cursor:pointer}details summary::-webkit-details-
 @media(max-width:420px){.pic{font-size:68px}.legend b{font-size:19px}}
 @media(prefers-reduced-motion:reduce){.prog b{transition:none}.btn{transition:none}.spin{animation:none}}
 /* дополнения для React-версии */
-.xio textarea{min-height:140px;font-size:13px;font-family:ui-monospace,Menlo,monospace}
 .wrow summary{display:contents}
 /* выбор голоса */
-.vsel{width:100%;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:14px;align-items:center;text-align:left;margin-top:12px;padding:12px 14px;border:2px solid var(--line);border-bottom-width:4px;border-radius:18px;background:var(--card)}
-.vsel[aria-expanded=true]{border-color:var(--blue)}
-.vsel .chev{width:24px;height:24px;color:var(--mute);transition:transform .2s}
-.vsel[aria-expanded=true] .chev{transform:rotate(180deg);color:var(--blue)}
 .vav{width:48px;height:48px;border-radius:14px;display:grid;place-items:center;font-weight:900;font-size:22px;flex:none;position:relative}
 .vav.us{background:var(--blueSoft);color:var(--blue)}.vav.gb{background:var(--redSoft);color:var(--red)}
 .vname{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
@@ -208,13 +201,13 @@ details summary{list-style:none;cursor:pointer}details summary::-webkit-details-
 .eq i:nth-child(2){animation-delay:-.3s}.eq i:nth-child(3){animation-delay:-.6s}
 @keyframes eq{0%,100%{height:4px}50%{height:16px}}
 .vplay .spin{margin:0;width:16px;height:16px}
-@media(prefers-reduced-motion:reduce){.eq i{animation:none;height:10px}.vsel .chev{transition:none}}
+@media(prefers-reduced-motion:reduce){.eq i{animation:none;height:10px}}
 
 /* ================= раскладка по ширине экрана =================
    < 900px  — телефон и планшет: нижняя панель вкладок, главная «на сегодня», задания — ответы у большого пальца.
    >= 900px — десктоп: верхняя навигация, дашборд. Планшет (720–899) — та же телефонная раскладка, колонка по центру. */
 
-.bar-n,.mw-total,.ph-meta,.fbatch,.flabel,.kick{display:none}
+.bar-n,.mw-total,.ph-meta,.kick{display:none}
 
 /* --- нижняя панель вкладок --- */
 .has-tabbar{padding-bottom:calc(72px + env(safe-area-inset-bottom))}
@@ -284,20 +277,9 @@ details summary{list-style:none;cursor:pointer}details summary::-webkit-details-
 .setsum .btn{margin-top:14px;width:100%}
 
 /* --- словарь: липкий поиск и чипы уровней, компактные строки --- */
-.filters{display:grid;gap:8px;position:sticky;top:0;z-index:4;background:var(--bg);margin:-6px -16px 0;padding:8px 16px 10px;border-bottom:1px solid var(--line)}
 .inp.find{margin:0;font-size:17px;font-weight:700;padding:9px 14px;min-height:46px;border-bottom-width:2px;border-radius:14px}
-.fl{display:flex;gap:6px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:0 -16px;padding:0 16px}
-.fl::-webkit-scrollbar{display:none}
-.fl button{flex:none;min-height:44px;display:inline-flex;align-items:center;gap:6px;border:2px solid var(--line);border-radius:999px;background:var(--card);font-weight:800;font-size:15px;padding:6px 14px;white-space:nowrap}
-.fl button em{font-style:normal;color:var(--mute);font-weight:800;font-variant-numeric:tabular-nums}
-.fl button[aria-pressed=true]{border-color:var(--blue);background:var(--blueSoft);color:var(--blue)}
-.fl button[aria-pressed=true] em{color:var(--blue)}
 .sw{width:10px;height:10px;border-radius:3px;flex:none}
 .wlist{display:grid;gap:14px}
-.bhead{display:flex;gap:12px;align-items:flex-start;margin-bottom:2px}
-.bhead h3{font-size:19px}
-.bno{flex:none;width:28px;height:28px;border-radius:50%;background:var(--navy);color:#fff;display:grid;place-items:center;font-weight:900;font-size:14px;margin-top:-3px}
-.empty{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .rare{display:inline-block;margin-left:8px;padding:1px 7px;border:1.5px solid var(--line2);border-radius:8px;color:var(--mute);font-size:12px;font-weight:700;vertical-align:2px}
 .rare.hard{border-color:#f59e0b;color:#b45309}
 .sess .why{display:block;margin-top:2px}
@@ -399,8 +381,6 @@ details summary{list-style:none;cursor:pointer}details summary::-webkit-details-
   .hero{padding-inline:max(20px,calc((100% - var(--w))/2 + 4px))}
   .hero svg.rink{right:max(-80px,calc((100% - var(--w))/2 - 80px))}
   .wrap,.pagehead{padding-inline:max(16px,calc((100% - var(--w))/2))}
-  .filters{margin-inline:0;padding-inline:0}
-  .fl{margin-inline:0;padding-inline:0}
   .stage{width:100%;max-width:var(--stage);margin:0 auto}
   .bar{padding-inline:max(16px,calc((100% - var(--stage))/2))}
   .foot .in{max-width:var(--stage)}
@@ -461,32 +441,18 @@ details summary{list-style:none;cursor:pointer}details summary::-webkit-details-
   .mw-foot{margin:14px 0 0}
   /* неделя */
   /* настройки — одна сгруппированная колонка */
-  .xio .row2{grid-template-columns:repeat(2,minmax(0,180px))}
 
   /* заголовок разделов */
   .pagehead{padding-top:36px;padding-bottom:6px;padding-inline:max(24px,calc((100% - var(--w))/2 + 24px));align-items:center;gap:14px}
   .pagehead h1{font-size:44px;letter-spacing:-.02em}
   .pagehead .x{border:2px solid var(--line);background:var(--card)}
   .pagehead .ph-meta{font-size:16px;margin-left:auto}
-  .wrap.words,.wrap.stats,.wrap.settings-page{padding:20px max(24px,calc((100% - var(--w))/2 + 24px)) 64px;gap:24px}
+  .wrap.stats,.wrap.settings-page{padding:20px max(24px,calc((100% - var(--w))/2 + 24px)) 64px;gap:24px}
 
   /* словарь: фильтры слева, таблица справа */
-  .wrap.words{grid-template-columns:250px minmax(0,1fr);align-items:start}
   .is-settings .pagehead,.is-settings .wrap{--w:1000px}
   .sgroup{margin-top:14px}
-  .filters{position:sticky;top:20px;gap:22px;margin:0;padding:0;border:0;background:none}
-  .fl{margin:0;padding:0;overflow:visible}
-  .flabel{display:block;font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);margin:0 0 6px 12px}
-  .filters .fall{display:flex}
-  .fl{flex-direction:column;gap:2px}
-  .fl button{width:100%;justify-content:flex-start;border-color:transparent;background:none;border-radius:12px;font-size:16px;padding:8px 12px}
-  .fl button:hover{background:var(--card)}
-  .fl button em{margin-left:auto}
-  .fl button[aria-pressed=true]{border-color:var(--blue)}
   .wlist{gap:24px}
-  .bhead{margin-bottom:8px}
-  .bno{width:36px;height:36px;font-size:17px}
-  .bhead h3{font-size:22px}
 
   /* статистика */
   .wrap.stats .stats3{margin:0;grid-template-columns:1.4fr 1fr 1fr;gap:24px}
@@ -565,13 +531,12 @@ details summary{list-style:none;cursor:pointer}details summary::-webkit-details-
 @media(min-width:900px) and (max-width:1099px){
   .wrap.home{grid-template-columns:minmax(0,1fr) 320px}
   .today .sess .acts .btn{padding-inline:12px}
-  .wrap.words{grid-template-columns:210px minmax(0,1fr)}
   .hero h1{font-size:50px}
   .intro{grid-template-columns:minmax(0,4fr) minmax(0,7fr);gap:32px}
   .intro .pic{font-size:120px}
   .intro .word h2{--h2:48px}
 }
-@media(prefers-reduced-motion:reduce){.fl button,.tabs button{transition:none}}
+@media(prefers-reduced-motion:reduce){.tabs button{transition:none}}
 /* Chrome 131+ кладёт содержимое <details> в отдельный бокс ::details-content — растягиваем его на всю строку */
 .wrow::details-content{grid-column:1/-1}
 

@@ -137,4 +137,19 @@ test.describe("часть 1 урока — учим", () => {
     await page.keyboard.press("Enter");
     await expect(page.locator(".fb")).toHaveCount(0);
   });
+
+  test("клавиатура: Enter на другой кнопке нажимает её, а не проверяет ответ", async ({ page, isMobile }) => {
+    test.skip(isMobile, "физическая клавиатура — только на десктопе");
+    await setup(page, { state: state({ settings: { newPerDay: 6 } }) });
+    await openHome(page);
+    await page.getByRole("button", { name: "Начать часть 1" }).click();
+    for (let i = 0; i < 7; i++) await page.keyboard.press("Enter");
+    await expect(page.locator(".lbl")).toHaveText("Выбери перевод");
+    await page.keyboard.press("2");
+    await page.getByRole("button", { name: "Выйти" }).focus();
+    await page.keyboard.press("Enter");
+    // вышли из урока, ответ не проверен и не засчитан
+    await expect(page.getByRole("button", { name: /^Продолжить/ })).toBeVisible();
+    await expect(page.locator(".fb")).toHaveCount(0);
+  });
 });

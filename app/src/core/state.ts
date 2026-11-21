@@ -1,5 +1,5 @@
 import { isAvatar, savedNumber } from "./avatar.ts";
-import { isTimeZone } from "./dates.ts";
+import { clockNow, isTimeZone } from "./dates.ts";
 import { DEFAULT_VOICE, isTtsVoice } from "./tts.ts";
 import type { AppState, DayLog, Look, SavedRun, SentenceRecord, SessionResult, Settings, SettingsAt, Step, ThemePref, WordState } from "./types";
 
@@ -275,8 +275,11 @@ export const resetProgress = (s: AppState, now = Date.now()): AppState => {
   return { ...s, reset, upd: Math.max(reset, s.upd + 1), srs: {}, days: {}, sent: [], run: null, runAt: Math.max(now, s.runAt + 1) };
 };
 
-/** Изменить пункт настроек (метка времени пункта — строго растёт, даже если часы ушли назад). */
-export const changeSetting = <K extends keyof Settings>(s: AppState, key: K, value: Settings[K], now = Date.now()): AppState => ({
+/**
+ * Изменить пункт настроек (метка времени пункта — строго растёт, даже если часы ушли назад).
+ * Метка — по часам сервера: иначе устройство со спешащими часами перебивало бы более позднюю смену на другом.
+ */
+export const changeSetting = <K extends keyof Settings>(s: AppState, key: K, value: Settings[K], now = clockNow()): AppState => ({
   ...s,
   settings: { ...s.settings, [key]: value },
   settingsAt: { ...s.settingsAt, [key]: Math.max(now, s.settingsAt[key] + 1) } as SettingsAt,

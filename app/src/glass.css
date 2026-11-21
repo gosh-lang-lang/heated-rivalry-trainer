@@ -51,7 +51,6 @@
 :where(:root[data-glass=ice]) .wt,
 :where(:root[data-glass=ice]) .wchip,
 :where(:root[data-glass=ice]) .inp,
-:where(:root[data-glass=ice]) .vsel,
 :where(:root[data-glass=ice]) .vrow,
 :where(:root[data-glass=ice]) .vplay,
 :where(:root[data-glass=ice]) .spk,
@@ -94,8 +93,7 @@
 /* живая линза: края капсулы преломляют то, что под ней (SVG-фильтр, только Chromium — класс lg-lens) */
 :where(:root.lg-lens:not([data-glass=classic])) .tabbar{-webkit-backdrop-filter:none;backdrop-filter:url(#lg-lens) blur(3px) saturate(180%)}
 
-:where(:root:not([data-glass=classic])) .bar,:where(:root:not([data-glass=classic])) .filters{background:var(--g-bar);-webkit-backdrop-filter:var(--g-blur);backdrop-filter:var(--g-blur)}
-:where(:root:not([data-glass=classic])) .filters{border-bottom:0;box-shadow:inset 0 -1px 0 var(--line)}
+:where(:root:not([data-glass=classic])) .bar{background:var(--g-bar);-webkit-backdrop-filter:var(--g-blur);backdrop-filter:var(--g-blur)}
 :where(:root:not([data-glass=classic])) .foot{border-top:0;background:var(--g-sheen),var(--g-nav);
   box-shadow:inset 0 1px 0 var(--g-hi),0 -1px 0 var(--line),0 -14px 32px -20px light-dark(rgba(18,48,107,.3),rgba(0,0,0,.7));
   -webkit-backdrop-filter:var(--g-blur);backdrop-filter:var(--g-blur)}
@@ -117,7 +115,6 @@
   :where(:root:not([data-glass=classic])) .topnav{position:sticky;top:0;background:rgba(18,48,107,.8);box-shadow:inset 0 -1px 0 rgba(255,255,255,.1);
     -webkit-backdrop-filter:var(--g-blur);backdrop-filter:var(--g-blur)}
   :where(:root:not([data-glass=classic])) .is-home .topnav{background:var(--navy)}
-  :where(:root:not([data-glass=classic])) .filters{background:none;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none}
 }
 
 /* ---------- запасной вариант и доступность ---------- */

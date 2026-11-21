@@ -193,9 +193,10 @@ function useWidth<T extends HTMLElement>(init: number): [RefObject<T | null>, nu
 }
 
 /** Высота элемента (следит за изменением). */
-function useHeight<T extends HTMLElement>(init: number): [RefObject<T | null>, number] {
+function useHeight<T extends HTMLElement>(init: number, deps: unknown[] = []): [RefObject<T | null>, number] {
   const ref = useRef<T>(null);
   const [h, setH] = useState(init);
+  // deps — когда элемент может появиться или смениться (телефон ↔ десктоп): иначе следили бы за старым узлом
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -205,7 +206,7 @@ function useHeight<T extends HTMLElement>(init: number): [RefObject<T | null>, n
     const ro = new ResizeObserver(upd);
     ro.observe(el);
     return () => ro.disconnect();
-  }, []);
+  }, deps);
   return [ref, h];
 }
 
@@ -440,7 +441,7 @@ export function PathScreen({ deck, state, go, wide }: { deck: Deck; state: AppSt
   const streakSheet = streakOpen && <StreakSheet days={state.days} today={ls.today} go={go} part2={part2View} onClose={() => setStreakOpen(false)} />;
   const selCard = sel ? (sv.got.find((c) => c.pos === sel) ?? null) : null;
   const [wrapRef, W0] = useWidth<HTMLDivElement>(wide ? 1152 : 390);
-  const [popRef, popH] = useHeight<HTMLElement>(300);
+  const [popRef, popH] = useHeight<HTMLElement>(300, [wide]);
   const screen = useScreen();
   const hudRef = useRef<HTMLElement>(null);
 

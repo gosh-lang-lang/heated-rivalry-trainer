@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { changeSetting, mergeStates, parseState, sameState } from "./core/state";
-import { setClock } from "./core/dates";
+import { clockNow, setClock } from "./core/dates";
 import type { Finished } from "./core/session";
 import type { AppState, SessionKind } from "./core/types";
 import { DECK } from "./data";
@@ -136,7 +136,7 @@ export default function App({ user, name = null }: { user: string | null; name?:
   const setState: SetState = useCallback(
     (next) => {
       // строго растёт, даже если два изменения пришлись на одну миллисекунду или часы ушли назад
-      adopt({ ...next, upd: Math.max(Date.now(), current.current.upd + 1) });
+      adopt({ ...next, upd: Math.max(clockNow(), current.current.upd + 1) }); // по часам сервера, как и прочие метки слияния
       schedulePush();
     },
     [adopt, schedulePush],

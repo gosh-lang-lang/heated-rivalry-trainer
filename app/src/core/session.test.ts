@@ -198,6 +198,15 @@ describe("незаконченная часть урока: сохранить, 
     expect([s.graded, s.right, s.first, s.newIds, s.t0]).toEqual([1, 1, [2], ["praise"], 1000]);
   });
 
+  it("перерыв между уходом и «Продолжить» не идёт в минуты занятия", () => {
+    const { st } = partway(); // начали в 1000, сохранили в 5000 (4 с занятия)
+    const back = 5000 + 11 * 3600_000; // вернулись через 11 часов
+    const s = restoreSession(st.run!, false, st.runAt, back);
+    expect(s.t0).toBe(back - 4000);
+    const fin = finishSession(s, st, TODAY, new Date(back + 5 * 60_000));
+    expect(fin.result.mins).toBe(5);
+  });
+
   it("ответ на последний шаг сохранён, «Дальше» не нажат — откроется последний шаг (не пустое занятие)", () => {
     const st = saveRun(state(), { ...startSession("morning", plan, 0)!, i: 4, first: [4] }, { ...o, at: 5 });
     const s = restoreSession(resumable(st, "morning", TODAY, TODAY)!);

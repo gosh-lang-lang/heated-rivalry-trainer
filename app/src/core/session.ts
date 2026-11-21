@@ -45,7 +45,7 @@ export const saveRun = (
   state: AppState,
   sess: Session,
   o: { day: string; date: string; seed: number; at?: number },
-  now = Date.now(),
+  now = clockNow(),
 ): AppState => {
   if (!savable(sess.kind)) return state;
   const run: SavedRun = {
@@ -68,7 +68,7 @@ export const saveRun = (
 };
 
 /** Занятие закончено — сохранённого больше нет (метка нужна, чтобы «закончено» победило при слиянии). */
-export const clearRun = (state: AppState, now = Date.now()): AppState =>
+export const clearRun = (state: AppState, now = clockNow()): AppState =>
   state.run ? { ...state, run: null, runAt: Math.max(now, state.runAt + 1) } : state;
 
 /**
@@ -88,8 +88,10 @@ export const runPosition = (r: SavedRun) => ({ n: Math.min(r.i + 1, r.steps.leng
 /**
  * Занятие из сохранённого. restart — «Начать заново»: те же шаги с первого (без добавленных повторов);
  * счёт и отметки «уже отвечал» (first) остаются — второй проход ответы не засчитывает (srs и счёт меняет только первая попытка).
+ * savedAt — когда часть сохранили последний раз (state.runAt): перерыв между уходом и «Продолжить» в минуты занятия
+ * не идёт — t0 сдвигается так, чтобы до сохранения прошло столько же, сколько прошло на самом деле.
  */
-export const restoreSession = (r: SavedRun, restart = false): Session => {
+export const restoreSession = (r: SavedRun, restart = false, savedAt?: number, now = clockNow()): Session => {
   const steps = restart ? r.steps.filter((s) => !s.retry) : r.steps;
   // ответ на последний шаг сохранён, а «Дальше» не нажали — откроем последний шаг снова (повторно он не засчитается)
   const i = restart ? 0 : Math.min(r.i, steps.length - 1);
@@ -104,7 +106,7 @@ export const restoreSession = (r: SavedRun, restart = false): Session => {
     first: r.first,
     newIds: r.newIds,
     written: r.written,
-    t0: r.t0,
+    t0: savedAt ? now - Math.max(0, savedAt - r.t0) : r.t0,
   };
 };
 

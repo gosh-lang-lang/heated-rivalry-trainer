@@ -56,15 +56,17 @@ const stateOf = (r: Awaited<ReturnType<typeof request>>): AppState | null | unde
 };
 
 const fetchRemote = async () => stateOf(await request("/api/state"));
+/**
+ * Браузер не отправляет keepalive-запрос с телом больше 64 КБ (сразу ошибка сети), а прогресс через несколько
+ * месяцев занятий крупнее. Большое — обычным запросом: при закрытии вкладки может не дойти, но кэш уйдёт при следующем запуске.
+ */
+export const KEEPALIVE_MAX_BYTES = 60_000;
+export const pushBody = (s: AppState, keepalive: boolean) => {
+  const body = JSON.stringify({ state: s, tz: deviceTz() });
+  return { body, keepalive: keepalive && new Blob([body]).size <= KEEPALIVE_MAX_BYTES };
+};
 const pushRemote = async (s: AppState, keepalive = false) =>
-  stateOf(
-    await request("/api/state", {
-      method: "PUT",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ state: s, tz: deviceTz() }),
-      keepalive,
-    }),
-  );
+  stateOf(await request("/api/state", { method: "PUT", headers: { "content-type": "application/json" }, ...pushBody(s, keepalive) }));
 
 /**
  * Сменить часовой пояс уроков на пояс устройства (настройки). Сервер разрешает раз в сутки:

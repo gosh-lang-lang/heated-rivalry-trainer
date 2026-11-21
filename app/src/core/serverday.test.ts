@@ -292,3 +292,24 @@ describe("«перечитал»", () => {
     expect(s.days["2026-11-23"]).toBeUndefined();
   });
 });
+
+describe("сервер поправил даты слов — устройство их принимает", () => {
+  it("часы устройства впереди: после слияния у устройства даты сервера, копии сходятся", () => {
+    const now = Date.parse("2026-11-21T10:00:00Z");
+    for (const id of ["aa", "mm", "zz"]) {
+      const base = { ...emptyState(), tz: "Europe/Moscow", tzAt: 1, upd: 500 };
+      const device = {
+        ...emptyState(),
+        upd: 1000,
+        srs: { [id]: { lvl: 1, due: "2026-11-24", intro: "2026-11-23", right: 2, wrong: 0 } },
+        days: { "2026-11-23": { morning: { score: 2, total: 2, mins: 5, newN: 1, at: "2026-11-23T10:00:00.000Z" } } },
+      };
+      const server = acceptState(base, device, { now, tz: "Europe/Moscow" });
+      expect(server.srs[id]).toMatchObject({ intro: "2026-11-21", due: "2026-11-22" });
+      expect(server.upd).toBeGreaterThan(device.upd);
+      const merged = mergeStates(device, server);
+      expect(merged.srs[id]).toEqual(server.srs[id]);
+      expect(sameState(mergeStates(merged, acceptState(server, merged, { now, tz: "Europe/Moscow" })), acceptState(server, merged, { now, tz: "Europe/Moscow" }))).toBe(true);
+    }
+  });
+});

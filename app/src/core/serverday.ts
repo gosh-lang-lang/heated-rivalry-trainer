@@ -119,7 +119,11 @@ export const acceptState = (stored: AppState | null, incoming: AppState, clock: 
   const reset = base ? Math.min(incoming.reset, base.reset) : 0; // сбрасывает прогресс только сервер (progress:reset)
   const own = { ...incoming, reset, days, tz: base?.tz ?? "", tzAt: base?.tzAt ?? 0 };
   const merged = mergeStates(base ?? emptyState(), own);
-  return { ...merged, srs: clampWords(merged.srs, base?.srs ?? {}, moved, today, clock.rare) };
+  const srs = clampWords(merged.srs, base?.srs ?? {}, moved, today, clock.rare);
+  // сервер поправил даты слов — его копия строго новее присланной: иначе при равном upd устройство при слиянии
+  // оставило бы свои даты (кто «новее», решал бы порядок строк), и копии не сошлись бы никогда
+  const changed = Object.keys(srs).some((id) => srs[id] !== merged.srs[id]);
+  return changed ? { ...merged, srs, upd: merged.upd + 1 } : { ...merged, srs };
 };
 
 /**

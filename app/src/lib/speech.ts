@@ -69,10 +69,12 @@ const systemSay = (text: string) => {
     if (sysVoice) u.voice = sysVoice;
     u.lang = sysVoice ? sysVoice.lang : "en-GB";
     u.rate = 0.92;
-    const done = () => playing?.text === text && setPlaying(null);
+    // гасим только своё: cancel() прошлой фразы шлёт её onend/onerror позже, уже после запуска этой (то же слово — тоже)
+    const me = { voice: "system", text, loading: false } as const;
+    const done = () => playing === me && setPlaying(null);
     u.onend = done;
     u.onerror = done;
-    setPlaying({ voice: "system", text, loading: false });
+    setPlaying(me);
     speechSynthesis.speak(u);
   } catch {
     setPlaying(null); // молча: озвучка — не обязательная часть

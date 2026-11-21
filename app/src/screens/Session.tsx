@@ -78,7 +78,7 @@ export function SessionScreen({ deck, kind, day, words, title, restart = false, 
   const [init] = useState(() => {
     const t = todayKey();
     const saved = savable(kind) ? resumable(state, kind, day ?? t, t) : null;
-    if (saved) return { sess: restoreSession(saved, restart) as Session | null, seed: saved.seed, restarted: restart };
+    if (saved) return { sess: restoreSession(saved, restart, state.runAt) as Session | null, seed: saved.seed, restarted: restart };
     const steps =
       kind === "drill"
         ? drillPlan(deck, state, words ?? [], title ?? "Все слова")
@@ -357,6 +357,10 @@ function StepView({ step, api }: { step: Step; api: Api }) {
   const keyRef = useRef<(e: KeyboardEvent) => void>(() => {});
   keyRef.current = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
+      if (e.isComposing) return; // Enter подтверждает набор (IME), а не ответ
+      // фокус на другой кнопке («Не помню», озвучка, «Выйти») — Enter нажимает её, а не проверяет недописанный ответ
+      const t = e.target as HTMLElement | null;
+      if (t?.closest("button, a") && !t.closest(".tile, #chk, #next")) return;
       const b = (document.getElementById("chk") || document.getElementById("next")) as HTMLButtonElement | null;
       if (b && !b.disabled) {
         e.preventDefault();
@@ -589,7 +593,7 @@ function StepView({ step, api }: { step: Step; api: Api }) {
   // до проверки в строке отзыва — то, что помогает сделать задание
   const pre: ReactNode =
     step.t === "type" ? <button className="link" onClick={dontKnow}>Не помню</button>
-    : step.t === "write" ? <button className="link" onClick={api.next}>Пропустить</button>
+    : step.t === "write" ? <button className="link" disabled={busy} onClick={api.next}>Пропустить</button>
     : step.t === "speak" ? <button className="link" onClick={api.next}>Не могу сейчас говорить</button>
     : step.t === "pairs" ? <span className="mute sm">Нажми слово слева, потом его перевод справа</span>
     : step.t === "listen" ? <span className="mute sm">Нажми на динамик, чтобы послушать ещё раз</span>
