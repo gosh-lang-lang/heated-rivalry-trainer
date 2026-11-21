@@ -100,7 +100,7 @@ describe("CLI входа", () => {
     const r = cli("progress:reset", "evgeny");
     expect(r.out).toMatch(/прогресс evgeny сброшен/);
     const after = openProgress(openAuthStore(db).db);
-    expect(after.get(u.id)).toMatchObject({ srs: {}, days: {}, sent: [], settings: { voice: "bf_emma" } });
+    expect(after.get(u.id)).toMatchObject({ srs: {}, days: {}, settings: { voice: "bf_emma" } });
     expect(after.put(u.id, cache).state.srs).toEqual({}); // телефон прислал старый кэш — слова не вернулись
     expect(cli("progress").out).toMatch(/^evgeny\tслов: 0\tдней: 0/m);
     expect(cli("progress:reset", "nobody").code).toBe(1);

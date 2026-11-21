@@ -2,7 +2,7 @@ import { emptyState } from "./state";
 import { describe, expect, it } from "vitest";
 import { addDays } from "./dates";
 import { validateDeck } from "./deck";
-import { drillPlan, eveningPlan, eveningWords, MAX_REVIEW, morningPlan, newToday, QUEUE_STOP, reviewAccuracy, writeGroups } from "./plans";
+import { drillPlan, eveningPlan, eveningWords, MAX_REVIEW, morningPlan, newToday, QUEUE_STOP, reviewAccuracy } from "./plans";
 import { seeded } from "./rng";
 import { blankState } from "./srs";
 import { deck, state, TODAY } from "./fixtures";
@@ -131,13 +131,14 @@ describe("вечер", () => {
 
   it("без утренних слов — пусто", () => expect(eveningPlan(deck, state(), TODAY)).toEqual([]));
 
-  it("состав: type без подсказок → write ×3 → speak ×2 → reread", () => {
+  it("состав: type без подсказок → speak ×2 → reread; своего предложения нет", () => {
     const st = eveningPlan(deck, state({ srs: introToday(12) }), TODAY, seeded(7));
     const order = types(st).filter((t, i, a) => t !== a[i - 1]);
-    expect(order).toEqual(["section", "type", "section", "write", "section", "speak", "reread"]);
+    expect(order).toEqual(["section", "type", "section", "speak", "reread"]);
     expect(count(st, "type")).toBe(12);
-    expect(count(st, "write")).toBe(3);
     expect(count(st, "speak")).toBe(2);
+    // говорение — по примерам слов урока
+    expect(st.filter((s) => s.t === "speak").every((s) => s.t === "speak" && eveningWords(deck, introToday(12), TODAY).some((w) => w.id === s.w))).toBe(true);
     expect(st.filter((s) => s.t === "type").every((s) => s.t === "type" && !s.hint && s.eve)).toBe(true);
     const last = st[st.length - 1];
     expect(last.t === "reread" && last.pages).toEqual(["отзывы критиков (стр. 1)"]);
@@ -152,53 +153,12 @@ describe("вечер", () => {
     expect(ws[0].id).toBe(deck.words[19].id);
   });
 
-  describe("свои предложения и редкие слова", () => {
-    const lvl = (id: string, l: number) => [id, { ...blankState(), lvl: l, intro: "2026-10-01", due: "2026-12-30" }] as const;
+  it("сегодня только редкие — говорение и «впиши» всё равно есть", () => {
     const rareIds = deck.words.filter((w) => w.rare).map((w) => w.id);
-    const flat = (g: string[][]) => g.flat();
-
-    it("редкие слова, выученные сегодня, в предложения не идут", () => {
-      const srs = introToday(12);
-      const ws = eveningWords(deck, srs, TODAY);
-      expect(ws.some((w) => w.rare)).toBe(true); // среди первых 12 есть редкие
-      const g = writeGroups(deck, state({ srs }), ws, seeded(3));
-      expect(g.length).toBe(3);
-      expect(flat(g).some((id) => deck.byId[id].rare)).toBe(false);
-    });
-
-    it("редкое слово уровня 3+ — ровно одно предложение", () => {
-      const srs = { ...introToday(12), ...Object.fromEntries([lvl(rareIds[5], 3), lvl(rareIds[6], 2)]) };
-      for (let seed = 1; seed < 20; seed++) {
-        const g = writeGroups(deck, state({ srs }), eveningWords(deck, srs, TODAY), seeded(seed));
-        expect(g.length).toBe(3);
-        expect(flat(g).filter((id) => deck.byId[id].rare)).toEqual([rareIds[5]]);
-        expect(g).toContainEqual([rareIds[5]]);
-      }
-    });
-
-    it("старое ходовое слово уровня 5+ снова идёт в своё предложение — то, с которым дольше не писали", () => {
-      const core = deck.words.filter((w) => !w.rare).slice(40, 43);
-      const srs = { ...introToday(12), ...Object.fromEntries(core.map((w) => lvl(w.id, 5))) };
-      const sent = [
-        { at: "2026-11-10T10:00:00Z", words: [core[0].en], text: "x" },
-        { at: "2026-11-01T10:00:00Z", words: [core[1].en], text: "y" },
-        { at: "2026-11-15T10:00:00Z", words: [core[2].en], text: "z" },
-      ];
-      const g = writeGroups(deck, state({ srs, sent }), eveningWords(deck, srs, TODAY), seeded(4));
-      expect(g[1]).toEqual([core[1].id]);
-      // никогда не писал — раньше всех
-      const g2 = writeGroups(deck, state({ srs, sent: sent.slice(0, 1) }), eveningWords(deck, srs, TODAY), seeded(4));
-      expect([core[1].id, core[2].id]).toContain(g2[1][0]);
-    });
-
-    it("сегодня только редкие и нет редких 3+ — без своих предложений, говорение по примерам", () => {
-      const srs = Object.fromEntries(rareIds.slice(0, 3).map((id) => [id, { ...blankState(), lvl: 1, intro: TODAY, due: addDays(TODAY, 2) }]));
-      const st = eveningPlan(deck, state({ srs }), TODAY, seeded(2));
-      expect(count(st, "write")).toBe(0);
-      expect(st.some((s) => s.t === "section" && s.title === "Своё предложение")).toBe(false);
-      expect(count(st, "speak")).toBe(2);
-      expect(count(st, "type")).toBe(3); // вписывать редкие всё равно нужно
-    });
+    const srs = Object.fromEntries(rareIds.slice(0, 3).map((id) => [id, { ...blankState(), lvl: 1, intro: TODAY, due: addDays(TODAY, 2) }]));
+    const st = eveningPlan(deck, state({ srs }), TODAY, seeded(2));
+    expect(count(st, "speak")).toBe(2);
+    expect(count(st, "type")).toBe(3);
   });
 
   it("не поместилось утром — до 20 повторений в начале вечера", () => {
@@ -209,9 +169,8 @@ describe("вечер", () => {
     expect(st.filter((s) => "rev" in s && s.rev).length).toBe(20);
   });
 
-  it("одно слово: всё равно один write и два speak", () => {
+  it("одно слово: всё равно два speak", () => {
     const st = eveningPlan(deck, state({ srs: introToday(1) }), TODAY, seeded(8));
-    expect(count(st, "write")).toBe(1);
     expect(count(st, "speak")).toBe(2);
   });
 });

@@ -76,28 +76,6 @@ export function StatsContent({ deck, state }: { deck: Deck; state: AppState }) {
           )}
         </section>
         </div>
-        <section className="card mysent">
-          <h3>Мои предложения</h3>
-          {state.sent.length ? (
-            state.sent
-              .slice(-12)
-              .reverse()
-              .map((s, i) => (
-                <div className="sline" key={s.at + i}>
-                  {s.pending ? (
-                    <><b>{s.text}</b><div className="mute sm">Ждёт проверки</div></>
-                  ) : s.ok ? (
-                    <b>{s.text}</b>
-                  ) : (
-                    <><s>{s.text}</s><br /><b>{s.corrected ?? ""}</b></>
-                  )}
-                  {s.comment && <div className="mute sm">{s.comment}</div>}
-                </div>
-              ))
-          ) : (
-            <p className="mute">Появятся после части 2 урока</p>
-          )}
-        </section>
       </div>
     </>
   );

@@ -77,7 +77,7 @@ switch (cmd) {
       console.log(`${p.name}\tслов: ${p.words}\tдней: ${p.days}\tизменён ${date(p.upd)}\tсохранён ${date(p.savedAt)}\t${Math.ceil(p.bytes / 1024)} КБ\tпояс: ${p.tz || `нет (пока ${DEFAULT_TZ})`}`);
     break;
   case "progress:reset": {
-    // слова, дни и свои предложения — с нуля, настройки остаются; устройства со старым кэшем его не вернут
+    // слова и дни — с нуля, настройки остаются; устройства со старым кэшем его не вернут
     const u = need(args[0]);
     const s = openProgress(store.db).reset(u.id);
     console.log(`прогресс ${u.name} сброшен (${date(s.reset)}); настройки оставлены`);

@@ -1,7 +1,7 @@
 import { isAvatar, savedNumber } from "./avatar.ts";
 import { clockNow, isTimeZone } from "./dates.ts";
 import { DEFAULT_VOICE, isTtsVoice } from "./tts.ts";
-import type { AppState, DayLog, Look, SavedRun, SentenceRecord, SessionResult, Settings, SettingsAt, Step, ThemePref, WordState } from "./types";
+import type { AppState, DayLog, Look, SavedRun, SessionResult, Settings, SettingsAt, Step, ThemePref, WordState } from "./types";
 
 export const NEW_PER_DAY_OPTIONS = [6, 12, 18, 24] as const;
 
@@ -17,7 +17,6 @@ export const emptyState = (): AppState => ({
   settingsAt: { newPerDay: 0, voice: 0, look: 0, theme: 0, avatar: 0, avatarNum: 0 },
   srs: {},
   days: {},
-  sent: [],
   run: null,
   runAt: 0,
   tz: "",
@@ -45,31 +44,37 @@ const cleanWordState = (v: unknown): WordState | null => {
 };
 
 /** Типы шагов, которые умеет показать эта версия: сохранённая часть с незнакомым шагом (от новой версии) не продолжается. */
-const STEP_TYPES = new Set<Step["t"]>(["section", "intro", "pick", "listen", "type", "pairs", "build", "build-listen", "write", "speak", "reread"]);
+const STEP_TYPES = new Set<Step["t"]>(["section", "intro", "pick", "listen", "type", "pairs", "build", "build-listen", "speak", "reread"]);
 const isStep = (v: unknown): v is Step => isObj(v) && STEP_TYPES.has(v.t as Step["t"]) && typeof v.k === "number";
 const nums = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is number => typeof x === "number") : []);
+
+/** Шаг «своё предложение» — убран 2026-11-21; в части 2, сохранённой до этого, его просто пропускаем. */
+const isWriteStep = (v: unknown) => isObj(v) && v.t === "write";
 
 /** Сохранённая часть урока или null, если данных не хватает (обрезаны, от другой версии). */
 const cleanRun = (v: unknown): SavedRun | null => {
   if (!isObj(v) || (v.kind !== "morning" && v.kind !== "evening")) return null;
   const day = str(v.day),
     date = str(v.date);
-  if (!DATE.test(day) || !DATE.test(date) || !Array.isArray(v.steps) || !v.steps.length || !v.steps.every(isStep)) return null;
+  if (!DATE.test(day) || !DATE.test(date) || !Array.isArray(v.steps)) return null;
   const n = (x: unknown) => Math.max(0, Math.round(num(x)));
+  const steps = v.steps.filter((x) => !isWriteStep(x));
+  if (!steps.length || !steps.every(isStep)) return null;
+  // продолжить с того же места: убранные шаги до него не считаются
+  const at = v.steps.slice(0, n(v.i)).filter((x) => !isWriteStep(x)).length;
   return {
     kind: v.kind,
     day,
     date,
     seed: n(v.seed),
-    steps: v.steps,
-    i: Math.min(n(v.i), v.steps.length),
+    steps,
+    i: Math.min(at, steps.length),
     graded: n(v.graded),
     right: n(v.right),
     revGraded: n(v.revGraded),
     revRight: n(v.revRight),
     first: nums(v.first),
     newIds: Array.isArray(v.newIds) ? v.newIds.filter((x): x is string => typeof x === "string") : [],
-    written: isObj(v.written) ? (v.written as SavedRun["written"]) : {},
     t0: num(v.t0),
   };
 };
@@ -90,9 +95,6 @@ export const parseState = (raw: unknown): AppState => {
   if (isObj(v.days)) for (const [k, d] of Object.entries(v.days)) if (DATE.test(k) && isObj(d)) days[k] = cleanDay(d);
   const settings = isObj(v.settings) ? v.settings : {};
   const at = isObj(v.settingsAt) ? v.settingsAt : {};
-  const sent: SentenceRecord[] = Array.isArray(v.sent)
-    ? (v.sent.filter((s) => isObj(s) && typeof s.text === "string") as unknown as SentenceRecord[])
-    : [];
   return {
     upd: num(v.upd),
     reset: Math.max(0, num(v.reset)),
@@ -107,7 +109,6 @@ export const parseState = (raw: unknown): AppState => {
     settingsAt: Object.fromEntries(SETTING_KEYS.map((k) => [k, Math.max(0, num(at[k]))])) as SettingsAt,
     srs,
     days,
-    sent,
     run: cleanRun(v.run),
     runAt: Math.max(0, num(v.runAt)),
     tz: isTimeZone(v.tz) ? v.tz : "",
@@ -143,17 +144,16 @@ const cleanDay = (v: Record<string, unknown>): DayLog => {
  *    занятие, которое сервер переложил в другой день (подтверждённое, srv), остаётся только там: неподтверждённый
  *    двойник под старым днём отбрасывается; в одном дне подтверждённое побеждает неподтверждённое (core/serverday.ts);
  *  - часовой пояс (tz) — из копии, где его позже поставил сервер (tzAt);
- *  - свои предложения — все с обоих устройств; одно и то же — проверенная версия, а не ждущая проверки;
  *  - личные настройки — по пунктам: пункт, изменённый позже (settingsAt), побеждает;
  *  - незаконченная часть урока (run) — из копии, где она менялась позже (runAt): и сохранённая, и «закончена» (null);
  *  - upd — наибольший;
- *  - прогресс сброшен (reset) на одной копии позже, чем на другой — слова, дни и предложения только из неё:
+ *  - прогресс сброшен (reset) на одной копии позже, чем на другой — слова и дни только из неё:
  *    кэш устройства, сделанный до сброса, не возвращает сброшенное. Настройки сливаются как обычно.
  */
 export const mergeStates = (a: AppState, b: AppState): AppState => {
   if (a.reset !== b.reset) {
     const [cur, old] = a.reset > b.reset ? [a, b] : [b, a];
-    const s = mergeStates(cur, { ...old, reset: cur.reset, srs: {}, days: {}, sent: [], run: null, runAt: 0 });
+    const s = mergeStates(cur, { ...old, reset: cur.reset, srs: {}, days: {}, run: null, runAt: 0 });
     return { ...s, upd: Math.max(a.upd, b.upd) };
   }
   const newer = b.upd > a.upd || (b.upd === a.upd && canonical(b) > canonical(a)) ? b : a;
@@ -181,7 +181,6 @@ export const mergeStates = (a: AppState, b: AppState): AppState => {
     settingsAt,
     srs: sortKeys(srs),
     days: sortKeys(days),
-    sent: mergeSent(newer.sent, older.sent),
     run: run.run,
     runAt: run.runAt,
     tz: zone.tz,
@@ -254,25 +253,14 @@ const mergeDays = (n: AppState["days"], o: AppState["days"]): AppState["days"] =
   return days;
 };
 
-const sentKey = (s: SentenceRecord) => `${s.at}\u0000${s.text}`;
-/** Все предложения обеих копий по времени; одно и то же — проверенное (не pending) или из более новой копии. */
-const mergeSent = (n: SentenceRecord[], o: SentenceRecord[]): SentenceRecord[] => {
-  const m = new Map<string, SentenceRecord>();
-  for (const s of o) m.set(sentKey(s), s);
-  for (const s of n) {
-    const prev = m.get(sentKey(s));
-    m.set(sentKey(s), prev && !prev.pending && s.pending ? prev : s);
-  }
-  return [...m.values()].sort((x, y) => (x.at < y.at ? -1 : x.at > y.at ? 1 : 0));
-};
 
 /** Ключи по порядку — чтобы одинаковые копии одинаково сериализовались (sameState). */
 const sortKeys = <T>(r: Record<string, T>): Record<string, T> => Object.fromEntries(Object.entries(r).sort(([x], [y]) => (x < y ? -1 : x > y ? 1 : 0)));
 
-/** Сбросить прогресс (слова, дни, свои предложения), настройки оставить. now — метка сброса, строго больше прежней. */
+/** Сбросить прогресс (слова и дни), настройки оставить. now — метка сброса, строго больше прежней. */
 export const resetProgress = (s: AppState, now = Date.now()): AppState => {
   const reset = Math.max(now, s.reset + 1);
-  return { ...s, reset, upd: Math.max(reset, s.upd + 1), srs: {}, days: {}, sent: [], run: null, runAt: Math.max(now, s.runAt + 1) };
+  return { ...s, reset, upd: Math.max(reset, s.upd + 1), srs: {}, days: {}, run: null, runAt: Math.max(now, s.runAt + 1) };
 };
 
 /**

@@ -179,7 +179,6 @@ describe("незаконченная часть: «Продолжить · n и�
     revRight: 0,
     first: [],
     newIds: [],
-    written: {},
     t0: 0,
   });
 

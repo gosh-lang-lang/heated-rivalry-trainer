@@ -133,10 +133,10 @@ export function Home({ deck, state, go, wide = false, name = null }: Props) {
     ) : p.carried ? (
       <>
         Осталась с прошлого раза — начни с неё
-        <span className="why">Проверка, своё предложение, говорение · ~15 мин</span>
+        <span className="why">Проверка, говорение, перечитать · ~15 мин</span>
       </>
     ) : (
-      "Проверка, своё предложение, говорение · ~15 мин"
+      "Проверка, говорение, перечитать · ~15 мин"
     );
     return (
       <section key="p2" className={`card sess pm${ls.focus === 2 ? " now" : ""}${p.advice === "wait" ? " wait" : ""}${p.done ? " done" : ""}`}>

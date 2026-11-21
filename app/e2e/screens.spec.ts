@@ -56,17 +56,13 @@ test.describe("главная", () => {
 });
 
 test.describe("статистика — на вкладке «Я»", () => {
-  test("серия, частые ошибки и свои предложения", async ({ page }) => {
+  test("серия и частые ошибки", async ({ page }) => {
     const [a, b] = DECK.words;
     const r = { score: 9, total: 10, mins: 12, newN: 6, at: "x" };
     await setup(page, {
       state: state({
         srs: { [a.id]: ws({ wrong: 5 }), [b.id]: ws({ wrong: 2, lvl: 5 }) },
         days: { "2026-11-18": { morning: r }, "2026-11-19": { morning: r, evening: r } },
-        sent: [
-          { at: "1", words: ["endure"], text: "I endure it.", ok: false, corrected: "I endured it.", comment: "Прошедшее время." },
-          { at: "2", words: ["novel"], text: "I read a novel.", pending: true },
-        ],
       }),
     });
     await openHome(page);
@@ -77,8 +73,6 @@ test.describe("статистика — на вкладке «Я»", () => {
     await expect(page.locator(".wrow").first()).toContainText(a.en);
     await expect(page.locator(".wrow").first()).toContainText("5×");
     await expect(page.locator(".hrow")).toHaveCount(14);
-    await expect(page.locator(".sline").filter({ hasText: "I endured it." })).toContainText("Прошедшее время.");
-    await expect(page.locator(".sline").filter({ hasText: "I read a novel." })).toContainText("Ждёт проверки");
   });
 });
 

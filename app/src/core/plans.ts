@@ -114,7 +114,6 @@ export const REVIEW_BUILD_SHARE = 0.5;
  * Повторение: чем выше уровень, тем активнее задание.
  * 1 — узнать (выбор перевода или на слух); 2 — узнать или собрать пример по переводу (вспомнить порядок слов без звука —
  * следующая ступень после сборки на слух при знакомстве); 3 — вписать в пропуск с подсказкой, 4+ — без подсказки.
- * Своё предложение и речь для слов уровня 5+ — в части 2 (writeGroups).
  */
 const reviewStep = (w: Word, l: number, rng: Rng): Draft => {
   if (l >= 3) return { t: "type", w: w.id, rev: true, hint: l < 4 };
@@ -184,53 +183,8 @@ export const eveningWords = (deck: Deck, srs: AppState["srs"], day: string): Wor
     .slice(0, MAX_EVENING_TYPE);
 };
 
-export const MAX_WRITE = 3;
-/** С какого уровня редкое слово попадает в «своё предложение» — когда его уже уверенно вспоминают. */
-export const RARE_WRITE_LVL = 3;
-/** С какого уровня ходовое слово снова идёт в своё предложение и речь — активное применение через недели. */
-export const OLD_WRITE_LVL = 5;
-
-/** Когда со словом последний раз писали своё предложение (по state.sent; "" — никогда). */
-const lastWritten = (state: AppState) => {
-  const m: Record<string, string> = {};
-  for (const s of state.sent) for (const en of s.words) if (!m[en] || s.at > m[en]) m[en] = s.at;
-  return m;
-};
-
 /**
- * Слова для своих предложений, до 3:
- * 1) 1–2 ходовых слова из сегодняшних;
- * 2) одно «старое» ходовое слово уровня 5+ — то, с которым дольше всех не писали (применение через недели);
- * 3) одно редкое слово уровня 3+, если есть, иначе ещё пара сегодняшних ходовых.
- * Редкие слова, выученные сегодня, в предложения не идут.
- */
-export const writeGroups = (deck: Deck, state: AppState, ws: Word[], rng: Rng): string[][] => {
-  const { srs } = state;
-  const lvl = (w: Word) => srs[w.id]?.lvl ?? 0;
-  const today = new Set(ws.map((w) => w.id));
-  const lw = lastWritten(state);
-  const old = shuffle(
-    deck.words.filter((w) => !w.rare && !today.has(w.id) && lvl(w) >= OLD_WRITE_LVL),
-    rng,
-  ).sort((a, b) => ((lw[a.en] ?? "") < (lw[b.en] ?? "") ? -1 : (lw[a.en] ?? "") > (lw[b.en] ?? "") ? 1 : 0))[0];
-  const rare = shuffle(
-    deck.words.filter((w) => w.rare && !today.has(w.id) && lvl(w) >= RARE_WRITE_LVL),
-    rng,
-  )[0];
-  const pool = shuffle(ws.filter((w) => !w.rare), rng);
-  const pair = () => (pool.length ? pool.splice(0, Math.min(2, pool.length)).map((w) => w.id) : null);
-
-  const groups: string[][] = [];
-  const add = (g: string[] | null | undefined) => g && groups.length < MAX_WRITE && groups.push(g);
-  add(pair());
-  add(old && [old.id]);
-  add(rare && [rare.id]);
-  while (groups.length < MAX_WRITE && pool.length) add(pair());
-  return groups;
-};
-
-/**
- * Часть 2 урока (данные — «evening»): повторения, не поместившиеся в часть 1 → type без подсказок → write ×3 → speak ×2 → reread.
+ * Часть 2 урока (данные — «evening»): повторения, не поместившиеся в часть 1 → type без подсказок → speak ×2 → reread.
  * `day` — день урока: слова урока — выученные в этот день (часть 2, перенесённая со вчера, — вчерашние);
  * повторения — на сегодня (`today`), без слов самого урока: их проверит «впиши».
  */
@@ -251,15 +205,8 @@ export const eveningPlan = (deck: Deck, state: AppState, today: string, rng: Rng
     .slice(0, MAX_EVENING_TYPE)
     .forEach((w) => st.push({ t: "type", w: w.id, hint: false, eve: true }));
 
-  const writes = writeGroups(deck, state, ws, rng);
-  if (writes.length) {
-    st.push({ t: "section", pic: "✍️", title: "Своё предложение", sub: "Напиши о своей жизни — я проверю" });
-    writes.forEach((g, n) => st.push({ t: "write", ws: g, n }));
-  }
-
   st.push({ t: "section", pic: "🎙️", title: "Скажи вслух", sub: "Послушай и повтори фразу" });
-  const sw = (n: number) => writes[n]?.[0] ?? (ws[n] ?? ws[0]).id;
-  st.push({ t: "speak", n: 0, w: sw(0) }, { t: "speak", n: 1, w: sw(1) });
+  st.push({ t: "speak", w: ws[0].id }, { t: "speak", w: (ws[1] ?? ws[0]).id });
 
   const batches = [...new Set(ws.map((w) => w.batch))];
   st.push({ t: "reread", pages: batches.map((b) => deck.batches.find((x) => x.id === b)?.pages ?? `партия ${b}`) });

@@ -1,10 +1,9 @@
-import { dayOfIso } from "./dates";
 import { SEASON, type LessonCard } from "./cards";
 import { streak, streakRuns } from "./srs";
 import type { AppState } from "./types";
 
 /*
- * Достижения («Я»): серия дней, слова, уроки и особые. Всё выводится из прогресса (дни, слова, свои предложения,
+ * Достижения («Я»): серия дней, слова, уроки и особые. Всё выводится из прогресса (дни, слова,
  * карточки) — отдельно не хранится, поэтому синхронизируется вместе с прогрессом.
  * Получено — с датой, когда порог впервые достигнут; не получено — прогресс «есть из нужно».
  */
@@ -41,14 +40,10 @@ const introDays = (srs: AppState["srs"]) =>
     .filter(Boolean)
     .sort();
 
-/** Все 12 достижений в порядке экрана: серия, слова, уроки, особые. */
+/** Все 11 достижений в порядке экрана: серия, слова, уроки, особые. */
 export const achievements = (state: AppState, cards: LessonCard[], today: string): Achievement[] => {
   const sk = streak(state.days, today);
   const intro = introDays(state.srs);
-  const firstSent = state.sent
-    .map((s) => dayOfIso(s.at))
-    .filter((d): d is string => !!d)
-    .sort()[0];
   const s1 = cards.filter((c) => c.season === 1);
 
   return [
@@ -56,8 +51,6 @@ export const achievements = (state: AppState, cards: LessonCard[], today: string
     ...WORD_GOALS.map((n): Achievement => ({ id: `words-${n}`, group: "words", goal: n, have: intro.length, got: intro[n - 1] ?? null })),
     ...LESSON_GOALS.map((n): Achievement => ({ id: `lessons-${n}`, group: "lessons", goal: n, have: cards.length, got: cards[n - 1]?.got ?? null })),
     { id: "first-card", group: "special", goal: 1, have: Math.min(cards.length, 1), got: cards[0]?.got ?? null },
-    // своё предложение — первое написанное (проверенное или ждущее проверки)
-    { id: "first-sentence", group: "special", goal: 1, have: Math.min(state.sent.length, 1), got: state.sent.length ? (firstSent ?? today) : null },
     { id: "season-1", group: "special", goal: SEASON, have: s1.length, got: s1.length >= SEASON ? s1[SEASON - 1].got : null },
   ];
 };

@@ -209,7 +209,7 @@ test.describe("карточки-награды", () => {
 
 test.describe("«Я»", () => {
   test("шапка, веер коллекции, достижения баннерами и статистика", async ({ page }) => {
-    await setup(page, { state: state({ ...seasonState(), sent: [{ at: new Date(`${TODAY}T08:00:00+03:00`).toISOString(), words: ["endure"], text: "I endure it.", ok: true }] }) });
+    await setup(page, { state: seasonState() });
     await openHome(page);
     await goTab(page, "Я");
     await expect(page.getByRole("heading", { level: 1, name: "Евгений" })).toBeVisible();
@@ -217,7 +217,7 @@ test.describe("«Я»", () => {
     await expect(page.getByRole("button", { name: "Коллекция: 4 из 10" })).toContainText("Сезон 1 · следующая карточка — после части 2 урока 5");
     await expect(page.locator(".mecoll .fan .tc")).toHaveCount(5);
 
-    await expect(page.locator(".sec-title").filter({ hasText: "Достижения" })).toContainText("4 из 12");
+    await expect(page.locator(".sec-title").filter({ hasText: "Достижения" })).toContainText("3 из 11");
     const ach = (row: string) => page.getByRole("list", { name: row }).getByRole("listitem");
     await expect(ach("Серия дней")).toHaveCount(3);
     await expect(ach("Серия дней").nth(0)).toHaveAccessibleName("7 дней подряд: 5 из 7");
@@ -226,16 +226,16 @@ test.describe("«Я»", () => {
     await expect(ach("Уроки").nth(0)).toHaveAccessibleName("1 первый урок: получено 16 ноября");
     await expect(ach("Уроки").nth(1)).toHaveAccessibleName("10 уроков: 4 из 10");
     await expect(ach("Особые").nth(0)).toHaveAccessibleName("1-я карточка: получено 16 ноября");
-    await expect(ach("Особые").nth(1)).toHaveAccessibleName("своя фраза: получено 20 ноября");
-    await expect(ach("Особые").nth(2)).toHaveAccessibleName("сезон 1: 4 из 10");
-    await expect(page.locator(".ban.got")).toHaveCount(4);
+    await expect(ach("Особые")).toHaveCount(2);
+    await expect(ach("Особые").nth(1)).toHaveAccessibleName("сезон 1: 4 из 10");
+    await expect(page.locator(".ban.got")).toHaveCount(3);
 
     // статистика — как была на своей вкладке
     await expect(page.getByRole("heading", { level: 2, name: "Статистика" })).toBeVisible();
     await expect(page.locator(".stats3")).toContainText("5дней подряд");
     await expect(page.getByRole("heading", { name: "Верно на повторениях" })).toBeVisible();
     await expect(page.locator(".hrow")).toHaveCount(14);
-    await expect(page.locator(".sline")).toContainText("I endure it.");
+    await expect(page.getByRole("heading", { name: "Мои предложения" })).toHaveCount(0);
   });
 });
 

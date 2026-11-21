@@ -14,13 +14,13 @@ const prototypeExport = {
 };
 
 describe("импорт состояния", () => {
-  it("экспорт прототипа сохраняет уровни, дни и предложения", () => {
+  it("экспорт прототипа сохраняет уровни и дни; свои предложения (убраны) не переносятся", () => {
     const s = parseState(JSON.stringify(prototypeExport));
     expect(s.srs.sacred).toEqual(prototypeExport.srs.sacred);
     expect(s.days["2026-11-19"].morning?.score).toBe(34);
     expect(s.days["2026-11-19"].reread).toBe(true);
     expect(s.settings.newPerDay).toBe(18);
-    expect(s.sent).toHaveLength(1);
+    expect(s).not.toHaveProperty("sent");
     expect(s).not.toHaveProperty("exportedAt");
   });
   it("мусор отбрасывается", () => {
@@ -28,7 +28,7 @@ describe("импорт состояния", () => {
     expect(s.srs.a).toMatchObject({ lvl: 6, due: "" });
     expect(s.srs.b).toBeUndefined();
     expect(s.days).toEqual({});
-    expect(s.sent).toHaveLength(1);
+    expect(s).not.toHaveProperty("sent");
     expect(s.settings.newPerDay).toBe(12);
   });
   it("не экспорт — ошибка", () => {
@@ -94,13 +94,11 @@ describe("слияние копий: прогресс — кто новее, н�
 describe("слияние прогресса с двух устройств", () => {
   const w = (right: number, wrong = 0, intro = "2026-11-20", lvl = 1) => ({ lvl, due: "2026-11-21", intro, right, wrong });
   const res = (at: string, score = 30) => ({ score, total: 38, mins: 14, newN: 12, at });
-  const sent = (at: string, text: string, pending?: boolean) => ({ at, words: ["endure"], text, ...(pending ? { pending } : {}) });
 
   const laptop = state({
     upd: 100,
     srs: { a: w(3), b: w(1), c: w(0) },
     days: { "2026-11-20": { morning: res("2026-11-20T07:00:00Z"), extra: [res("2026-11-20T12:00:00Z")] } },
-    sent: [sent("2026-11-20T19:00:00Z", "I endure.", true)],
   });
   const phone = state({
     upd: 200, // отправлен позже, но занимался на старом кэше
@@ -109,7 +107,6 @@ describe("слияние прогресса с двух устройств", () 
       "2026-11-20": { evening: res("2026-11-20T19:30:00Z"), extra: [res("2026-11-20T15:00:00Z")], reread: true },
       "2026-11-21": { morning: res("2026-11-21T07:00:00Z") },
     },
-    sent: [{ ...sent("2026-11-20T19:00:00Z", "I endure."), ok: true, corrected: "I endure it." }, sent("2026-11-20T19:40:00Z", "I praise you.", true)],
   });
 
   it("слова: все с обоих устройств, у каждого — версия, где отвечали больше", () => {
@@ -137,16 +134,6 @@ describe("слияние прогресса с двух устройств", () 
     expect(again.days.d.morning?.score).toBe(20);
   });
 
-  it("предложения: все, по времени; проверенная версия побеждает ждущую проверки", () => {
-    const m = mergeStates(laptop, phone);
-    expect(m.sent.map((s) => [s.text, !!s.pending, s.corrected])).toEqual([
-      ["I endure.", false, "I endure it."],
-      ["I praise you.", true, undefined],
-    ]);
-    // даже если проверенная — в более старой копии
-    const checkedOld = mergeStates(state({ upd: 1, sent: [{ ...sent("t", "x"), ok: true }] }), state({ upd: 9, sent: [sent("t", "x", true)] }));
-    expect(checkedOld.sent).toEqual([{ ...sent("t", "x"), ok: true }]);
-  });
 
   it("upd — наибольший; порядок не важен; повторное слияние ничего не меняет", () => {
     const m = mergeStates(laptop, phone);
@@ -172,12 +159,11 @@ describe("сброс прогресса (reset): кэш устройства д�
     upd: 9000, // устройство занималось «позже» сервера по часам — всё равно проигрывает сбросу
     srs: { a: { lvl: 2, due: "2026-11-22", intro: "2026-11-20", right: 3, wrong: 0 } },
     days: { "2026-11-20": { morning: r } },
-    sent: [{ at: "2026-11-20T10:00:00.000Z", words: ["a"], text: "An a." }],
   };
   const server = resetProgress({ ...before, upd: 2000 }, 5000);
 
-  it("resetProgress: слова, дни и предложения — пусто, настройки остаются, метки растут", () => {
-    expect(server).toMatchObject({ reset: 5000, upd: 5000, srs: {}, days: {}, sent: [] });
+  it("resetProgress: слова и дни — пусто, настройки остаются, метки растут", () => {
+    expect(server).toMatchObject({ reset: 5000, upd: 5000, srs: {}, days: {} });
     expect(server.settings.voice).toBe("bf_emma");
     expect(resetProgress(server, 10).reset).toBe(5001); // часы ушли назад — метка всё равно больше
   });
@@ -186,7 +172,7 @@ describe("сброс прогресса (reset): кэш устройства д�
     const phone = changeSetting(before, "theme", "dark", 7000);
     const m = mergeStates(phone, server);
     expect(m).toEqual(mergeStates(server, phone));
-    expect(m).toMatchObject({ reset: 5000, upd: 9000, srs: {}, days: {}, sent: [] });
+    expect(m).toMatchObject({ reset: 5000, upd: 9000, srs: {}, days: {} });
     expect(m.settings).toMatchObject({ voice: "bf_emma", theme: "dark" });
     expect(mergeStates(m, phone)).toEqual(m); // повторно — то же
   });
@@ -221,7 +207,6 @@ describe("незаконченная часть урока (run) в прогре
     revRight: 0,
     first: [1],
     newIds: [],
-    written: {},
     t0: 1,
   });
 
@@ -263,6 +248,21 @@ describe("незаконченная часть урока (run) в прогре
     expect(parseState({ srs: {}, run: { ...run(1), steps: [{ k: 0, t: "say", w: "praise" }] } }).run).toBeNull();
     // место дальше конца — не дальше конца (restoreSession откроет последний шаг)
     expect(parseState({ srs: {}, run: { ...run(1), i: 99 } }).run!.i).toBe(3);
+  });
+
+  it("parseState: часть 2, сохранённая со «своим предложением» (шаг убран), продолжается без него с того же места", () => {
+    const write = (k: number) => ({ k, t: "write", ws: ["praise"], n: 0 });
+    const [sec, pick, build] = run(0).steps;
+    const old = { ...run(0), kind: "evening", steps: [sec, write(5), pick, write(6), build], written: { 0: { text: "x" } } };
+    // стоял на втором «своём предложении» — продолжает с build
+    const p = parseState({ srs: {}, run: { ...old, i: 3 } }).run!;
+    expect(p.steps).toEqual([sec, pick, build]);
+    expect(p.i).toBe(2);
+    expect(p).not.toHaveProperty("written");
+    // прошёл всё — конец
+    expect(parseState({ srs: {}, run: { ...old, i: 5 } }).run!.i).toBe(3);
+    // одни «свои предложения» — продолжать нечего
+    expect(parseState({ srs: {}, run: { ...old, steps: [write(1)], i: 0 } }).run).toBeNull();
   });
 });
 

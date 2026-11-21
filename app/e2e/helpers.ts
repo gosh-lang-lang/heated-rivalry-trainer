@@ -298,7 +298,7 @@ export interface WS {
   wrong: number;
 }
 export const ws = (p: Partial<WS> = {}): WS => ({ lvl: 1, due: addDays(TODAY, 1), intro: TODAY, right: 0, wrong: 0, ...p });
-export const state = (p: Record<string, unknown> = {}) => ({ upd: 1, settings: { newPerDay: 12 }, srs: {}, days: {}, sent: [], ...p });
+export const state = (p: Record<string, unknown> = {}) => ({ upd: 1, settings: { newPerDay: 12 }, srs: {}, days: {}, ...p });
 /** Первые n слов изучены сегодня: часть 1 урока пройдена в 09:00 (NOW). */
 export const afterMorning = (n = 12) =>
   state({
@@ -330,7 +330,6 @@ export const readState = (page: Page) =>
   page.evaluate(() => JSON.parse(localStorage.getItem("hr2_state:evgeny") ?? "null")) as Promise<{
     srs: Record<string, WS>;
     days: Record<string, Record<string, unknown>>;
-    sent: { text: string; pending?: boolean; words: string[] }[];
     settings: { newPerDay: number; voice: string };
     settingsAt: { newPerDay: number; voice: number };
   }>;
@@ -340,8 +339,6 @@ export const readState = (page: Page) =>
 export interface PlayOptions {
   /** сколько раз ответить неверно (по одному на шаг, с начала) */
   mistakes?: number;
-  /** своё предложение для шага «Напиши» */
-  sentence?: string;
   /** защита от бесконечного цикла */
   maxSteps?: number;
   /** остановиться на первом задании с таким заголовком (.lbl), не отвечая на него */
@@ -415,8 +412,6 @@ export const playSession = async (page: Page, o: PlayOptions = {}): Promise<Play
       let toks = en.replace(/[.!?]$/, "").split(" ");
       if (wrongNow()) toks = [...toks].reverse();
       for (const t of toks) await page.locator(".pool .wt:not(.used)").getByText(t, { exact: true }).first().click();
-    } else if (lbl === "Напиши своё предложение") {
-      await page.locator("textarea.inp").fill(o.sentence ?? "I praise my team every day.");
     } else if (lbl === "Скажи вслух") {
       const phrase = (await page.locator(".card .sent").first().textContent())!.trim();
       await page.locator("textarea.inp").fill(wrongNow() ? "hello" : phrase);

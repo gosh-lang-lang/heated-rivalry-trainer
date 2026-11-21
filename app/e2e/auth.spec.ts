@@ -275,7 +275,8 @@ test("прогресс с двух устройств складывается, 
   await expect.poll(() => cli("progress")).toMatch(/^evgeny\tслов: 3\t/);
   const laptopWords = Object.keys(((await (await laptop.request.get("/api/state")).json()) as { state: { srs: object } }).state.srs);
 
-  // телефон без связи позанимался на своём старом кэше и потом отправил: другое слово, своё предложение, перечитал главы
+  // телефон без связи позанимался на своём старом кэше и потом отправил: другое слово, перечитал главы
+  // (и свои предложения старой версии приложения — их сервер больше не хранит)
   const stale = await phone.evaluate(() => JSON.parse(localStorage.getItem("hr2_state:evgeny")!));
   const other = DECK.words.find((w) => !laptopWords.includes(w.id))!.id;
   const fromPhone = {
@@ -289,10 +290,10 @@ test("прогресс с двух устройств складывается, 
   expect(r.status()).toBe(200);
 
   // на сервере — и то, и другое
-  const merged = ((await r.json()) as { state: { srs: Record<string, unknown>; days: Record<string, { reread?: boolean }>; sent: unknown[] } }).state;
+  const merged = ((await r.json()) as { state: { srs: Record<string, unknown>; days: Record<string, { reread?: boolean }> } }).state;
   expect(Object.keys(merged.srs).sort()).toEqual([...laptopWords, other].sort());
   expect(merged.days["2026-11-20"]?.reread).toBe(true);
-  expect(merged.sent).toHaveLength(1);
+  expect(merged).not.toHaveProperty("sent");
 
   // и на обоих устройствах после обновления
   for (const page of [laptop, phone]) {

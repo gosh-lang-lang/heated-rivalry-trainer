@@ -9,30 +9,27 @@ test.describe("часть 2 урока — применяем", () => {
     await expect(page.getByRole("button", { name: "Начать часть 2" })).toHaveCount(0);
   });
 
-  test("полная часть 2: вписать → своё предложение → вслух → перечитать", async ({ page }) => {
+  test("полная часть 2: вписать → вслух → перечитать, своего предложения нет", async ({ page }) => {
     await setup(page, { state: afterMorning(12) });
     await openHome(page);
     await page.getByRole("button", { name: "Начать часть 2" }).click();
-    const r = await playSession(page, { sentence: "My coach is always grumpy in the morning." });
+    const r = await playSession(page);
 
     const kinds = [...new Set(r.steps)];
     expect(kinds).toEqual([
       "Проверка без подсказок",
       "Вспомни · Впиши пропущенное",
-      "Своё предложение",
-      "Напиши своё предложение",
       "Скажи вслух",
       "Перечитай страницы",
     ]);
-    // часть 2 закрыла урок — итог с карточкой: 12 «впиши» + 2 «скажи вслух» верно, предложения без автопроверки в счёт не идут
+    // часть 2 закрыла урок — итог с карточкой: 12 «впиши» + 2 «скажи вслух» верно
     await expect(page.locator(".rw-kick")).toHaveText("Урок 1 · часть 2 готова");
     await expect(page.getByRole("heading", { name: "Урок 1 пройден!" })).toBeVisible();
     await expect(page.locator(".reward .stats3 div").first()).toHaveText("100%верно");
 
     const st = await readState(page);
     expect(st.days[TODAY].reread).toBe(true);
-    expect(st.sent).toHaveLength(3);
-    expect(st.sent.every((s) => s.pending && s.text === "My coach is always grumpy in the morning.")).toBe(true);
+    expect(st).not.toHaveProperty("sent");
 
     await page.getByRole("button", { name: "На главную" }).click();
     await expect(page.getByText("Готово · 14/14")).toBeVisible();

@@ -169,8 +169,6 @@ details summary{list-style:none;cursor:pointer}details summary::-webkit-details-
 .hrow{display:grid;grid-template-columns:4.6em minmax(0,1fr) minmax(0,1fr);gap:8px;align-items:center;font-size:14px;color:var(--mute);margin-top:8px}
 .hb{height:12px;background:var(--line);border-radius:6px;overflow:hidden}.hb i{display:block;height:100%;width:var(--p,0%)}
 .hb .m{background:#f59e0b}.hb .e{background:var(--blue)}
-.sline{border-bottom:2px dashed var(--line);padding:10px 0;font-size:16px}.sline:last-child{border-bottom:0}
-.sline s{color:var(--mute)}
 @media(max-width:420px){.pic{font-size:68px}.legend b{font-size:19px}}
 @media(prefers-reduced-motion:reduce){.prog b{transition:none}.btn{transition:none}.spin{animation:none}}
 /* дополнения для React-версии */
@@ -464,9 +462,6 @@ details summary{list-style:none;cursor:pointer}details summary::-webkit-details-
   .hchart .hrow span small{display:inline}
   .hchart .hb{border-radius:6px 6px 4px 4px}
   .hchart .hb i{border-radius:6px 6px 0 0}
-  .mysent{columns:2;column-gap:40px}
-  .mysent h3{column-span:all;margin-bottom:6px}
-  .mysent .sline{break-inside:avoid}
 
   /* занятие: центральная сцена */
   .bar{padding-top:22px;padding-bottom:18px;gap:16px}

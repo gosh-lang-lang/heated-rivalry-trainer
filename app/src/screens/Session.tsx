@@ -25,8 +25,7 @@ import {
   type Session,
 } from "../core/session";
 import { buildTokens, checkTyped, gapSentence, longestRun, options, speakScore } from "../core/text";
-import type { AppState, Deck, SentenceRecord, SessionKind, Step } from "../core/types";
-import { checkerAvailable, checkSentence } from "../lib/checker";
+import type { AppState, Deck, SessionKind, Step } from "../core/types";
 import { Check, Close, Cross, Mic } from "../lib/icons";
 import { canPlaySound, prefetch, say, useDictation } from "../lib/speech";
 import { armTone, tone } from "../lib/tone";
@@ -63,7 +62,6 @@ interface Api {
   next: () => void;
   wrongPair: (ids: string[]) => void;
   reread: () => void;
-  addSentence: (rec: SentenceRecord, n: number, graded: boolean) => void;
 }
 
 /** Что шаг говорит сам, как только открылся: слово (знакомство, «Выбери перевод», «Что ты слышишь?») или фразу («Собери на слух»). */
@@ -173,16 +171,6 @@ export function SessionScreen({ deck, kind, day, words, title, restart = false, 
       if (isDone(n)) return finish(n, st);
       commit(n, st);
     },
-    addSentence: (rec, n, graded) => {
-      prefetch(rec.corrected || rec.text); // его скажут вслух через пару шагов
-      const cur = live.current.sess ?? sess,
-        base = live.current.state;
-      let s = { ...cur, written: { ...cur.written, [n]: rec } };
-      let st: AppState = { ...base, sent: [...base.sent, rec] };
-      if (graded) ({ sess: s, state: st } = gradeCurrent(s, st, !!rec.ok, null, t));
-      else s = markSeen(s);
-      commit(s, st, s.i + 1);
-    },
   };
 
   return (
@@ -233,7 +221,6 @@ function StepView({ step, api }: { step: Step; api: Api }) {
   const [bad, setBad] = useState(0);
   const [flash, setFlash] = useState<string[] | null>(null);
   const [fb, setFb] = useState<Feedback | null>(null);
-  const [busy, setBusy] = useState(false);
   const checked = !!fb;
   const alive = useRef(true);
   useEffect(() => () => void (alive.current = false), []);
@@ -242,8 +229,6 @@ function StepView({ step, api }: { step: Step; api: Api }) {
 
   const speakText = () => {
     if (step.t !== "speak") return { en: "", ru: "" };
-    const wr = api.sess.written[step.n];
-    if (wr && wr.ok !== undefined) return { en: wr.corrected || wr.text, ru: "Твоё предложение" + (wr.ok ? "" : " (исправленное)") };
     const sw = deck.byId[step.w];
     return { en: sw.example, ru: sw.exampleRu };
   };
@@ -259,8 +244,8 @@ function StepView({ step, api }: { step: Step; api: Api }) {
     tone(ok);
     if (text) setTimeout(() => alive.current && say(text), AFTER_TONE_MS);
   };
-  const check = async () => {
-    if (checked || busy) return;
+  const check = () => {
+    if (checked) return;
     dropKeyboard();
     if ((step.t === "pick" || step.t === "listen") && w) {
       // слово уже прозвучало в начале задания — после ответа только тон
@@ -300,28 +285,6 @@ function StepView({ step, api }: { step: Step; api: Api }) {
         ok: r.ok,
         title: r.ok ? `Отлично! ${p}% слов` : `${p}% слов — попробуй ещё завтра`,
         body: r.miss.length ? <span className="c sm">Не расслышал: {r.miss.join(", ")}</span> : undefined,
-      });
-    } else if (step.t === "write") {
-      const text = typed.trim();
-      const ws = step.ws.map((id) => deck.byId[id]);
-      const rec: SentenceRecord = { at: new Date().toISOString(), words: ws.map((x) => x.en), text };
-      setBusy(true);
-      const v = await checkSentence(ws, text);
-      if (!alive.current) return;
-      setBusy(false);
-      if (!v) {
-        api.addSentence({ ...rec, pending: true }, step.n, false);
-        setFb({ ok: true, title: "Сохранил", body: "Автопроверки пока нет — предложение ждёт в «Статистике»." });
-        answerSound(true);
-        return;
-      }
-      const full = { ...rec, ...v };
-      api.addSentence(full, step.n, true);
-      answerSound(v.ok);
-      setFb({
-        ok: v.ok,
-        title: v.ok ? "Отлично сказано!" : "Почти — вот как лучше:",
-        body: <>{!v.ok && <><span className="c"><b>{v.corrected}</b></span><br /></>}<span className="c sm">{v.comment}</span></>,
       });
     }
   };
@@ -530,21 +493,6 @@ function StepView({ step, api }: { step: Step; api: Api }) {
         </>
       );
       break;
-    case "write": {
-      const ws = step.ws.map((id) => deck.byId[id]);
-      body = (
-        <>
-          <div className="lbl">Напиши своё предложение</div>
-          <p className="sub">О себе, работе, переезде, хоккее — о чём угодно. Используй хотя бы одно слово:</p>
-          <div className="chips">
-            {ws.map((x) => <div className="wchip" key={x.id}><span className="em">{x.picture}</span><div><b>{x.en}</b><span>{x.ru}</span></div></div>)}
-          </div>
-          <textarea className="inp" placeholder={`Например: ${ws[0].example}`} value={typed} disabled={checked || busy} onChange={(e) => setTyped(e.target.value)} />
-          {!checkerAvailable && <p className="mute sm">Автопроверка пока не подключена — предложение сохранится, проверим позже.</p>}
-        </>
-      );
-      break;
-    }
     case "speak": {
       const tx = speakText();
       body = (
@@ -595,13 +543,10 @@ function StepView({ step, api }: { step: Step; api: Api }) {
           ? { t: "Правильно так:", b: `${step.en}\nТвой вариант: ${step.en}` }
           : step.t === "pairs"
             ? { t: "Все пары верно!", b: "Ошибок по ходу: 0" }
-            : step.t === "speak"
-              ? { t: "100% слов — попробуй ещё завтра", b: "Не расслышал: …" }
-              : { t: "Почти — вот как лучше:", b: "…\n…" };
+            : { t: "100% слов — попробуй ещё завтра", b: "Не расслышал: …" };
   // до проверки в строке отзыва — то, что помогает сделать задание
   const pre: ReactNode =
     step.t === "type" ? <button className="link" onClick={dontKnow}>Не помню</button>
-    : step.t === "write" ? <button className="link" disabled={busy} onClick={api.next}>Пропустить</button>
     : step.t === "speak" ? <button className="link" onClick={api.next}>Не могу сейчас говорить</button>
     : step.t === "pairs" ? <span className="mute sm">Нажми слово слева, потом его перевод справа</span>
     : step.t === "listen" ? <span className="mute sm">Нажми на динамик, чтобы послушать ещё раз</span>
@@ -643,9 +588,7 @@ function StepView({ step, api }: { step: Step; api: Api }) {
           ) : step.t === "pairs" ? (
             <button className="btn wide" disabled>Дальше</button>
           ) : (
-            <button className="btn wide" id="chk" disabled={!canCheck || busy} onClick={check}>
-              {busy ? <><span className="spin" />Проверяю…</> : "Проверить"}
-            </button>
+            <button className="btn wide" id="chk" disabled={!canCheck} onClick={check}>Проверить</button>
           )}
         </div>
       </div></div>

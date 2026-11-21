@@ -46,8 +46,6 @@ const face = (a: Achievement): [ReactNode, string, boolean] => {
   switch (a.id) {
     case "first-card":
       return [<Cards />, "1-я карточка", true];
-    case "first-sentence":
-      return ["✍️", "своя фраза", true];
     case "season-1":
       return ["🏆", "сезон 1", true];
   }

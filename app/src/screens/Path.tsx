@@ -102,7 +102,7 @@ const currentLesson = (ls: LessonStatus, sv: SeasonView, state: AppState, deck: 
           ? `Лучше после ${hhmm(p2.after)} · можно и сейчас`
           : p2.carried
             ? "Осталась с прошлого раза — начни с неё"
-            : "Проверка, своё предложение, говорение · ~15 мин";
+            : "Проверка, говорение, перечитать · ~15 мин";
 
   const newN = p1.done ? p1.done.newN : nt.n;
   const evening: View = { name: "session", kind: "evening", from: "path", ...(p2.carried ? { day: p2.day } : {}) };

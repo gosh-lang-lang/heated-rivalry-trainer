@@ -18,13 +18,13 @@ const words = (n: number, day: (i: number) => string): AppState["srs"] =>
 const get = (s: AppState, id: string, today = TODAY) => achievements(s, earnedCards(s, deck), today).find((a) => a.id === id)!;
 
 describe("достижения", () => {
-  it("12 штук в порядке экрана: серия, слова, уроки, особые", () => {
+  it("11 штук в порядке экрана: серия, слова, уроки, особые", () => {
     const list = achievements(state(), [], TODAY);
     expect(list.map((a) => a.id)).toEqual([
       "streak-7", "streak-30", "streak-100",
       "words-50", "words-100", "words-500",
       "lessons-1", "lessons-10", "lessons-50",
-      "first-card", "first-sentence", "season-1",
+      "first-card", "season-1",
     ]);
     expect(list.every((a) => a.got === null && a.have === 0)).toBe(true);
   });
@@ -67,16 +67,5 @@ describe("достижения", () => {
     const days = Object.fromEntries(Array.from({ length: 11 }, (_, i) => [D(i), full(D(i))]));
     expect(get(state({ days }), "season-1")).toMatchObject({ got: D(9), have: 10 });
     expect(get(state({ days }), "lessons-10")).toMatchObject({ got: D(9), have: 11 });
-  });
-
-  it("первое своё предложение — по самому раннему, даже если ждёт проверки", () => {
-    const s = state({
-      sent: [
-        { at: at(D(3), 20), words: ["novel"], text: "B", ok: true },
-        { at: at(D(1), 20), words: ["endure"], text: "A", pending: true },
-      ],
-    });
-    expect(get(s, "first-sentence")).toMatchObject({ got: D(1), have: 1 });
-    expect(get(state(), "first-sentence")).toMatchObject({ got: null, have: 0 });
   });
 });

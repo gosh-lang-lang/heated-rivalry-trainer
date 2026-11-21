@@ -1,6 +1,6 @@
 import { clockNow, nowDate } from "./dates";
 import { applyGrade, introduce } from "./srs";
-import type { AppState, SavedRun, SentenceRecord, SessionKind, SessionResult, Step } from "./types";
+import type { AppState, SavedRun, SessionKind, SessionResult, Step } from "./types";
 
 export interface Session {
   kind: SessionKind;
@@ -15,8 +15,6 @@ export interface Session {
   /** k шагов, у которых уже была первая попытка */
   first: number[];
   newIds: string[];
-  /** своё предложение по номеру write-шага — для говорения */
-  written: Record<number, SentenceRecord>;
   t0: number;
 }
 
@@ -26,7 +24,7 @@ export interface Graded {
 }
 
 export const startSession = (kind: SessionKind, steps: Step[], now = clockNow()): Session | null =>
-  steps.length ? { kind, steps, i: 0, graded: 0, right: 0, revGraded: 0, revRight: 0, first: [], newIds: [], written: {}, t0: now } : null;
+  steps.length ? { kind, steps, i: 0, graded: 0, right: 0, revGraded: 0, revRight: 0, first: [], newIds: [], t0: now } : null;
 
 export const progress = (s: Session) => Math.min(s.i / s.steps.length, 1);
 
@@ -59,7 +57,6 @@ export const saveRun = (
     revRight: sess.revRight,
     first: sess.first,
     newIds: sess.newIds,
-    written: sess.written,
     t0: sess.t0,
   };
   return { ...state, run, runAt: Math.max(now, state.runAt + 1) };
@@ -103,7 +100,6 @@ export const restoreSession = (r: SavedRun, restart = false, savedAt?: number, n
     revRight: r.revRight,
     first: r.first,
     newIds: r.newIds,
-    written: r.written,
     t0: savedAt ? now - Math.max(0, savedAt - r.t0) : r.t0,
   };
 };
@@ -111,13 +107,13 @@ export const restoreSession = (r: SavedRun, restart = false, savedAt?: number, n
 /** Свой «случай» для шага: варианты ответа, пары и плитки — те же при продолжении. Повтор шага — другой. */
 export const stepSeed = (seed: number, step: Pick<Step, "k" | "retry">) => (seed ^ Math.imul(step.k + 1, 0x9e3779b1) ^ (step.retry ? 0x5bd1e995 : 0)) >>> 0;
 
-const NO_RETRY = new Set<Step["t"]>(["write", "speak", "pairs", "section", "intro", "reread"]);
+const NO_RETRY = new Set<Step["t"]>(["speak", "pairs", "section", "intro", "reread"]);
 
 /**
  * Ответ на текущий шаг.
  * Счёт — по первой попытке: повтор того же шага (retry) в счёт не идёт.
  * SRS слова меняется только на первой попытке (и никогда — в тренировке drill).
- * Ошибка → копия шага в конец занятия (один раз; не для write/speak/pairs).
+ * Ошибка → копия шага в конец занятия (один раз; не для speak/pairs).
  */
 export const gradeCurrent = (
   sess: Session,
@@ -142,7 +138,7 @@ export const gradeCurrent = (
   return { sess: s, state: st };
 };
 
-/** Отметить шаг пройденным без оценки (например, предложение ушло на отложенную проверку). */
+/** Отметить шаг пройденным без оценки (например, говорение без оценки). */
 export const markSeen = (sess: Session): Session => {
   const k = sess.steps[sess.i].k;
   return sess.first.includes(k) ? sess : { ...sess, first: [...sess.first, k] };

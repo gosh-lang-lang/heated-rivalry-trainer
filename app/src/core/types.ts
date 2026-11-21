@@ -21,7 +21,7 @@ export interface Word {
   correctionOfMyTranslation: boolean;
   /**
    * Редкое (книжное) слово: та же лестница при знакомстве, но интервалы вдвое длиннее,
-   * ошибка снижает уровень на 2, а не до 1, и вечером — не больше одного своего предложения.
+   * ошибка снижает уровень на 2, а не до 1.
    * Нет поля — ходовое.
    */
   rare?: boolean;
@@ -93,17 +93,6 @@ export interface DayLog {
   reread?: boolean;
 }
 
-export interface SentenceRecord {
-  at: string;
-  /** английские написания слов (как в прототипе) */
-  words: string[];
-  text: string;
-  ok?: boolean;
-  corrected?: string;
-  comment?: string;
-  pending?: boolean;
-}
-
 /** Личные настройки — общие для всех устройств пользователя (синхронизируются вместе с прогрессом). */
 export interface Settings {
   newPerDay: number;
@@ -128,14 +117,13 @@ export interface AppState {
   upd: number;
   /**
    * Когда прогресс сброшен (ms; 0 — никогда; командой progress:reset). Копия со старой меткой (кэш устройства
-   * до сброса) при слиянии отдаёт слова, дни и предложения копии с новой — иначе сброшенное вернулось бы синхронизацией.
+   * до сброса) при слиянии отдаёт слова и дни копии с новой — иначе сброшенное вернулось бы синхронизацией.
    */
   reset: number;
   settings: Settings;
   settingsAt: SettingsAt;
   srs: Record<string, WordState>;
   days: Record<string, DayLog>;
-  sent: SentenceRecord[];
   /** незаконченная часть урока (core/session.ts SavedRun): «Продолжить» на главной и в «Пути»; null — нет */
   run: SavedRun | null;
   /** когда run последний раз менялся (ms; 0 — ни разу): при слиянии побеждает более поздний, в том числе «закончена» (null) */
@@ -171,7 +159,6 @@ export interface SavedRun {
   revRight: number;
   first: number[];
   newIds: string[];
-  written: Record<number, SentenceRecord>;
   t0: number;
 }
 
@@ -199,8 +186,7 @@ export type Step =
   | (StepBase & { t: "build"; en: string; ru: string; w?: string; rev?: boolean })
   /** собери фразу на слух: фраза звучит, перевод — только после ответа (знакомство со словами, часть 1) */
   | (StepBase & { t: "build-listen"; en: string; ru: string; w?: string })
-  | (StepBase & { t: "write"; ws: string[]; n: number })
-  | (StepBase & { t: "speak"; n: number; w: string })
+  | (StepBase & { t: "speak"; w: string })
   | (StepBase & { t: "reread"; pages: string[] });
 
 export type StepType = Step["t"];

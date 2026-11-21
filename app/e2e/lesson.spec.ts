@@ -26,7 +26,7 @@ test.describe("урок из двух частей", () => {
     await page.clock.setFixedTime(msk(TODAY, "10:31"));
     await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
     await expect(p2).not.toContainText("Лучше после");
-    await expect(p2).toContainText("Проверка, своё предложение, говорение");
+    await expect(p2).toContainText("Проверка, говорение, перечитать");
     await expect(p2.getByRole("button", { name: "Начать часть 2" })).toBeVisible();
   });
 

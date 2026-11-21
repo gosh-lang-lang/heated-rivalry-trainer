@@ -23,7 +23,7 @@ const steps: Step[] = [
   { k: 0, t: "intro", w: "praise" },
   { k: 1, t: "pick", w: "praise" },
   { k: 2, t: "type", w: "praise", hint: true },
-  { k: 3, t: "write", ws: ["praise"], n: 0 },
+  { k: 3, t: "speak", w: "praise" },
 ];
 
 describe("движок занятия", () => {
@@ -62,7 +62,7 @@ describe("движок занятия", () => {
     expect(s.steps.length).toBe(5);
   });
 
-  it("write и speak не повторяются после ошибки", () => {
+  it("speak не повторяется после ошибки", () => {
     const s = { ...startSession("evening", steps, 0)!, i: 3 };
     expect(gradeCurrent(s, state(), false, null, TODAY).sess.steps.length).toBe(4);
   });
