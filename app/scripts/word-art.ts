@@ -165,10 +165,20 @@ async function build(id: string): Promise<ArtGen[string]> {
 
   // ровные полосы сверху и снизу (художник рисовал под 4:3 и залил остальное) — кадр и кропы не выходят за содержимое
   const fit = spec.frame === "content" ? await contentRows(full) : undefined;
-  // кроп художника — по исходному холсту; если растянута вся сцена, его верх едет вместе с ней
+  // кроп художника — по исходному холсту; если поправлена вся сцена, он едет и масштабируется вместе с ней
+  // (по центру, сторона — по ширине; что вышло за холст — вдвигается обратно)
   const all = spec.reshape?.["*"];
-  const ay = all?.at?.[1] ?? ART_CANVAS / 2;
-  const srcRect = src.cropRect && ([src.cropRect[0], Math.round(ay + (src.cropRect[1] - ay) * (all ? (all.s ?? 1) * (all.sy ?? 1) : 1)), src.cropRect[2]] as [number, number, number]);
+  const [ax, ay] = all?.at ?? [ART_CANVAS / 2, ART_CANVAS / 2];
+  const ks = all?.s ?? 1,
+    ky = ks * (all?.sy ?? 1);
+  const srcRect = src.cropRect && (() => {
+    const [x, y, side] = src.cropRect!;
+    const cx = ax + (x + side / 2 - ax) * ks,
+      cy = ay + (y + side / 2 - ay) * ky;
+    const s2 = Math.min(ART_CANVAS, Math.round(side * ks));
+    const clamp = (v: number) => Math.max(0, Math.min(ART_CANVAS - s2, Math.round(v - s2 / 2)));
+    return [clamp(cx), clamp(cy), s2] as [number, number, number];
+  })();
   const rect = spec.list ?? srcRect;
   const [lx, ly, ls] = rect ? listCrop(rect, fit) : [0, 0, 0];
   const cropImg = rect ? sharp(full).extract({ left: lx, top: ly, width: ls, height: ls }) : sharp(join(srcDir, src.crop));
