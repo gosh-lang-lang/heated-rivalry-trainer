@@ -11,6 +11,7 @@ import { CardFront, CardLocked, cardNo, ruDay } from "./cards";
 import { useNow } from "./Home";
 import { Fan } from "./Me";
 import { PathPlayer } from "./PathPlayer";
+import { StreakSheet } from "./streak";
 
 /*
  * «Путь»: сезон из 10 уроков нарисован катком. Каждая точка — урок (место карточки в сезоне): пройден / сейчас / закрыт;
@@ -397,6 +398,8 @@ export function PathScreen({ deck, state, go, wide }: { deck: Deck; state: AppSt
   const cur = currentLesson(ls, sv, state, deck);
   const sk = streak(state.days, ls.today);
   const [sel, setSel] = useState<number | null>(null);
+  const [streakOpen, setStreakOpen] = useState(false);
+  const streakSheet = streakOpen && <StreakSheet days={state.days} today={ls.today} go={go} onClose={() => setStreakOpen(false)} />;
   const selCard = sel ? (sv.got.find((c) => c.pos === sel) ?? null) : null;
   const [wrapRef, W0] = useWidth<HTMLDivElement>(wide ? 1152 : 390);
   const [popRef, popH] = useHeight<HTMLElement>(300);
@@ -417,8 +420,9 @@ export function PathScreen({ deck, state, go, wide }: { deck: Deck; state: AppSt
   }, [sel]);
   const chips = (long: boolean) => (
     <>
-      <span className="hchip" aria-label={`${sk} ${plural(sk, "день", "дня", "дней")} подряд`}><Flame aria-hidden="true" />{sk}{long ? ` ${plural(sk, "день", "дня", "дней")} подряд` : ""}</span>
-      <span className="hchip cards" aria-label={`Карточек: ${sv.got.length} из ${SEASON}`}><Cards aria-hidden="true" />{sv.got.length}/{SEASON}</span>
+      <button className={`hchip${sk ? "" : " zero"}`} aria-haspopup="dialog" aria-label={`${sk} ${plural(sk, "день", "дня", "дней")} подряд — подробнее о серии`} onClick={() => setStreakOpen(true)}><Flame aria-hidden="true" />{sk}{long ? ` ${plural(sk, "день", "дня", "дней")} подряд` : ""}</button>
+      <button className="hchip cards" aria-label={`Карточек: ${sv.got.length} из ${SEASON} — открыть коллекцию`} onClick={() => go({ name: "collection" })}><Cards aria-hidden="true" />{sv.got.length}/{SEASON}</button>
+      {streakSheet}
     </>
   );
   const meta = `Сезон ${sv.season} · урок ${sv.next} из ${SEASON}`;

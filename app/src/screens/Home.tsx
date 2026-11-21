@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { View } from "../App";
-import { addDays } from "../core/dates";
+import { addDays, greeting } from "../core/dates";
 import { hhmm, lessonStatus, untilText, type LessonPart } from "../core/lesson";
 import { MAX_REVIEW, newToday } from "../core/plans";
 import { dueList, groups, isHard, levelGroup, streak, unseen } from "../core/srs";
@@ -10,6 +10,7 @@ import { Check, Flame, Rink } from "../lib/icons";
 import { AWAY_CITIES, CITIES_SVG } from "../lib/scenes";
 import { useVoices } from "../lib/speech";
 import { ThemeToggle } from "../ui";
+import { StreakSheet } from "./streak";
 
 interface Props {
   deck: Deck;
@@ -45,6 +46,7 @@ export function useNow(): Date {
 
 export function Home({ deck, state, go, wide = false, name = null }: Props) {
   const clock = useNow();
+  const [streakOpen, setStreakOpen] = useState(false);
   const ls = lessonStatus(state, deck, clock);
   const t = ls.today;
   const nt = newToday(deck, state, t);
@@ -184,14 +186,15 @@ export function Home({ deck, state, go, wide = false, name = null }: Props) {
           <div className="top">
             <span className="kick">Heated Rivalry · английский</span>
             {!wide && <span className="hdate">{today}</span>}
-            <span className="chip"><Flame />{sk} {plural(sk, "день", "дня", "дней")}</span>
+            <button className={`chip${sk ? "" : " zero"}`} aria-haspopup="dialog" aria-label={`${sk} ${plural(sk, "день", "дня", "дней")} подряд — подробнее о серии`} onClick={() => setStreakOpen(true)}><Flame aria-hidden="true" />{sk} {plural(sk, "день", "дня", "дней")}</button>
             {!wide && <ThemeToggle />}
           </div>
-          <h1>{clock.getHours() < 16 ? "Доброе утро" : "Добрый вечер"}{name ? `, ${name}` : ""}</h1>
+          <h1>{greeting(clock)}{name ? `, ${name}` : ""}</h1>
           <p>{ls.focus ? "Урок из двух частей по ~15 минут: сначала учим, потом применяем." : "На сегодня всё — отличная смена. До завтра!"}</p>
           {board}
         </div>
       </header>
+      {streakOpen && <StreakSheet days={state.days} today={t} go={go} onClose={() => setStreakOpen(false)} />}
       <div className={`wrap home${ls.focus ? "" : " all-done"}`}>
         <div className="main-col">
           <div className="today">

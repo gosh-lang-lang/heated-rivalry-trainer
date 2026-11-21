@@ -140,7 +140,7 @@ export function useCardImage(url: string): string | null {
 }
 
 /** Иллюстрация карточки: файл из /cards/, пока его нет — заглушка. */
-function CardArt({ art, season, pos }: { art: string; season: number; pos: number }) {
+export function CardArt({ art, season, pos }: { art: string; season: number; pos: number }) {
   const u = useId().replace(/[^a-zA-Z0-9]/g, "");
   const img = useCardImage(cardImageUrl(season, pos));
   if (img) return <img src={img} alt="" draggable={false} />;

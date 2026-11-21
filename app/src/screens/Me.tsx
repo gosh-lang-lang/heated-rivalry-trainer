@@ -1,12 +1,14 @@
-import type { CSSProperties, ReactNode } from "react";
+import { useState, type CSSProperties, type ReactNode } from "react";
 import type { View } from "../App";
 import { achievements, type Achievement, type AchievementGroup } from "../core/achievements";
-import { SEASON, seasonView, type SeasonView } from "../core/cards";
+import { parseAvatar } from "../core/avatar";
+import { earnedCards, SEASON, seasonView, type SeasonView } from "../core/cards";
 import { todayKey } from "../core/dates";
 import type { AppState, Deck } from "../core/types";
-import { Cards, Check, Gear, Right } from "../lib/icons";
+import { Cards, Check, Gear, Pencil, Right } from "../lib/icons";
 import { CardFront, CardLocked, ruDay } from "./cards";
 import { StatsContent } from "./Stats";
+import { AvatarPic, AvatarSheet, avatarName } from "./avatar";
 
 /** «Сезон 1 · следующая карточка — после части 2 урока 5». */
 export const nextCardNote = (sv: SeasonView) =>
@@ -84,11 +86,16 @@ export function Me({ deck, state, go, name }: { deck: Deck; state: AppState; go:
     .filter((k) => state.days[k]?.morning || state.days[k]?.evening)
     .sort()[0];
   const who = name ?? "Я";
+  const [pickAva, setPickAva] = useState(false);
+  const ava = parseAvatar(state.settings.avatar);
 
   return (
     <>
       <div className="pagehead mehead">
-        <span className="ava" aria-hidden="true">{who[0].toUpperCase()}</span>
+        <button className="ava-btn" aria-label={`Аватарка: ${avatarName(ava)}. Сменить`} onClick={() => setPickAva(true)}>
+          <AvatarPic value={ava} name={who} />
+          <i className="ava-edit" aria-hidden="true"><Pencil /></i>
+        </button>
         <div className="me-who">
           <h1>{who}</h1>
           <span className="mute">{first ? `учится с ${ruDay(first)} · урок ${sv.todayDone ? sv.nextLesson - 1 : sv.nextLesson}` : "первый урок — впереди"}</span>
@@ -116,6 +123,7 @@ export function Me({ deck, state, go, name }: { deck: Deck; state: AppState; go:
       </div>
       <div className="sec-title me-stats-h"><h2>Статистика</h2></div>
       <StatsContent deck={deck} state={state} />
+      {pickAva && <AvatarSheet name={who} cards={earnedCards(state, deck)} onClose={() => setPickAva(false)} />}
     </>
   );
 }

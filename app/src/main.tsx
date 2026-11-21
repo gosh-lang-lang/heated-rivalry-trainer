@@ -9,6 +9,7 @@ import "./scenes.css";
 import "./pull.css";
 import "./rewards.css";
 import "./words.css";
+import "./sheet.css";
 import { initGlass, legacyLook } from "./lib/glass";
 import { applyTheme, legacyTheme } from "./lib/theme";
 

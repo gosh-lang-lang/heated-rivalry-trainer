@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { addDays } from "./dates";
-import { applyGrade, blankState, dueList, groups, introduce, IV, IV_RARE, levelGroup, streak, unseen } from "./srs";
+import { applyGrade, blankState, dueList, groups, introduce, IV, IV_RARE, levelGroup, streak, bestStreak, activeDay, unseen } from "./srs";
 import { deck, TODAY } from "./fixtures";
 
 describe("даты", () => {
@@ -103,5 +103,22 @@ describe("интервальное повторение", () => {
     expect(streak({ ...days, [TODAY]: { morning: r } }, TODAY)).toBe(3);
     expect(streak({ "2026-11-17": { morning: r } }, TODAY)).toBe(0);
     expect(streak({ [TODAY]: { reread: true } }, TODAY)).toBe(0);
+  });
+
+  it("рекорд серии — самая длинная за всё время, даже если потом прервалась", () => {
+    const r = { score: 1, total: 1, mins: 1, newN: 0, at: "" };
+    const days = {
+      "2026-11-01": { morning: r },
+      "2026-11-02": { evening: r },
+      "2026-11-03": { morning: r },
+      "2026-11-04": { reread: true }, // перечитал без урока — не считается
+      "2026-11-05": { morning: r },
+      [TODAY]: { morning: r },
+    };
+    expect(bestStreak(days)).toBe(3);
+    expect(bestStreak({})).toBe(0);
+    expect(activeDay(days, "2026-11-02")).toBe(true);
+    expect(activeDay(days, "2026-11-04")).toBe(false);
+    expect(activeDay(days, "2026-11-06")).toBe(false);
   });
 });

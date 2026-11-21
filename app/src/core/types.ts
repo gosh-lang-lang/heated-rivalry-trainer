@@ -103,6 +103,8 @@ export interface Settings {
   look: Look;
   /** день / ночь; system — как в системе устройства */
   theme: ThemePref;
+  /** аватарка в «Я»: "" — буква имени; формат — core/avatar.ts */
+  avatar: string;
 }
 export type Look = "classic" | "ice" | "match" | "cities-red" | "cities-black" | "away";
 export type ThemePref = "system" | "light" | "dark";

@@ -37,6 +37,8 @@ const scrolledInside = (t: EventTarget | null) => {
 };
 /** В полях ввода жест оставляем браузеру (выделение текста, ползунки). */
 const inField = (t: EventTarget | null) => t instanceof Element && !!t.closest("input, textarea, select, [contenteditable]");
+/** Поверх страницы открыто окно (карточка, панель снизу) — тянуть страницу под ним нельзя. */
+const inDialog = (t: EventTarget | null) => t instanceof Element && !!t.closest('[aria-modal="true"]');
 
 const reload = () => location.reload();
 const reducedMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
@@ -85,7 +87,7 @@ export function usePullToRefresh(enabled: boolean, refresh: () => void = reload)
 
     const onStart = (e: TouchEvent) => {
       tracking = false;
-      if (busy || e.touches.length !== 1 || window.scrollY > 0 || scrolledInside(e.target) || inField(e.target)) return;
+      if (busy || e.touches.length !== 1 || window.scrollY > 0 || scrolledInside(e.target) || inField(e.target) || inDialog(e.target)) return;
       tracking = true;
       pulling = false;
       x0 = e.touches[0].clientX;

@@ -1,7 +1,8 @@
-import { useEffect, useState, type MouseEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import type { View } from "./App";
 import { say, useSpeaking } from "./lib/speech";
-import { Moon, Speaker, Sun } from "./lib/icons";
+import { Close, Moon, Speaker, Sun } from "./lib/icons";
 import { useTheme } from "./lib/theme";
 import { usePullToRefresh } from "./lib/pull";
 import { SKATER_BLACK, SKATER_RED } from "./lib/skaters";
@@ -152,5 +153,43 @@ export function PullRefresh() {
         <circle r="4.5" />
       </svg>
     </div>
+  );
+}
+
+/**
+ * Панель поверх страницы: на телефоне выезжает снизу, на широком экране — окно по центру.
+ * Закрыть — крестик, Esc или нажатие на затемнение; под панелью страница не прокручивается.
+ * В body через портал: у шапок бывает backdrop-filter, внутри него position: fixed считается от шапки.
+ */
+export function Sheet({ title, onClose, children, className = "" }: { title: string; onClose: () => void; children: ReactNode; className?: string }) {
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const done = useRef(onClose);
+  done.current = onClose;
+  useEffect(() => {
+    const was = document.activeElement as HTMLElement | null;
+    closeRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && done.current();
+    window.addEventListener("keydown", onKey);
+    const html = document.documentElement;
+    const overflow = html.style.overflow;
+    html.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      html.style.overflow = overflow;
+      was?.focus?.({ preventScroll: true }); // фокус — обратно на кнопку, которая открыла панель
+    };
+  }, []);
+  return createPortal(
+    <div className="sheet-wrap" role="dialog" aria-modal="true" aria-label={title}>
+      <div className="scrim" onClick={onClose} />
+      <section className={`sheet ${className}`}>
+        <div className="sheet-head">
+          <h2>{title}</h2>
+          <button ref={closeRef} className="sheet-x" aria-label="Закрыть" onClick={onClose}><Close /></button>
+        </div>
+        <div className="sheet-body">{children}</div>
+      </section>
+    </div>,
+    document.body,
   );
 }

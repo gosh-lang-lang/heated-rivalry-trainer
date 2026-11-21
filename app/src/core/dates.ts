@@ -12,3 +12,15 @@ export const addDays = (k: string, n: number): string => {
 
 /** «2026-11-20» → «20.11.2026» */
 export const ruDate = (k: string): string => k.split("-").reverse().join(".");
+
+/**
+ * Приветствие по часам устройства: утро 5–11, день 12–16, вечер 17–22, ночь 23–4.
+ * Время — местное (как у todayKey), то есть часы пользователя, а не сервера.
+ */
+export const greeting = (now: Date): string => {
+  const h = now.getHours();
+  if (h < 5 || h >= 23) return "Доброй ночи";
+  if (h < 12) return "Доброе утро";
+  if (h < 17) return "Добрый день";
+  return "Добрый вечер";
+};

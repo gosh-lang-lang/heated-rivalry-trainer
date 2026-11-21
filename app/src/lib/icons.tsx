@@ -97,3 +97,6 @@ export const Route = (p: P) => (
 export const Alert = (p: P) => (
   <svg {...base} strokeWidth={2.8} {...p}><path d="M12 5v9" /><path d="M12 19h.01" /></svg>
 );
+export const Pencil = (p: P) => (
+  <svg {...base} strokeWidth={2.4} {...p}><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z" /><path d="M13.5 6.5l4 4" /></svg>
+);

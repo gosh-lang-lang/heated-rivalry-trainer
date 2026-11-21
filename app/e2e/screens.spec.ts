@@ -11,6 +11,26 @@ test.describe("главная", () => {
     await expect(page.getByText("всего слов: 62")).toBeVisible();
   });
 
+  for (const [time, text] of [
+    ["14:00", "Добрый день"],
+    ["20:30", "Добрый вечер"],
+    ["01:15", "Доброй ночи"],
+  ] as const)
+    test(`приветствие по часам пользователя: ${time} — «${text}»`, async ({ page }) => {
+      await setup(page, { now: new Date(`2026-11-20T${time}:00+03:00`) });
+      await openHome(page);
+      await expect(page.getByRole("heading", { level: 1 })).toHaveText(`${text}, Евгений`);
+    });
+
+  test.describe("в другом часовом поясе", () => {
+    test.use({ timezoneId: "America/New_York" });
+    test("то же мгновение (9:00 по Москве) — ночь по часам пользователя", async ({ page }) => {
+      await setup(page); // 2026-11-20 09:00 МСК = 01:00 в Нью-Йорке
+      await openHome(page);
+      await expect(page.getByRole("heading", { level: 1 })).toHaveText("Доброй ночи, Евгений");
+    });
+  });
+
   test("приветствие — по имени вошедшего, не прописанное в коде", async ({ page }) => {
     await setup(page);
     await page.route("**/api/auth/me", (route) => route.fulfill({ json: { user: { name: "svetlana", displayName: "Светлана" }, passkeys: 1 } }));

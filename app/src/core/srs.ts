@@ -101,3 +101,20 @@ export const streak = (days: AppState["days"], today: string): number => {
   }
   return n;
 };
+
+/** Самая длинная серия дней подряд за всё время (рекорд). */
+export const bestStreak = (days: AppState["days"]): number => {
+  let best = 0,
+    run = 0,
+    prev = "";
+  for (const k of Object.keys(days).sort()) {
+    if (!active(days[k])) continue;
+    run = prev && addDays(prev, 1) === k ? run + 1 : 1;
+    prev = k;
+    best = Math.max(best, run);
+  }
+  return best;
+};
+
+/** Был ли в день k урок (часть 1 или часть 2) — для серии. */
+export const activeDay = (days: AppState["days"], k: string): boolean => active(days[k]);

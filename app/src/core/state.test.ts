@@ -51,8 +51,8 @@ describe("слияние копий: прогресс — кто новее, н�
     const m = mergeStates(laptop, phone);
     expect(m.upd).toBe(5000);
     expect(m.srs).toEqual(laptop.srs);
-    expect(m.settings).toEqual({ newPerDay: 24, voice: "bf_emma", look: "ice", theme: "system" });
-    expect(m.settingsAt).toEqual({ newPerDay: 3000, voice: 3000, look: 0, theme: 0 });
+    expect(m.settings).toEqual({ newPerDay: 24, voice: "bf_emma", look: "ice", theme: "system", avatar: "" });
+    expect(m.settingsAt).toEqual({ newPerDay: 3000, voice: 3000, look: 0, theme: 0, avatar: 0 });
   });
 
   it("порядок не важен, повторное слияние ничего не меняет", () => {
@@ -68,7 +68,7 @@ describe("слияние копий: прогресс — кто новее, н�
     const phone = changeSetting(changeSetting(emptyState(), "look", "match", 2000), "theme", "dark", 2000);
     const laptop = { ...changeSetting(emptyState(), "theme", "light", 1000), upd: 9000 };
     expect(mergeStates(laptop, phone).settings).toMatchObject({ look: "match", theme: "dark" });
-    expect(parseState({ srs: {}, settings: { look: "neon", theme: "sepia" } }).settings).toMatchObject({ look: "ice", theme: "system" });
+    expect(parseState({ srs: {}, settings: { look: "neon", theme: "sepia" } }).settings).toMatchObject({ look: "ice", theme: "system", avatar: "" });
     expect(parseState({ srs: {}, settings: { look: "classic", theme: "light" } }).settings).toMatchObject({ look: "classic", theme: "light" });
     for (const look of ["cities-red", "cities-black", "away"] as const)
       expect(parseState({ srs: {}, settings: { look } }).settings.look).toBe(look);
@@ -83,8 +83,8 @@ describe("слияние копий: прогресс — кто новее, н�
 
   it("старые копии без меток и голоса читаются: голос по умолчанию, метки — 0; неизвестный голос отбрасывается", () => {
     const s = parseState({ upd: 1, settings: { newPerDay: 18 }, srs: {} });
-    expect(s.settings).toEqual({ newPerDay: 18, voice: "af_heart", look: "ice", theme: "system" });
-    expect(s.settingsAt).toEqual({ newPerDay: 0, voice: 0, look: 0, theme: 0 });
+    expect(s.settings).toEqual({ newPerDay: 18, voice: "af_heart", look: "ice", theme: "system", avatar: "" });
+    expect(s.settingsAt).toEqual({ newPerDay: 0, voice: 0, look: 0, theme: 0, avatar: 0 });
     expect(parseState({ srs: {}, settings: { voice: "robot" } }).settings.voice).toBe("af_heart");
     expect(parseState({ srs: {}, settings: { voice: "bm_george" }, settingsAt: { voice: 7 } })).toMatchObject({ settings: { voice: "bm_george" }, settingsAt: { voice: 7 } });
   });

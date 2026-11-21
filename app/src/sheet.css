@@ -1,0 +1,79 @@
+/* ================= Панель поверх страницы (ui.tsx Sheet): снизу на телефоне, окном на широком ================= */
+.sheet-wrap{position:fixed;inset:0;z-index:40;display:flex;align-items:flex-end;justify-content:center}
+.sheet{position:relative;width:100%;max-width:560px;max-height:min(88vh,88dvh);display:flex;flex-direction:column;background:light-dark(#fff,#131d2e);color:var(--ink);
+  border-radius:26px 26px 0 0;box-shadow:0 -18px 50px -20px rgba(8,20,45,.55);padding-bottom:env(safe-area-inset-bottom);animation:sheet-up .26s cubic-bezier(.2,.9,.3,1)}
+.sheet::before{content:"";position:absolute;top:8px;left:50%;width:40px;height:5px;margin-left:-20px;border-radius:3px;background:var(--line)}
+.sheet-head{display:flex;align-items:center;gap:12px;padding:22px 16px 6px 22px}
+.sheet-head h2{flex:1;margin:0;font-size:22px;letter-spacing:-.01em}
+.sheet-x{flex:none;width:40px;height:40px;border-radius:50%;border:0;display:grid;place-items:center;background:light-dark(#eef3f9,#1b2a3f);color:var(--mute)}
+.sheet-x svg{width:18px;height:18px}
+.sheet-body{overflow-y:auto;overscroll-behavior:contain;padding:6px 22px 22px;display:flex;flex-direction:column}
+@keyframes sheet-up{from{transform:translateY(100%)}to{transform:none}}
+@media(min-width:900px){
+  .sheet-wrap{align-items:center}
+  .sheet{border-radius:26px;max-height:86vh;padding-bottom:0;animation-name:sheet-in}
+  .sheet::before{display:none}
+}
+@keyframes sheet-in{from{transform:translateY(16px);opacity:0}to{transform:none;opacity:1}}
+@media(prefers-reduced-motion:reduce){.sheet{animation:none}}
+
+/* значки в шапке — кнопки */
+button.hchip,button.chip{border:0;cursor:pointer;font-family:inherit}
+button.chip{color:inherit}
+button.hchip:active,button.chip:active{transform:scale(.96)}
+.hchip.zero svg,.chip.zero svg{filter:grayscale(1);opacity:.55}
+.hchip.zero{color:var(--mute)}
+
+/* ================= Аватарка ================= */
+.ava-btn{position:relative;width:52px;height:52px;padding:0;border:0;background:none;border-radius:50%}
+.ava-edit{position:absolute;right:-5px;bottom:-5px;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:var(--blue);color:#fff;
+  box-shadow:0 0 0 2.5px light-dark(#fff,#131d2e)}
+.ava-edit svg{width:12px;height:12px}
+.ava.has-art{overflow:hidden;padding:0;background:var(--navy)}
+.ava.has-art>svg,.ava.has-art>img{width:100%;height:100%;display:block;object-fit:cover}
+.ava.lg{width:76px;height:76px;font-size:34px}
+.ava.opt{width:64px;height:64px;font-size:28px;box-shadow:inset 0 1px 0 rgba(255,255,255,.3)}
+
+.av-now{display:flex;align-items:center;gap:16px;padding:6px 2px 4px}
+.av-now>div{display:flex;flex-direction:column;min-width:0}
+.av-now b{font-size:20px;line-height:1.2}
+.av-now .mute{font-size:14px;font-weight:700}
+.av-h{margin:18px 2px 10px;font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}
+.av-grid{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px 6px}
+.av-opt{width:100%;border:0;background:none;padding:0;display:flex;flex-direction:column;align-items:center;gap:5px;color:var(--ink)}
+.av-ring{position:relative;border-radius:50%;padding:3px;box-shadow:inset 0 0 0 2px transparent;transition:box-shadow .12s}
+.av-opt[aria-pressed=true] .av-ring{box-shadow:inset 0 0 0 3px var(--blue)}
+.av-opt[aria-pressed=true] small{color:var(--blue)}
+.av-opt small{font-size:12px;font-weight:800;line-height:1.2;text-align:center;color:var(--mute);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.av-opt:disabled{cursor:default}
+.av-opt.locked .ava{filter:grayscale(1) brightness(.75);opacity:.45}
+.av-lock{position:absolute;inset:0;display:grid;place-items:center;color:var(--ink)}
+.av-lock svg{width:22px;height:22px}
+.av-num{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:14px;padding:10px 12px 10px 16px;border-radius:16px;background:light-dark(#eef3f9,#1b2a3f)}
+.av-num>span{display:flex;flex-direction:column;font-weight:800;font-size:15px;line-height:1.3}
+.av-num small{font-size:13px;font-weight:700}
+.av-num input{width:72px;height:48px;border-radius:12px;border:2px solid var(--line);background:var(--card);text-align:center;font-size:22px;font-weight:900;font-variant-numeric:tabular-nums}
+.av-foot{font-size:13px;font-weight:700;margin:14px 2px 16px}
+
+/* ================= Серия дней ================= */
+.sk-hero{display:flex;align-items:center;gap:10px;padding:4px 0 2px}
+.sk-hero svg{width:44px;height:44px;flex:none}
+.sk-hero b{font-size:48px;font-weight:900;line-height:1;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.sk-hero span{font-size:18px;font-weight:800;color:var(--mute);margin-top:12px}
+.sk-hero.zero svg{filter:grayscale(1);opacity:.5}
+.sk-note{margin:10px 0 16px;font-size:16px;font-weight:700;line-height:1.45}
+.sk-week{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.sk-week li{display:flex;flex-direction:column;align-items:center;gap:6px}
+.sk-week i{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:light-dark(#eef3f9,#1b2a3f);box-shadow:inset 0 0 0 2px var(--line)}
+.sk-week li.on i{background:light-dark(#fff2dc,#3a2c12);box-shadow:inset 0 0 0 2px light-dark(#ffcf87,#7a5418)}
+.sk-week li.today i{box-shadow:inset 0 0 0 2px var(--blue),0 0 0 3px light-dark(rgba(31,95,209,.18),rgba(120,166,255,.2))}
+.sk-week i svg{width:22px;height:22px}
+.sk-week span{font-size:12px;font-weight:800;color:var(--mute)}
+.sk-week li.today span{color:var(--blue)}
+.sk-stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px}
+.sk-stats>div{display:flex;flex-direction:column;padding:12px 14px;border-radius:16px;background:light-dark(#eef3f9,#1b2a3f)}
+.sk-stats b{font-size:26px;font-weight:900;line-height:1.1;font-variant-numeric:tabular-nums}
+.sk-stats span{font-size:13px;font-weight:700;color:var(--mute);line-height:1.3}
+.sk-rule{font-size:13px;font-weight:700;margin:14px 2px 6px}
+.sk-more{align-self:flex-start;display:inline-flex;align-items:center;gap:2px;border:0;background:none;padding:8px 2px;color:var(--blue);font-weight:800;font-size:15px}
+.sk-more svg{width:18px;height:18px}
