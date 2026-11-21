@@ -1,6 +1,7 @@
-# Проверки на каждый push в main и на каждый PR: typecheck, unit (с настоящей озвучкой Kokoro), e2e (Chrome и WebKit).
+# Проверки на каждый push в main и на каждый PR: typecheck, unit (с настоящей озвучкой Kokoro), e2e (Chrome, WebKit, вход).
 # Тот же набор, что запускает deploy/deploy.sh перед выкаткой, — только сразу, а не в момент выкатки:
 # поломку, отправленную в main любой сессией, видно за минуты (письмо от GitHub о красной проверке).
+# Задания идут параллельно: unit отдельно, e2e — по проекту Playwright на машину (на одной машине — 25 минут).
 name: CI
 
 on:
@@ -13,43 +14,65 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  # GPU нет: onnxruntime-node не должен качать CUDA-сборку (как в app/Dockerfile)
+  npm_config_onnxruntime_node_install_cuda: skip
+
 jobs:
-  test:
+  unit:
+    name: typecheck и unit
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: app
-    env:
-      # GPU нет: onnxruntime-node не должен качать CUDA-сборку (как в app/Dockerfile)
-      npm_config_onnxruntime_node_install_cuda: skip
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: app/package-lock.json
-
       - run: npm ci --no-audit --no-fund
-
       # модель Kokoro (~330 МБ) для server/tts-worker.test.ts — не качать каждый раз
       - uses: actions/cache@v4
         with:
           path: app/node_modules/@huggingface/transformers/.cache
           key: kokoro-82m-v1.0-fp32
-
       - run: npm run typecheck
       - run: npm test
 
-      - run: npx playwright install --with-deps chromium webkit
-      - run: npm run e2e
-
+  e2e:
+    name: e2e ${{ matrix.project }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - project: desktop-chrome
+            browser: chromium
+          - project: iphone
+            browser: webkit
+          - project: auth # вход по passkey на продакшен-сборке (зависит от auth-build — Playwright запустит его сам)
+            browser: chromium
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npx playwright install --with-deps ${{ matrix.browser }}
+      - run: npx playwright test --project=${{ matrix.project }}
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: playwright-report
+          name: playwright-${{ matrix.project }}
           path: |
             app/playwright-report
             app/test-results

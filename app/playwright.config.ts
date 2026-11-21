@@ -12,6 +12,8 @@ const PORT = Number(process.env.E2E_PORT ?? 5174);
  */
 export default defineConfig({
   testDir: "e2e",
+  // на машине GitHub (2 ядра) WebKit проходит урок из 38 заданий дольше 30 с — там запас втрое; локально — как было
+  timeout: process.env.CI ? 90_000 : 30_000,
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
