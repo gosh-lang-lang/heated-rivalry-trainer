@@ -1,11 +1,13 @@
 # Heated Rivalry — тренажёр слов
 
-Описание проекта, модель данных, план и статус — **[PROJECT_BRIEF.md](PROJECT_BRIEF.md)** (единственный документ о проекте).
+Описание проекта, модель данных, план и как устроено сейчас — **[PROJECT_BRIEF.md](PROJECT_BRIEF.md)**;
+история изменений и решения пользователя — [docs/CHANGELOG.md](docs/CHANGELOG.md).
 Сервер и выкатка — [deploy/README.md](deploy/README.md). Наблюдения из использования — [FEEDBACK.md](FEEDBACK.md).
 
 ## Правила работы
 - **Документация — часть задачи.** Изменилось поведение, модель данных, решение пользователя или устройство
-  деплоя — в том же коммите обновить PROJECT_BRIEF.md (раздел 6 «Статус», с датой) и, если касается сервера, deploy/README.md.
+  деплоя — в том же коммите: запись с датой сверху в docs/CHANGELOG.md (что и почему); если меняется то, как система
+  устроена, — поправить описание в PROJECT_BRIEF.md (без истории); если касается сервера — deploy/README.md.
 - **Тесты — часть задачи.** Новая логика в `app/src/core` или `app/server` — unit-тест рядом (`*.test.ts`);
   новый сценарий в интерфейсе — e2e в `app/e2e`. Перед коммитом: `npm --prefix app run typecheck && npm --prefix app test && npm --prefix app run e2e`.
   Покрытие unit-тестами: `npx --prefix app vitest run --coverage` (cli.ts, поток Kokoro, auth.ts и index.ts там 0% —
