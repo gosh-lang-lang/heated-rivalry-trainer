@@ -125,7 +125,8 @@ const newDevice = async (browser: Browser, origin: string, link: string, before?
   await page.goto(link);
   await page.getByRole("button", { name: "Создать passkey" }).click();
   await page.getByRole("link", { name: "Открыть тренажёр" }).click();
-  await expect(page.getByRole("button", { name: "Начать часть 1" })).toBeVisible();
+  // часть 1 не начата — «Начать часть 1»; начата на другом устройстве — «Продолжить · n из N» (state.run с сервера)
+  await expect(page.getByRole("button", { name: /^(Начать часть 1|Продолжить · \d+ из \d+)$/ })).toBeVisible();
   return page;
 };
 /** Вкладка «Настройки» → раздел (по умолчанию «Занятия»: «новых слов за урок»). */
@@ -224,6 +225,8 @@ test("личные настройки одинаковы на всех устр�
 
   // новое устройство сразу получает те же настройки
   const tablet = await newDevice(browser, origin, link());
+  // незаконченная часть 1 ноутбука — на сервере: на планшете её можно продолжить с того же места
+  await expect(tablet.getByRole("button", { name: /^Продолжить · 4 из \d+$/ })).toBeVisible();
   await settings(tablet, "Озвучка");
   await expect(tablet.getByRole("radiogroup", { name: "Голос озвучки" }).locator('[role=radio][aria-checked="true"]')).toContainText("Emma");
   await settings(tablet, "Занятия");

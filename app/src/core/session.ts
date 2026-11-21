@@ -1,5 +1,5 @@
 import { applyGrade, introduce } from "./srs";
-import type { AppState, SentenceRecord, SessionKind, SessionResult, Step } from "./types";
+import type { AppState, SavedRun, SentenceRecord, SessionKind, SessionResult, Step } from "./types";
 
 export interface Session {
   kind: SessionKind;
@@ -30,6 +30,85 @@ export const startSession = (kind: SessionKind, steps: Step[], now = Date.now())
 export const currentStep = (s: Session): Step | undefined => s.steps[s.i];
 
 export const progress = (s: Session) => Math.min(s.i / s.steps.length, 1);
+
+/* ---------- незаконченная часть урока: сохранить, продолжить, начать заново ---------- */
+
+/** Какие занятия сохраняются для «Продолжить»: части 1 и 2 урока (не «ещё 6 новых» и не тренировка). */
+export const savable = (kind: SessionKind): kind is SavedRun["kind"] => kind === "morning" || kind === "evening";
+
+/**
+ * Сохранить занятие в прогресс (state.run). `at` — с какого шага продолжить: после ответа — следующий,
+ * ответ уже засчитан (srs, счёт); иначе — текущий. `now` — метка для слияния (runAt), строго растёт.
+ */
+export const saveRun = (
+  state: AppState,
+  sess: Session,
+  o: { day: string; date: string; seed: number; at?: number },
+  now = Date.now(),
+): AppState => {
+  if (!savable(sess.kind)) return state;
+  const run: SavedRun = {
+    kind: sess.kind,
+    day: o.day,
+    date: o.date,
+    seed: o.seed,
+    steps: sess.steps,
+    i: Math.min(o.at ?? sess.i, sess.steps.length),
+    graded: sess.graded,
+    right: sess.right,
+    revGraded: sess.revGraded,
+    revRight: sess.revRight,
+    first: sess.first,
+    newIds: sess.newIds,
+    written: sess.written,
+    t0: sess.t0,
+  };
+  return { ...state, run, runAt: Math.max(now, state.runAt + 1) };
+};
+
+/** Занятие закончено — сохранённого больше нет (метка нужна, чтобы «закончено» победило при слиянии). */
+export const clearRun = (state: AppState, now = Date.now()): AppState =>
+  state.run ? { ...state, run: null, runAt: Math.max(now, state.runAt + 1) } : state;
+
+/**
+ * Сохранённая часть, которую можно продолжить: того же вида и дня урока, начатая сегодня (`today`) и ещё не пройденная.
+ * С прошлого дня — нет: на новый день часть начинается заново (план строится по сегодняшним повторениям).
+ */
+export const resumable = (state: AppState, kind: SessionKind, day: string, today: string): SavedRun | null => {
+  const r = state.run;
+  if (!r || r.kind !== kind || r.day !== day || r.date !== today) return null;
+  if (state.days[day]?.[r.kind]) return null; // уже пройдена (например, на другом устройстве)
+  return r;
+};
+
+/** Где остановились: «12 из 38» — номер шага, с которого продолжим, и всего шагов. */
+export const runPosition = (r: SavedRun) => ({ n: Math.min(r.i + 1, r.steps.length), of: r.steps.length });
+
+/**
+ * Занятие из сохранённого. restart — «Начать заново»: те же шаги с первого (без добавленных повторов);
+ * счёт и отметки «уже отвечал» (first) остаются — второй проход ответы не засчитывает (srs и счёт меняет только первая попытка).
+ */
+export const restoreSession = (r: SavedRun, restart = false): Session => {
+  const steps = restart ? r.steps.filter((s) => !s.retry) : r.steps;
+  // ответ на последний шаг сохранён, а «Дальше» не нажали — откроем последний шаг снова (повторно он не засчитается)
+  const i = restart ? 0 : Math.min(r.i, steps.length - 1);
+  return {
+    kind: r.kind,
+    steps,
+    i,
+    graded: r.graded,
+    right: r.right,
+    revGraded: r.revGraded,
+    revRight: r.revRight,
+    first: r.first,
+    newIds: r.newIds,
+    written: r.written,
+    t0: r.t0,
+  };
+};
+
+/** Свой «случай» для шага: варианты ответа, пары и плитки — те же при продолжении. Повтор шага — другой. */
+export const stepSeed = (seed: number, step: Pick<Step, "k" | "retry">) => (seed ^ Math.imul(step.k + 1, 0x9e3779b1) ^ (step.retry ? 0x5bd1e995 : 0)) >>> 0;
 
 const NO_RETRY = new Set<Step["t"]>(["write", "speak", "pairs", "section", "intro", "reread"]);
 

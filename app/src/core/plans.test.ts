@@ -6,6 +6,7 @@ import { drillPlan, eveningPlan, eveningWords, MAX_REVIEW, morningPlan, newToday
 import { seeded } from "./rng";
 import { blankState } from "./srs";
 import { deck, state, TODAY } from "./fixtures";
+import { canBuild } from "./text";
 import type { Step } from "./types";
 
 const types = (st: Step[]) => st.map((s) => s.t);
@@ -29,7 +30,9 @@ describe("утро", () => {
     expect(count(st, "pairs")).toBe(2);
     expect(count(st, "listen")).toBe(6);
     expect(count(st, "type")).toBe(12);
-    expect(count(st, "build")).toBe(6);
+    // фразы при знакомстве — на слух; по переводу — позже, на повторении
+    expect(count(st, "build-listen")).toBe(6);
+    expect(count(st, "build")).toBe(0);
     // номера шагов по порядку
     expect(st.map((s) => s.k)).toEqual(st.map((_, i) => i));
   });
@@ -37,7 +40,7 @@ describe("утро", () => {
   it("порядок лестницы внутри блока", () => {
     const st = morningPlan(deck, state({ settings: { ...emptyState().settings, newPerDay: 6 } }), TODAY, { rng: seeded(2) });
     const order = types(st).filter((t, i, a) => t !== a[i - 1]);
-    expect(order).toEqual(["section", "intro", "pick", "pairs", "listen", "type", "build"]);
+    expect(order).toEqual(["section", "intro", "pick", "pairs", "listen", "type", "build-listen"]);
     expect(st.filter((s) => s.t === "type").every((s) => s.t === "type" && s.hint)).toBe(true);
   });
 
@@ -62,11 +65,51 @@ describe("утро", () => {
   it("сборка из банка: только фразы, где все слова уже известны", () => {
     const known = new Set(deck.words.slice(0, 12).map((w) => w.id));
     const st = morningPlan(deck, state(), TODAY, { rng: seeded(5) });
-    const bank = st.filter((s): s is Extract<Step, { t: "build" }> => s.t === "build" && !s.w);
+    const bank = st.filter((s): s is Extract<Step, { t: "build-listen" }> => s.t === "build-listen" && !s.w);
+    expect(bank.length).toBeGreaterThan(0);
     for (const b of bank) {
       const sent = deck.sentences.find((x) => x.en === b.en)!;
       expect(sent.words.every((id) => known.has(id))).toBe(true);
     }
+  });
+
+  it("«Собери на слух» — при первой встрече, «Собери фразу» по переводу — на повторении уровня 2; шагов столько же", () => {
+    const srs: Record<string, ReturnType<typeof blankState>> = {};
+    deck.words.slice(0, 30).forEach((w, i) => (srs[w.id] = { ...blankState(), lvl: i < 10 ? 1 : i < 25 ? 2 : 3, intro: "2026-11-01", due: TODAY }));
+    const st = morningPlan(deck, state({ srs }), TODAY, { rng: seeded(11) });
+    const rev = st.filter((s) => "rev" in s && s.rev);
+    // по одному заданию на слово к повторению — как раньше
+    expect(rev.length).toBe(30);
+    const builds = rev.filter((s): s is Extract<Step, { t: "build" }> => s.t === "build");
+    expect(builds.length).toBeGreaterThan(0);
+    for (const b of builds) {
+      const w = deck.byId[b.w!];
+      expect(srs[w.id].lvl).toBe(2);
+      expect(b).toMatchObject({ en: w.example, ru: w.exampleRu, rev: true });
+      expect(canBuild(w)).toBe(true);
+    }
+    // уровень 1 — только узнать; уровень 2 — узнать или собрать по переводу
+    for (const s of rev) if (srs[(s as { w: string }).w].lvl === 1) expect(["pick", "listen"]).toContain(s.t);
+    // на слух — только новые слова блока, не повторения
+    const ear = st.filter((s): s is Extract<Step, { t: "build-listen" }> => s.t === "build-listen");
+    const blocks = st.filter((s) => s.t === "section" && s.title.startsWith("Новые слова")).length;
+    expect(blocks).toBeGreaterThan(0);
+    expect(ear.length).toBe(3 * blocks);
+    const fresh = new Set(st.filter((s) => s.t === "intro").map((s) => (s as { w: string }).w));
+    for (const b of ear) if (b.w) expect(fresh.has(b.w)).toBe(true);
+  });
+
+  it("на 1000 случаях доля сборки на повторении уровня 2 — около половины", () => {
+    const w = deck.words.find(canBuild)!;
+    const srs = { [w.id]: { ...blankState(), lvl: 2, intro: "2026-11-01", due: TODAY } };
+    const rng = seeded(12);
+    let b = 0;
+    for (let i = 0; i < 1000; i++) {
+      const st = morningPlan(deck, state({ srs, settings: { ...emptyState().settings, newPerDay: 6 } }), TODAY, { rng, extra: false });
+      if (st.some((s) => s.t === "build" && s.rev)) b++;
+    }
+    expect(b / 1000).toBeGreaterThan(0.4);
+    expect(b / 1000).toBeLessThan(0.6);
   });
 
   it("«ещё 6 новых» — только блок новых, без разминки", () => {

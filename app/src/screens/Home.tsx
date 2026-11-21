@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { View } from "../App";
 import { addDays, greeting } from "../core/dates";
-import { hhmm, lessonStatus, untilText, type LessonPart } from "../core/lesson";
+import { hhmm, lessonStatus, resumeLabel, untilText, type LessonPart } from "../core/lesson";
 import { MAX_REVIEW, newToday } from "../core/plans";
 import { dueList, groups, isHard, levelGroup, streak, unseen } from "../core/srs";
 import { plural } from "../core/text";
@@ -44,6 +44,9 @@ export function useNow(): Date {
   return now;
 }
 
+/** Подпись начатой и не законченной части. */
+const RESUME_SUB = "Начата сегодня — продолжишь с того же задания";
+
 export function Home({ deck, state, go, wide = false, name = null }: Props) {
   const clock = useNow();
   const [streakOpen, setStreakOpen] = useState(false);
@@ -64,6 +67,8 @@ export function Home({ deck, state, go, wide = false, name = null }: Props) {
   const part1 = (p: LessonPart) => {
     const sub = p.done ? (
       doneTag(p.done)
+    ) : p.resume ? (
+      RESUME_SUB
     ) : due || np ? (
       <>
         {`${due ? `${Math.min(due, MAX_REVIEW)} на повторение · ` : ""}${np ? `${np} ${plural(np, "новое", "новых", "новых")}` : nu ? "без новых" : "новые слова закончились"} · ~15 мин`}
@@ -80,7 +85,14 @@ export function Home({ deck, state, go, wide = false, name = null }: Props) {
         <div className="ic sun">{p.done ? <Check /> : <b className="pn" aria-hidden="true">1</b>}</div>
         <div className="stx"><h2>Урок {p.n} · часть 1 — учим</h2><div className="mute sm">{sub}</div></div>
         <div className="acts">
-          {p.can ? <button className={`btn wide${p.secondary ? " ghost" : ""}`} onClick={() => go({ name: "session", kind: "morning" })}>Начать часть 1</button> : null}
+          {p.resume ? (
+            <>
+              <button className={`btn wide${p.secondary ? " ghost" : ""}`} onClick={() => go({ name: "session", kind: "morning" })}>{resumeLabel(p.resume)}</button>
+              <button className="btn ghost wide" onClick={() => go({ name: "session", kind: "morning", restart: true })}>Начать заново</button>
+            </>
+          ) : p.can ? (
+            <button className={`btn wide${p.secondary ? " ghost" : ""}`} onClick={() => go({ name: "session", kind: "morning" })}>Начать часть 1</button>
+          ) : null}
           {p.done && nu && !due ? <button className="btn ghost wide" onClick={() => go({ name: "session", kind: "extra" })}>Ещё 6 новых слов</button> : null}
         </div>
       </section>
@@ -89,13 +101,20 @@ export function Home({ deck, state, go, wide = false, name = null }: Props) {
 
   /** Часть 2 — применяем: после паузы от конца части 1; перенесённая со вчера — первой. */
   const part2 = (p: LessonPart) => {
-    const start = (label: string, ghost: boolean) => (
-      <button className={`btn wide${ghost ? " ghost" : ""}`} onClick={() => go({ name: "session", kind: "evening", ...(p.carried ? { day: p.day } : {}) })}>{label}</button>
+    const start = (label: string, ghost: boolean, restart = false) => (
+      <button
+        className={`btn wide${ghost ? " ghost" : ""}`}
+        onClick={() => go({ name: "session", kind: "evening", ...(p.carried ? { day: p.day } : {}), ...(restart ? { restart } : {}) })}
+      >
+        {label}
+      </button>
     );
     const sub = p.done ? (
       doneTag(p.done)
     ) : !p.can ? (
       "Сначала пройди часть 1"
+    ) : p.resume ? (
+      RESUME_SUB
     ) : p.advice === "late" ? (
       "Сегодня уже поздно — часть 2 лучше завтра первым делом"
     ) : p.advice === "wait" && p.after ? (
@@ -116,7 +135,14 @@ export function Home({ deck, state, go, wide = false, name = null }: Props) {
         <div className="ic moon">{p.done ? <Check /> : <b className="pn" aria-hidden="true">2</b>}</div>
         <div className="stx"><h2>Урок {p.n} · часть 2 — применяем</h2><div className="mute sm">{sub}</div></div>
         <div className="acts">
-          {p.can ? (p.advice === "late" ? start("Всё равно сейчас", true) : start("Начать часть 2", p.advice === "wait")) : null}
+          {p.resume ? (
+            <>
+              {start(resumeLabel(p.resume), false)}
+              {start("Начать заново", true, true)}
+            </>
+          ) : p.can ? (
+            p.advice === "late" ? start("Всё равно сейчас", true) : start("Начать часть 2", p.advice === "wait")
+          ) : null}
         </div>
       </section>
     );

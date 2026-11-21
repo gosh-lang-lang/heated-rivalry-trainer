@@ -42,7 +42,17 @@ export type View =
    * day — день урока для части 2, перенесённой со вчера; from — откуда начали (туда «выйти»);
    * для «Пройти все слова» (drill): words — слова, title — заголовок, lesson — страница «Слов», куда вернуться
    */
-  | { name: "session"; kind: SessionKind; day?: string; from?: "home" | "path" | "words"; words?: string[]; title?: string; lesson?: LessonKey }
+  | {
+      name: "session";
+      kind: SessionKind;
+      day?: string;
+      from?: "home" | "path" | "words";
+      words?: string[];
+      title?: string;
+      lesson?: LessonKey;
+      /** «Начать заново» незаконченную часть (без него сохранённая часть продолжается) */
+      restart?: boolean;
+    }
   /** back — куда ведёт кнопка итога (тренировка из «Слов» — обратно к уроку); без него — на главную */
   | { name: "result"; fin: Finished; back?: View };
 
@@ -231,6 +241,7 @@ export default function App({ user, name = null }: { user: string | null; name?:
           day={view.day}
           words={view.words}
           title={view.title}
+          restart={view.restart}
           state={state}
           setState={setState}
           onQuit={() => go(view.from === "words" ? { name: "words", lesson: view.lesson } : { name: view.from ?? "home" })}

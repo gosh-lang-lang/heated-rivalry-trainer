@@ -3,17 +3,23 @@ import type { SetState } from "../App";
 import { picClass } from "../core/deck";
 import { todayKey } from "../core/dates";
 import { drillPlan, eveningPlan, morningPlan } from "../core/plans";
-import { shuffle } from "../core/rng";
+import { seeded, shuffle } from "../core/rng";
 import {
   advance,
   bumpWrong,
+  clearRun,
   finishSession,
   gradeCurrent,
   introduceCurrent,
   isDone,
   markSeen,
   progress,
+  restoreSession,
+  resumable,
+  savable,
+  saveRun,
   startSession,
+  stepSeed,
   studiedIds,
   type Finished,
   type Session,
@@ -22,7 +28,8 @@ import { buildTokens, checkTyped, gapSentence, longestRun, options, speakScore }
 import type { AppState, Deck, SentenceRecord, SessionKind, Step } from "../core/types";
 import { checkerAvailable, checkSentence } from "../lib/checker";
 import { Check, Close, Cross, Mic } from "../lib/icons";
-import { prefetch, say, useDictation } from "../lib/speech";
+import { canPlaySound, prefetch, say, useDictation } from "../lib/speech";
+import { armTone, tone } from "../lib/tone";
 import { useLessonViewport } from "../lib/viewport";
 import { hasWordArt, WordArt } from "../lib/WordArt";
 import { SpeakBtn } from "../ui";
@@ -35,6 +42,8 @@ interface Props {
   /** «Пройти все слова» (drill): слова и заголовок тренировки */
   words?: string[];
   title?: string;
+  /** «Начать заново» незаконченную часть: те же шаги с первого, уже засчитанные ответы второй раз не считаются */
+  restart?: boolean;
   state: AppState;
   setState: SetState;
   onQuit: () => void;
@@ -45,6 +54,8 @@ interface Props {
 interface Api {
   deck: Deck;
   sess: Session;
+  /** зерно занятия: варианты ответа и плитки шага — те же при продолжении (core/session.ts stepSeed) */
+  seed: number;
   /** слова, которые человек уже учит: из них — отвлекающие варианты ответа */
   known: ReadonlySet<string>;
   grade: (ok: boolean, wordId: string | null) => void;
@@ -55,19 +66,52 @@ interface Api {
   addSentence: (rec: SentenceRecord, n: number, graded: boolean) => void;
 }
 
-export function SessionScreen({ deck, kind, day, words, title, state, setState, onQuit, onFinish }: Props) {
-  const [sess, setSess] = useState<Session | null>(() => {
+/** Что шаг говорит сам, как только открылся: слово (знакомство, «Выбери перевод», «Что ты слышишь?») или фразу («Собери на слух»). */
+const openingText = (deck: Deck, step: Step | undefined): string | null =>
+  !step ? null
+  : step.t === "intro" || step.t === "pick" || step.t === "listen" ? deck.byId[step.w]?.en ?? null
+  : step.t === "build-listen" ? step.en
+  : null;
+
+export function SessionScreen({ deck, kind, day, words, title, restart = false, state, setState, onQuit, onFinish }: Props) {
+  // незаконченная часть, начатая сегодня, продолжается (или начинается заново) из сохранённого; иначе — новый план
+  const [init] = useState(() => {
     const t = todayKey();
+    const saved = savable(kind) ? resumable(state, kind, day ?? t, t) : null;
+    if (saved) return { sess: restoreSession(saved, restart) as Session | null, seed: saved.seed, restarted: restart };
     const steps =
       kind === "drill"
         ? drillPlan(deck, state, words ?? [], title ?? "Все слова")
         : kind === "evening"
           ? eveningPlan(deck, state, t, Math.random, day ?? t)
           : morningPlan(deck, state, t, { extra: kind === "extra" });
-    return startSession(kind, steps);
+    return { sess: startSession(kind, steps), seed: Math.floor(Math.random() * 2 ** 31), restarted: false };
   });
+  const [sess, setSess] = useState<Session | null>(init.sess);
+  const seed = init.seed;
   // экран занятия — ровно видимая область: клавиатура не прокручивает страницу (lib/viewport.ts)
   useLessonViewport();
+  // тон ответа будится тем же касанием, что и озвучка
+  useEffect(() => armTone(), []);
+
+  const t = todayKey();
+  /** куда записать итог и «перечитал»: часть 2, перенесённая со вчера, — в день урока */
+  const logDay = kind === "evening" && day ? day : t;
+
+  /**
+   * Новое состояние занятия и прогресса — одним изменением. Части 1 и 2 сохраняются в прогресс (state.run) после
+   * каждого шага: ✕ или закрытое приложение — и на главной «Продолжить». `at` — с какого шага продолжить.
+   */
+  const commit = (s: Session, st: AppState, at?: number) => {
+    setSess(s);
+    const next = saveRun(st, s, { day: logDay, date: t, seed, at });
+    if (next !== state) setState(next);
+  };
+
+  // «Начать заново» — сразу сохраняем: на главной будет уже новое место, даже если выйти с первого шага
+  useEffect(() => {
+    if (init.restarted && sess) commit(sess, state);
+  }, []);
 
   // при входе в шаг: знакомство со словом и озвучка
   useEffect(() => {
@@ -76,13 +120,15 @@ export function SessionScreen({ deck, kind, day, words, title, state, setState, 
     const w0 = "w" in step && step.w ? deck.byId[step.w] : null;
     if (step.t === "intro") {
       const r = introduceCurrent(sess, state, todayKey(), deck.byId[step.w]?.rare);
-      if (r.state !== state) setState(r.state);
-      if (r.sess !== sess) setSess(r.sess);
+      if (r.state !== state || r.sess !== sess) commit(r.sess, r.state);
     }
-    if (step.t === "intro" || step.t === "pick" || step.t === "listen") say(deck.byId[step.w].en);
-    const nx = sess.steps[sess.i + 1];
-    if (nx && "w" in nx && nx.w) prefetch(deck.byId[nx.w].en);
+    // одно звучание на задание: слово или фразу «на слух» — в начале; пример и фразу по переводу — после ответа
+    const open = openingText(deck, step);
+    if (open) say(open);
+    const nx = openingText(deck, sess.steps[sess.i + 1]);
+    if (nx) prefetch(nx);
     if (w0 && (step.t === "intro" || step.t === "type")) prefetch(w0.example);
+    if (step.t === "build") prefetch(step.en);
   }, [sess?.i]);
 
   useEffect(() => {
@@ -91,43 +137,37 @@ export function SessionScreen({ deck, kind, day, words, title, state, setState, 
   if (!sess) return null;
 
   const step = sess.steps[sess.i];
-  const t = todayKey();
-  /** куда записать итог и «перечитал»: часть 2, перенесённая со вчера, — в день урока */
-  const logDay = kind === "evening" && day ? day : t;
+  /** занятие закончено: сохранённой части больше нет (тренировка и «ещё 6 новых» её не трогают) */
+  const finish = (n: Session, st: AppState) => {
+    const fin = finishSession(n, st, logDay);
+    const done = { ...fin, state: savable(kind) ? clearRun(fin.state) : fin.state };
+    setState(done.state);
+    onFinish(done);
+  };
 
   const api: Api = {
     deck,
     sess,
+    seed,
     known: studiedIds(state, sess.steps),
+    // ответ засчитан сразу (srs, счёт) — продолжать с следующего шага
     grade: (ok, wordId) => {
       const r = gradeCurrent(sess, state, ok, wordId, t, wordId ? deck.byId[wordId]?.rare : undefined);
-      setSess(r.sess);
-      if (r.state !== state) setState(r.state);
+      commit(r.sess, r.state, r.sess.i + 1);
     },
-    seen: () => setSess(markSeen(sess)),
+    seen: () => commit(markSeen(sess), state, sess.i + 1),
     next: () => {
       const n = advance(sess);
-      if (isDone(n)) {
-        const fin = finishSession(n, state, logDay);
-        setState(fin.state);
-        onFinish(fin);
-        return;
-      }
-      setSess(n);
+      if (isDone(n)) return finish(n, state);
+      commit(n, state);
       window.scrollTo(0, 0);
     },
     wrongPair: (ids) => setState(bumpWrong(state, ids)),
     reread: () => {
       const n = advance(sess);
       const st = { ...state, days: { ...state.days, [logDay]: { ...(state.days[logDay] ?? {}), reread: true } } };
-      if (isDone(n)) {
-        const fin = finishSession(n, st, logDay);
-        setState(fin.state);
-        onFinish(fin);
-        return;
-      }
-      setState(st);
-      setSess(n);
+      if (isDone(n)) return finish(n, st);
+      commit(n, st);
     },
     addSentence: (rec, n, graded) => {
       prefetch(rec.corrected || rec.text); // его скажут вслух через пару шагов
@@ -135,8 +175,7 @@ export function SessionScreen({ deck, kind, day, words, title, state, setState, 
       let st: AppState = { ...state, sent: [...state.sent, rec] };
       if (graded) ({ sess: s, state: st } = gradeCurrent(s, st, !!rec.ok, null, t));
       else s = markSeen(s);
-      setSess(s);
-      setState(st);
+      commit(s, st, s.i + 1);
     },
   };
 
@@ -154,6 +193,9 @@ export function SessionScreen({ deck, kind, day, words, title, state, setState, 
 
 /* ---------------- шаг ---------------- */
 
+/** Озвучка после ответа начинается, когда отзвучал тон (lib/tone.ts TONE_SEC). */
+const AFTER_TONE_MS = 280;
+
 interface Feedback {
   ok: boolean;
   title: string;
@@ -164,11 +206,16 @@ function StepView({ step, api }: { step: Step; api: Api }) {
   const { deck } = api;
   const w = "w" in step && step.w ? deck.byId[step.w] : null;
 
-  // данные задания создаются один раз на шаг (компонент пересоздаётся по key)
-  const [opts] = useState(() => (w && (step.t === "pick" || step.t === "listen") ? options(w, deck.words, Math.random, api.known) : []));
-  const [pairs] = useState(() => (step.t === "pairs" ? { L: shuffle(step.ws), R: shuffle(step.ws) } : null));
-  const [toks] = useState(() => (step.t === "build" ? buildTokens(step.en) : []));
-  const [ord] = useState(() => shuffle(toks.map((_, i) => i)));
+  const isBuild = step.t === "build" || step.t === "build-listen";
+  // данные задания создаются один раз на шаг (компонент пересоздаётся по key) — из зерна шага:
+  // при продолжении части те же варианты, пары и плитки. У каждого свой генератор: инициализаторы могут вызываться дважды
+  const rng = (n: number) => seeded(stepSeed(api.seed, step) + n);
+  const [opts] = useState(() => (w && (step.t === "pick" || step.t === "listen") ? options(w, deck.words, rng(1), api.known) : []));
+  const [pairs] = useState(() => (step.t === "pairs" ? { L: shuffle(step.ws, rng(2)), R: shuffle(step.ws, rng(3)) } : null));
+  const [toks] = useState(() => (isBuild ? buildTokens(step.en) : []));
+  const [ord] = useState(() => shuffle(toks.map((_, i) => i), rng(4)));
+  /** «Собери на слух» без звука (нечем играть или человек не может слушать) — показываем перевод, как в «Собери фразу» */
+  const [showRu, setShowRu] = useState(() => !canPlaySound());
 
   const [sel, setSel] = useState<string | null>(null);
   const [typed, setTyped] = useState("");
@@ -199,34 +246,48 @@ function StepView({ step, api }: { step: Step; api: Api }) {
     const el = document.activeElement;
     if (el instanceof HTMLElement && el.matches("input, textarea")) el.blur();
   };
+  /** Звук после ответа: тон сразу, озвучка (если есть) — когда тон отзвучит, и только пока открыт этот шаг. */
+  const answerSound = (ok: boolean, text?: string) => {
+    tone(ok);
+    if (text) setTimeout(() => alive.current && say(text), AFTER_TONE_MS);
+  };
   const check = async () => {
     if (checked || busy) return;
     dropKeyboard();
     if ((step.t === "pick" || step.t === "listen") && w) {
+      // слово уже прозвучало в начале задания — после ответа только тон
       const ok = sel === w.id;
       api.grade(ok, w.id);
       setFb({ ok, title: ok ? "Отлично!" : "Правильный ответ:", body: `${w.en} — ${w.ru}` });
-      say(w.en);
+      answerSound(ok);
     } else if (step.t === "type" && w) {
+      // до ответа молчим (иначе подсказка), после — пример целиком
       const r = checkTyped(typed, w.blank);
       api.grade(r.ok, w.id);
       setFb({ ok: r.ok, title: r.ok ? (r.typo ? "Почти — опечатка" : "Верно!") : "Правильно так:", body: <span className="c">{w.example}</span> });
-      say(w.example);
-    } else if (step.t === "build") {
+      answerSound(r.ok, w.example);
+    } else if (step.t === "build" || step.t === "build-listen") {
       const got = picked.map((k) => toks[k]).join(" ");
       const ok = got === toks.join(" ");
       api.grade(ok, step.w ?? null);
       setFb({
         ok,
         title: ok ? "Верно!" : "Правильно так:",
-        body: <><span className="c">{step.en}</span>{!ok && <><br /><span className="c sm">Твой вариант: {got}</span></>}</>,
+        body: (
+          <>
+            <span className="c">{step.en}</span>
+            {!ok && <><br /><span className="c sm">Твой вариант: {got}</span></>}
+          </>
+        ),
       });
-      say(step.en);
+      // по переводу фраза ещё не звучала — звучит после ответа; на слух она уже прозвучала в начале
+      answerSound(ok, step.t === "build" ? step.en : undefined);
     } else if (step.t === "speak") {
       dict.stop();
       const r = speakScore(speakText().en, typed);
       const p = Math.round(r.ratio * 100);
       api.grade(r.ok, null);
+      answerSound(r.ok);
       setFb({
         ok: r.ok,
         title: r.ok ? `Отлично! ${p}% слов` : `${p}% слов — попробуй ещё завтра`,
@@ -243,10 +304,12 @@ function StepView({ step, api }: { step: Step; api: Api }) {
       if (!v) {
         api.addSentence({ ...rec, pending: true }, step.n, false);
         setFb({ ok: true, title: "Сохранил", body: "Автопроверки пока нет — предложение ждёт в «Статистике»." });
+        answerSound(true);
         return;
       }
       const full = { ...rec, ...v };
       api.addSentence(full, step.n, true);
+      answerSound(v.ok);
       setFb({
         ok: v.ok,
         title: v.ok ? "Отлично сказано!" : "Почти — вот как лучше:",
@@ -261,7 +324,7 @@ function StepView({ step, api }: { step: Step; api: Api }) {
     api.grade(false, w.id);
     setTyped("");
     setFb({ ok: false, title: "Правильно так:", body: <span className="c">{w.example}</span> });
-    say(w.example);
+    answerSound(false, w.example);
   };
 
   const clickPair = (side: "L" | "R", id: string) => {
@@ -277,6 +340,7 @@ function StepView({ step, api }: { step: Step; api: Api }) {
         const ok = bad === 0;
         api.grade(ok, null);
         setFb({ ok: true, title: ok ? "Все пары верно!" : "Готово", body: ok ? undefined : `Ошибок по ходу: ${bad}` });
+        tone(ok); // слово последней пары уже звучит — тон без задержки озвучки
       }
     } else {
       setBad((b) => b + 1);
@@ -287,7 +351,7 @@ function StepView({ step, api }: { step: Step; api: Api }) {
   };
 
   const canCheck =
-    step.t === "pick" || step.t === "listen" ? !!sel : step.t === "build" ? picked.length > 0 : !!typed.trim();
+    step.t === "pick" || step.t === "listen" ? !!sel : isBuild ? picked.length > 0 : !!typed.trim();
 
   /* ----- клавиатура: Enter — проверить/дальше, 1–4 — вариант ----- */
   const keyRef = useRef<(e: KeyboardEvent) => void>(() => {});
@@ -422,10 +486,25 @@ function StepView({ step, api }: { step: Step; api: Api }) {
       break;
     }
     case "build":
+    case "build-listen":
       body = (
         <>
-          <div className="lbl">Собери фразу</div>
-          <div className="word"><div className="sent" style={{ fontWeight: 800 }}>{step.ru}</div></div>
+          {step.t === "build" ? (
+            <>
+              <div className="lbl">{step.rev ? "Повторение · " : ""}Собери фразу</div>
+              <div className="word"><div className="sent" style={{ fontWeight: 800 }}>{step.ru}</div></div>
+            </>
+          ) : (
+            <>
+              <div className="lbl">Собери на слух</div>
+              {/* фраза звучит сама в начале; кнопка — послушать ещё раз, сколько угодно. Перевод — только после ответа
+                  (или сразу, если звука нет: «Не слышно — показать перевод») */}
+              <div className="ear">
+                <SpeakBtn text={step.en} size="big" />
+                {(showRu || checked) && <div className="sent ear-ru">{step.ru}</div>}
+              </div>
+            </>
+          )}
           <div className="ans">
             {picked.map((k, n) => (
               <button key={n} className="wt" disabled={checked} onClick={() => setPicked((p) => p.filter((_, j) => j !== n))}>{toks[k]}</button>
@@ -500,7 +579,7 @@ function StepView({ step, api }: { step: Step; api: Api }) {
       ? { t: "Правильный ответ:", b: `${w.en} — ${w.ru}` }
       : step.t === "type" && w
         ? { t: "Почти — опечатка", b: w.example }
-        : step.t === "build"
+        : isBuild
           ? { t: "Правильно так:", b: `${step.en}\nТвой вариант: ${step.en}` }
           : step.t === "pairs"
             ? { t: "Все пары верно!", b: "Ошибок по ходу: 0" }
@@ -516,6 +595,7 @@ function StepView({ step, api }: { step: Step; api: Api }) {
     : step.t === "listen" ? <span className="mute sm">Нажми на динамик, чтобы послушать ещё раз</span>
     : step.t === "pick" ? <span className="mute sm">Нажми на динамик, чтобы услышать слово</span>
     : step.t === "build" ? <span className="mute sm">Нажми на слово в ответе, чтобы убрать его</span>
+    : step.t === "build-listen" ? (showRu ? <span className="mute sm">Собери фразу по переводу</span> : <button className="link" onClick={() => setShowRu(true)}>Не слышно — показать перевод</button>)
     : null;
   let foot: ReactNode;
   if (step.t === "section" || step.t === "intro") {
@@ -560,7 +640,7 @@ function StepView({ step, api }: { step: Step; api: Api }) {
 
   return (
     <>
-      <main className={`stage lesson st-${step.t}`}>{body}</main>
+      <main className={`stage lesson st-${step.t}${step.t === "build-listen" ? " st-build" : ""}`}>{body}</main>
       {foot}
     </>
   );

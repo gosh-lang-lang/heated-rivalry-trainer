@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { changeSetting, emptyState, mergeStates, parseState, resetProgress, sameState } from "./state";
 import { state } from "./fixtures";
+import type { SavedRun } from "./types";
 
 const prototypeExport = {
   upd: 1763650000000,
@@ -199,5 +200,68 @@ describe("сброс прогресса (reset): кэш устройства д�
   it("parseState: метка сброса читается, старые данные без неё — 0", () => {
     expect(parseState({ srs: {}, reset: 77 }).reset).toBe(77);
     expect(parseState({ srs: {} }).reset).toBe(0);
+  });
+});
+
+describe("незаконченная часть урока (run) в прогрессе", () => {
+  const run = (i: number, date = "2026-11-20"): SavedRun => ({
+    kind: "morning",
+    day: date,
+    date,
+    seed: 42,
+    steps: [
+      { k: 0, t: "section", pic: "🏒", title: "Новые слова", sub: "" },
+      { k: 1, t: "pick", w: "praise" },
+      { k: 2, t: "build-listen", en: "I praise you.", ru: "Я хвалю тебя." },
+    ],
+    i,
+    graded: 1,
+    right: 1,
+    revGraded: 0,
+    revRight: 0,
+    first: [1],
+    newIds: [],
+    written: {},
+    t0: 1,
+  });
+
+  it("слияние: побеждает копия, где часть менялась позже — даже если её upd старше; порядок не важен", () => {
+    const phone = state({ upd: 100, run: run(2), runAt: 3000 });
+    const laptop = state({ upd: 900, run: run(1), runAt: 2000 });
+    const m = mergeStates(phone, laptop);
+    expect(m.run!.i).toBe(2);
+    expect(m.runAt).toBe(3000);
+    expect(mergeStates(laptop, phone)).toEqual(m);
+    expect(mergeStates(m, laptop)).toEqual(m); // повторно — то же
+  });
+
+  it("слияние: часть закончена (null с более поздней меткой) — старое сохранённое не возвращается", () => {
+    const done = state({ upd: 100, run: null, runAt: 4000 });
+    const stale = state({ upd: 900, run: run(2), runAt: 3000 });
+    expect(mergeStates(done, stale).run).toBeNull();
+    expect(mergeStates(stale, done).run).toBeNull();
+    // а копия без незаконченной части и без метки (старая версия приложения) сохранённое не стирает
+    expect(mergeStates(state({ upd: 999 }), stale).run).toEqual(stale.run);
+  });
+
+  it("сброс прогресса убирает незаконченную часть; кэш до сброса её не возвращает", () => {
+    const before = state({ upd: 100, run: run(2), runAt: 3000 });
+    const server = resetProgress(before, 5000);
+    expect(server.run).toBeNull();
+    expect(mergeStates(before, server).run).toBeNull();
+    expect(mergeStates(server, before).run).toBeNull();
+  });
+
+  it("parseState: часть читается; старые данные без неё — null и 0; обрезанная или с незнакомым шагом — null", () => {
+    const s = parseState(JSON.stringify(state({ run: run(2), runAt: 3000 })));
+    expect(s.run).toEqual(run(2));
+    expect(s.runAt).toBe(3000);
+    expect(parseState({ srs: {} })).toMatchObject({ run: null, runAt: 0 });
+    expect(parseState({ srs: {}, run: { ...run(1), steps: [] } }).run).toBeNull();
+    expect(parseState({ srs: {}, run: { ...run(1), kind: "drill" } }).run).toBeNull();
+    expect(parseState({ srs: {}, run: { ...run(1), date: "вчера" } }).run).toBeNull();
+    expect(parseState({ srs: {}, run: { ...run(1), steps: [{ k: 0, t: "say", w: "praise" }] } }).run).toBeNull();
+    // место дальше конца — не дальше конца (restoreSession откроет последний шаг)
+    expect(parseState({ srs: {}, run: { ...run(1), i: 99 } }).run!.i).toBe(3);
   });
 });

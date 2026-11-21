@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
 import type { View } from "../App";
 import { SEASON, seasonView, type LessonCard, type SeasonView } from "../core/cards";
-import { hhmm, lessonStatus, type LessonPart, type LessonStatus } from "../core/lesson";
+import { hhmm, lessonStatus, resumeLabel, type LessonPart, type LessonStatus } from "../core/lesson";
 import { MAX_REVIEW, newToday } from "../core/plans";
 import { streak, unseen } from "../core/srs";
 import { plural } from "../core/text";
@@ -50,6 +50,8 @@ interface Current {
   sub: string;
   parts: { part: 1 | 2; done: boolean; line: string }[];
   start: { label: string; ghost: boolean; view: View } | null;
+  /** главная часть начата и не закончена — «Начать заново» под «Продолжить» */
+  again: { label: string; view: View } | null;
   /** при переносе: часть 1 нового урока — второстепенно */
   extra: { label: string; view: View } | null;
 }
@@ -62,6 +64,7 @@ const currentLesson = (ls: LessonStatus, sv: SeasonView, state: AppState, deck: 
       sub: "Сегодняшний урок пройден — карточка уже в коллекции",
       parts: [],
       start: null,
+      again: null,
       extra: null,
     };
   const nt = newToday(deck, state, ls.today);
@@ -71,15 +74,17 @@ const currentLesson = (ls: LessonStatus, sv: SeasonView, state: AppState, deck: 
   let p1: LessonPart, p2: LessonPart;
   if (carry) {
     p2 = ls.cards[0];
-    p1 = { ...ls.cards[1], n: p2.n, day: carry, done: state.days[carry]?.morning ?? null, can: false };
+    p1 = { ...ls.cards[1], n: p2.n, day: carry, done: state.days[carry]?.morning ?? null, can: false, resume: null };
   } else if (ls.carry) {
     p1 = ls.cards[1];
-    p2 = { ...ls.cards[0], n: p1.n, day: ls.today, done: null, can: false, advice: null, after: null, carried: false };
+    p2 = { ...ls.cards[0], n: p1.n, day: ls.today, done: null, can: false, advice: null, after: null, carried: false, resume: null };
   } else [p1, p2] = ls.cards;
 
   const line1 = p1.done
     ? doneLine(p1.done)
-    : p1.can
+    : p1.resume
+      ? "Начата сегодня — продолжишь с того же задания"
+      : p1.can
       ? `${nt.due ? `${Math.min(nt.due, MAX_REVIEW)} на повторение · ` : ""}${nt.n ? `${nt.n} ${plural(nt.n, "новое", "новых", "новых")}` : "без новых"} · ~15 мин`
       : nu
         ? "На сегодня повторений нет"
@@ -88,7 +93,9 @@ const currentLesson = (ls: LessonStatus, sv: SeasonView, state: AppState, deck: 
     ? doneLine(p2.done)
     : !p2.can
       ? "Сначала пройди часть 1"
-      : p2.advice === "late"
+      : p2.resume
+        ? "Начата сегодня — продолжишь с того же задания"
+        : p2.advice === "late"
         ? "Сегодня уже поздно — лучше завтра первым делом"
         : p2.advice === "wait" && p2.after
           ? `Лучше после ${hhmm(p2.after)} · можно и сейчас`
@@ -98,14 +105,19 @@ const currentLesson = (ls: LessonStatus, sv: SeasonView, state: AppState, deck: 
 
   const newN = p1.done ? p1.done.newN : nt.n;
   const evening: View = { name: "session", kind: "evening", from: "path", ...(p2.carried ? { day: p2.day } : {}) };
-  const start =
-    ls.focus === 1 && !carry
-      ? { label: "Начать часть 1", ghost: false, view: { name: "session", kind: "morning", from: "path" } as View }
-      : p2.can && p2.advice !== "late"
-        ? { label: "Начать часть 2", ghost: false, view: evening }
-        : p2.can
-          ? { label: "Всё равно сейчас", ghost: true, view: evening }
-          : null;
+  const morning: View = { name: "session", kind: "morning", from: "path" };
+  const main = ls.focus === 1 && !carry ? p1 : p2.can ? p2 : null;
+  const view = main === p1 ? morning : evening;
+  const start = !main
+    ? null
+    : main.resume
+      ? { label: resumeLabel(main.resume), ghost: false, view }
+      : main === p1
+        ? { label: "Начать часть 1", ghost: false, view }
+        : p2.advice !== "late"
+          ? { label: "Начать часть 2", ghost: false, view }
+          : { label: "Всё равно сейчас", ghost: true, view };
+  const again = main?.resume ? { label: "Начать заново", view: { ...view, restart: true } as View } : null;
   const next1 = ls.cards[1];
   return {
     title: `Урок ${p2.n} · ${carry ? "часть 2 осталась" : "сегодня"}`,
@@ -115,7 +127,8 @@ const currentLesson = (ls: LessonStatus, sv: SeasonView, state: AppState, deck: 
       { part: 2, done: !!p2.done, line: line2 },
     ],
     start,
-    extra: carry && next1.can ? { label: `Урок ${next1.n} · начать часть 1`, view: { name: "session", kind: "morning", from: "path" } } : null,
+    again,
+    extra: carry && next1.can ? { label: `Урок ${next1.n} · ${next1.resume ? "продолжить" : "начать"} часть 1`, view: morning } : null,
   };
 };
 
@@ -139,6 +152,7 @@ function CurrentBody({ cur, go, head = "pop" }: { cur: Current; go: (v: View) =>
         </ol>
       )}
       {cur.start && <button className={`btn wide${cur.start.ghost ? " ghost" : ""}`} onClick={() => go(cur.start!.view)}>{cur.start.label}</button>}
+      {cur.again && <button className="btn ghost wide lp-extra" onClick={() => go(cur.again!.view)}>{cur.again.label}</button>}
       {cur.extra && <button className="btn ghost wide lp-extra" onClick={() => go(cur.extra!.view)}>{cur.extra.label}</button>}
     </>
   );

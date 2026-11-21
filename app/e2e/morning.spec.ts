@@ -106,7 +106,7 @@ test.describe("часть 1 урока — учим", () => {
     expect(DECK.words.slice(12, 18).every((w) => st.srs[w.id]?.intro === TODAY)).toBe(true);
   });
 
-  test("выход посреди занятия сохраняет уже пройденное", async ({ page }) => {
+  test("выход посреди занятия сохраняет уже пройденное — и место, откуда продолжить", async ({ page }) => {
     await setup(page, { state: state({ settings: { newPerDay: 6 } }) });
     await openHome(page);
     await page.getByRole("button", { name: "Начать часть 1" }).click();
@@ -114,7 +114,9 @@ test.describe("часть 1 урока — учим", () => {
     await page.locator("#next").click();
     await page.locator("#next").click();
     await page.getByRole("button", { name: "Выйти" }).click();
-    await expect(page.getByRole("button", { name: "Начать часть 1" })).toBeVisible();
+    // «Поехали» → слово 1 → слово 2 → на экране шаг 4 (слово 3): с него и продолжим (e2e/resume.spec.ts)
+    await expect(page.getByRole("button", { name: /^Продолжить · 4 из \d+$/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Начать часть 1" })).toHaveCount(0);
     const st = await readState(page);
     // показанное слово считается знакомым: Поехали → слово 1 → слово 2 → слово 3 на экране
     expect(Object.values(st.srs).filter((s) => s.intro === TODAY)).toHaveLength(3);

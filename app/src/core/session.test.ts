@@ -1,5 +1,20 @@
 import { describe, expect, it } from "vitest";
-import { advance, bumpWrong, finishSession, gradeCurrent, introduceCurrent, markSeen, startSession, studiedIds } from "./session";
+import {
+  advance,
+  bumpWrong,
+  clearRun,
+  finishSession,
+  gradeCurrent,
+  introduceCurrent,
+  markSeen,
+  restoreSession,
+  resumable,
+  runPosition,
+  saveRun,
+  startSession,
+  stepSeed,
+  studiedIds,
+} from "./session";
 import { blankState } from "./srs";
 import { state, TODAY } from "./fixtures";
 import type { Step } from "./types";
@@ -143,5 +158,107 @@ describe("studiedIds", () => {
       { k: 2, t: "pairs", ws: ["sacred", "mix"] },
     ]);
     expect([...ids].sort()).toEqual(["mix", "novel", "praise", "sacred"]);
+  });
+});
+
+describe("незаконченная часть урока: сохранить, продолжить, начать заново", () => {
+  const plan: Step[] = [
+    { k: 0, t: "section", pic: "🏒", title: "Новые слова", sub: "" },
+    { k: 1, t: "intro", w: "praise" },
+    { k: 2, t: "pick", w: "praise" },
+    { k: 3, t: "build-listen", en: "I praise my team.", ru: "Я хвалю свою команду.", w: "praise" },
+    { k: 4, t: "type", w: "praise", hint: true },
+  ];
+  const o = { day: TODAY, date: TODAY, seed: 777 };
+  /** Пройти: «Поехали», знакомство, ответить на «Выбери перевод» (ok) — и выйти, не нажав «Дальше». */
+  const partway = (ok = true) => {
+    let s = advance(startSession("morning", plan, 1000)!);
+    let st = state();
+    ({ sess: s, state: st } = introduceCurrent(s, st, TODAY));
+    s = advance(s);
+    ({ sess: s, state: st } = gradeCurrent(s, st, ok, "praise", TODAY));
+    return { s, st: saveRun(st, s, { ...o, at: s.i + 1 }, 5000) };
+  };
+
+  it("сохраняется всё для продолжения: шаги, место, счёт, засчитанные шаги, зерно; метка растёт", () => {
+    const { st } = partway();
+    expect(st.run).toMatchObject({ kind: "morning", day: TODAY, date: TODAY, seed: 777, i: 3, graded: 1, right: 1, first: [2], newIds: ["praise"], t0: 1000 });
+    expect(st.run!.steps).toHaveLength(5);
+    expect(st.runAt).toBe(5000);
+    // часы ушли назад — метка всё равно растёт
+    expect(saveRun(st, restoreSession(st.run!), o, 10).runAt).toBe(5001);
+  });
+
+  it("продолжить — с того же задания, счёт и прогресс не теряются", () => {
+    const { st } = partway();
+    const r = resumable(st, "morning", TODAY, TODAY)!;
+    expect(runPosition(r)).toEqual({ n: 4, of: 5 });
+    const s = restoreSession(r);
+    expect(s.steps[s.i]).toMatchObject({ t: "build-listen" });
+    expect([s.graded, s.right, s.first, s.newIds, s.t0]).toEqual([1, 1, [2], ["praise"], 1000]);
+  });
+
+  it("ответ на последний шаг сохранён, «Дальше» не нажат — откроется последний шаг (не пустое занятие)", () => {
+    const st = saveRun(state(), { ...startSession("morning", plan, 0)!, i: 4, first: [4] }, { ...o, at: 5 });
+    const s = restoreSession(resumable(st, "morning", TODAY, TODAY)!);
+    expect(s.i).toBe(4);
+  });
+
+  it("«Начать заново»: те же шаги с первого, без повторов после ошибок; ответы второй раз не засчитываются", () => {
+    const { st } = partway(false); // ошибка — повтор «Выбери перевод» добавлен в конец
+    expect(st.run!.steps).toHaveLength(6);
+    const srsBefore = st.srs.praise;
+    let s = restoreSession(resumable(st, "morning", TODAY, TODAY)!, true);
+    expect(s.i).toBe(0);
+    expect(s.steps).toHaveLength(5);
+    expect(s.steps.some((x) => x.retry)).toBe(false);
+    // заново: знакомство и тот же «Выбери перевод», теперь верно
+    let st2 = st;
+    s = advance(s);
+    ({ sess: s, state: st2 } = introduceCurrent(s, st2, TODAY));
+    s = advance(s);
+    ({ sess: s, state: st2 } = gradeCurrent(s, st2, true, "praise", TODAY));
+    expect(st2.srs.praise).toEqual(srsBefore); // ни уровень, ни счётчики ответов не изменились
+    expect([s.graded, s.right]).toEqual([1, 0]); // счёт — по первой попытке до «заново»
+    expect(s.newIds).toEqual(["praise"]);
+    // ошибка при втором проходе снова вернёт шаг в конец — но не засчитается
+    const w = gradeCurrent(s, st2, false, "praise", TODAY);
+    expect(w.state.srs.praise).toEqual(srsBefore);
+  });
+
+  it("устаревание: начатая вчера часть не продолжается; другой вид, день урока или уже пройдена — тоже нет", () => {
+    const { st } = partway();
+    expect(resumable(st, "morning", TODAY, TODAY)).not.toBeNull();
+    expect(resumable(st, "morning", "2026-11-21", "2026-11-21")).toBeNull(); // новый день — заново
+    expect(resumable({ ...st, run: { ...st.run!, date: "2026-11-19" } }, "morning", TODAY, TODAY)).toBeNull();
+    expect(resumable(st, "evening", TODAY, TODAY)).toBeNull();
+    expect(resumable(st, "morning", "2026-11-19", TODAY)).toBeNull();
+    const done = { ...st, days: { [TODAY]: { morning: { score: 1, total: 1, mins: 1, newN: 1, at: "" } } } };
+    expect(resumable(done, "morning", TODAY, TODAY)).toBeNull();
+  });
+
+  it("часть 2, перенесённая со вчера: день урока — вчера, начата сегодня — продолжается сегодня", () => {
+    const ev = startSession("evening", [{ k: 0, t: "type", w: "praise", hint: false, eve: true }], 0)!;
+    const st = saveRun(state(), ev, { day: "2026-11-19", date: TODAY, seed: 1 });
+    expect(resumable(st, "evening", "2026-11-19", TODAY)).not.toBeNull();
+    expect(resumable(st, "evening", TODAY, TODAY)).toBeNull();
+  });
+
+  it("тренировка и «ещё 6 новых» не сохраняются; конец занятия убирает сохранённое", () => {
+    const st = state();
+    expect(saveRun(st, startSession("drill", plan, 0)!, o)).toBe(st);
+    expect(saveRun(st, startSession("extra", plan, 0)!, o)).toBe(st);
+    const { st: saved } = partway();
+    const cleared = clearRun(saved, 9000);
+    expect(cleared.run).toBeNull();
+    expect(cleared.runAt).toBe(9000);
+    expect(clearRun(cleared)).toBe(cleared);
+  });
+
+  it("зерно шага: то же для того же шага, другое — для другого шага и для повтора", () => {
+    expect(stepSeed(5, { k: 3 })).toBe(stepSeed(5, { k: 3 }));
+    expect(stepSeed(5, { k: 3 })).not.toBe(stepSeed(5, { k: 4 }));
+    expect(stepSeed(5, { k: 3 })).not.toBe(stepSeed(5, { k: 3, retry: true }));
+    expect(stepSeed(5, { k: 3 })).not.toBe(stepSeed(6, { k: 3 }));
   });
 });

@@ -79,7 +79,9 @@ export const newToday = (deck: Deck, state: AppState, today: string): NewToday =
 
 /**
  * Лестница для блока новых слов:
- * intro ×N → pick ×N → pairs → listen ×⌈N/2⌉ → type с подсказкой ×N → build ×3.
+ * intro ×N → pick ×N → pairs → listen ×⌈N/2⌉ → type с подсказкой ×N → build-listen ×3.
+ * Фразы при первой встрече собирают на слух (перевод — после ответа): звук и порядок слов запоминаются лучше.
+ * Собрать по переводу (вспомнить без звука) — позже, на повторении (reviewStep).
  */
 export const blockSteps = (block: Word[], known: Word[], deck: Deck, rng: Rng): Draft[] => {
   const st: Draft[] = [];
@@ -98,20 +100,27 @@ export const blockSteps = (block: Word[], known: Word[], deck: Deck, rng: Rng): 
     deck.sentences.filter((s) => s.words.every((id) => ok.has(id)) && s.words.some((id) => inBlock.has(id))),
     rng,
   ).slice(0, 2);
-  bank.forEach((s) => st.push({ t: "build", en: s.en, ru: s.ru }));
+  bank.forEach((s) => st.push({ t: "build-listen", en: s.en, ru: s.ru }));
   shuffle(block.filter(canBuild), rng)
     .slice(0, 3 - bank.length)
-    .forEach((w) => st.push({ t: "build", en: w.example, ru: w.exampleRu, w: w.id }));
+    .forEach((w) => st.push({ t: "build-listen", en: w.example, ru: w.exampleRu, w: w.id }));
   return st;
 };
 
+/** На уровне 2 такая доля слов (с подходящим примером) — «Собери фразу» по переводу, остальные — узнать. */
+export const REVIEW_BUILD_SHARE = 0.5;
+
 /**
  * Повторение: чем выше уровень, тем активнее задание.
- * 1–2 — узнать (выбор перевода или на слух), 3 — вписать в пропуск с подсказкой, 4+ — без подсказки.
+ * 1 — узнать (выбор перевода или на слух); 2 — узнать или собрать пример по переводу (вспомнить порядок слов без звука —
+ * следующая ступень после сборки на слух при знакомстве); 3 — вписать в пропуск с подсказкой, 4+ — без подсказки.
  * Своё предложение и речь для слов уровня 5+ — в части 2 (writeGroups).
  */
-const reviewStep = (w: Word, l: number, rng: Rng): Draft =>
-  l >= 3 ? { t: "type", w: w.id, rev: true, hint: l < 4 } : { t: rng() < 0.5 ? "pick" : "listen", w: w.id, rev: true };
+const reviewStep = (w: Word, l: number, rng: Rng): Draft => {
+  if (l >= 3) return { t: "type", w: w.id, rev: true, hint: l < 4 };
+  if (l === 2 && canBuild(w) && rng() < REVIEW_BUILD_SHARE) return { t: "build", en: w.example, ru: w.exampleRu, w: w.id, rev: true };
+  return { t: rng() < 0.5 ? "pick" : "listen", w: w.id, rev: true };
+};
 
 export interface MorningOptions {
   /** «Ещё 6 новых» — только блок новых слов, без повторения */

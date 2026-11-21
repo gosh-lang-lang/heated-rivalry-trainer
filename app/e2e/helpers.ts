@@ -242,6 +242,40 @@ export const iosSound = (page: Page) =>
       };
   });
 
+/** Тоны ответа (lib/tone.ts): Web Audio подменён записью — частота первой ноты каждого тона. Вызывать до page.goto. */
+export const recordTones = (page: Page) =>
+  page.addInitScript(() => {
+    const tones: number[] = [];
+    (window as unknown as { __tones: number[] }).__tones = tones;
+    const param = (onFirst?: (v: number) => void) => {
+      let first = true;
+      const set = (v: number) => {
+        if (first && onFirst) onFirst(v);
+        first = false;
+      };
+      return { setValueAtTime: set, linearRampToValueAtTime() {}, exponentialRampToValueAtTime() {}, value: 0 };
+    };
+    class FakeContext {
+      state = "running";
+      currentTime = 0;
+      destination = {};
+      resume() {
+        return Promise.resolve();
+      }
+      createOscillator() {
+        return { type: "sine", frequency: param((v) => tones.push(v)), connect: (n: unknown) => n, start() {}, stop() {} };
+      }
+      createGain() {
+        return { gain: param(), connect: (n: unknown) => n };
+      }
+    }
+    Object.defineProperty(window, "AudioContext", { value: FakeContext, configurable: true });
+  });
+/** Частоты тонов: 784 — «верно», 233 — «неверно» (lib/tone.ts). */
+export const TONE_OK = 784,
+  TONE_BAD = 233;
+export const tones = (page: Page) => page.evaluate(() => (window as unknown as { __tones: number[] }).__tones);
+
 export const sound = (page: Page) => page.evaluate(() => (window as unknown as { __sound: Sound }).__sound);
 
 export const ttsRequest = (r: Request) => r.url().endsWith("/api/tts") && r.method() === "POST";
@@ -302,6 +336,8 @@ export interface PlayOptions {
   sentence?: string;
   /** защита от бесконечного цикла */
   maxSteps?: number;
+  /** остановиться на первом задании с таким заголовком (.lbl), не отвечая на него */
+  until?: string;
 }
 
 export interface PlayReport {
@@ -321,6 +357,7 @@ export const playSession = async (page: Page, o: PlayOptions = {}): Promise<Play
     const lbl = ((await page.locator(".lbl").first().textContent({ timeout: 300 }).catch(() => null)) ?? "").trim();
     const sect = lbl ? "" : ((await page.locator(".sect h2").first().textContent({ timeout: 300 }).catch(() => null)) ?? "").trim();
     const kind = lbl || sect;
+    if (o.until && lbl === o.until) return report;
     report.steps.push(kind);
     const wrongNow = () => mistakes > 0 && (mistakes--, report.wrong.push(kind), true);
 
@@ -358,9 +395,15 @@ export const playSession = async (page: Page, o: PlayOptions = {}): Promise<Play
       }
       await next.click();
       continue;
-    } else if (lbl === "Собери фразу") {
-      const ru = (await page.locator(".sent").first().textContent())!.trim();
-      const en = DECK.sentences.find((s) => s.ru === ru)?.en ?? DECK.words.find((w) => w.exampleRu === ru)!.example;
+    } else if (lbl.endsWith("Собери фразу") || lbl === "Собери на слух") {
+      // по переводу — фраза по русскому тексту; на слух — то, что озвучивает кнопка
+      const en =
+        lbl === "Собери на слух"
+          ? (await page.locator(".ear .spk").getAttribute("data-say"))!
+          : await (async () => {
+              const ru = (await page.locator(".sent").first().textContent())!.trim();
+              return DECK.sentences.find((s) => s.ru === ru)?.en ?? DECK.words.find((w) => w.exampleRu === ru)!.example;
+            })();
       let toks = en.replace(/[.!?]$/, "").split(" ");
       if (wrongNow()) toks = [...toks].reverse();
       for (const t of toks) await page.locator(".pool .wt:not(.used)").getByText(t, { exact: true }).first().click();

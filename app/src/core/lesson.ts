@@ -1,5 +1,6 @@
 import { addDays, todayKey } from "./dates";
 import { eveningWords, newToday } from "./plans";
+import { resumable, runPosition } from "./session";
 import type { AppState, Deck, SessionResult } from "./types";
 
 /*
@@ -43,6 +44,8 @@ export interface LessonPart {
   carried: boolean;
   /** второстепенная: часть 1 следующего урока, пока не пройдена перенесённая часть 2 (начать можно) */
   secondary: boolean;
+  /** часть начата сегодня и не закончена: «Продолжить · n из of» и «Начать заново»; null — нет */
+  resume: { n: number; of: number } | null;
 }
 
 export interface LessonStatus {
@@ -117,22 +120,25 @@ export const lessonStatus = (state: AppState, deck: Deck, now: Date = new Date()
 
   const nt = newToday(deck, state, today);
   const m = days[today]?.morning ?? null;
+  const r1 = resumable(state, "morning", today, today);
   const part1: LessonPart = {
     part: 1,
     n: lessonNo(days, today),
     day: today,
     done: m,
-    can: !m && (nt.due > 0 || nt.n > 0),
+    can: !m && (!!r1 || nt.due > 0 || nt.n > 0),
     advice: null,
     after: null,
     carried: false,
     secondary: false,
+    resume: r1 && runPosition(r1),
   };
 
   const day2 = carry ?? today;
   const m2 = days[day2]?.morning ?? null;
   const e2 = days[day2]?.evening ?? null;
-  const can2 = !e2 && !!m2 && eveningWords(deck, state.srs, day2).length > 0;
+  const r2 = resumable(state, "evening", day2, today);
+  const can2 = !e2 && !!m2 && (!!r2 || eveningWords(deck, state.srs, day2).length > 0);
   const adv = can2 ? part2Advice(day2, m2, now) : null;
   const part2: LessonPart = {
     part: 2,
@@ -144,6 +150,7 @@ export const lessonStatus = (state: AppState, deck: Deck, now: Date = new Date()
     after: adv?.after ?? null,
     carried: !!carry,
     secondary: false,
+    resume: r2 && runPosition(r2),
   };
 
   // поздняя часть 2 не главная: её совет — завтра
@@ -165,3 +172,6 @@ export const untilText = (now: Date, to: Date): string => {
     m = mins % 60;
   return "через " + [h ? `${h} ч` : "", m ? `${m} мин` : ""].filter(Boolean).join(" ");
 };
+
+/** Кнопка незаконченной части: «Продолжить · 12 из 38». */
+export const resumeLabel = (r: { n: number; of: number }): string => `Продолжить · ${r.n} из ${r.of}`;

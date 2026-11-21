@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { addDays } from "./dates";
-import { carriedDay, hhmm, LATE_HOUR, lessonNo, lessonStatus, PART2_GAP_MIN, part2Advice, untilText } from "./lesson";
+import { carriedDay, hhmm, LATE_HOUR, lessonNo, lessonStatus, PART2_GAP_MIN, part2Advice, resumeLabel, untilText } from "./lesson";
 import { eveningPlan } from "./plans";
 import { deck, state, TODAY } from "./fixtures";
-import type { AppState, DayLog, SessionResult, WordState } from "./types";
+import type { AppState, DayLog, SavedRun, SessionResult, Step, WordState } from "./types";
 
 /** Местное время дня `day` (тест не зависит от часового пояса машины). */
 const at = (day: string, h: number, m = 0) => {
@@ -162,4 +162,48 @@ describe("тексты времени", () => {
     expect(untilText(t0, new Date(t0.getTime() + 20_000))).toBe("через 1 мин");
   });
   it("часы и минуты с нулями", () => expect(hhmm(at(TODAY, 8, 5))).toBe("08:05"));
+});
+
+describe("незаконченная часть: «Продолжить · n из N» на главной и в «Пути»", () => {
+  const runOf = (kind: "morning" | "evening", day: string, date: string, i = 11, n = 38): SavedRun => ({
+    kind,
+    day,
+    date,
+    seed: 1,
+    steps: Array.from({ length: n }, (_, k) => ({ k, t: "intro", w: deck.words[0].id }) as Step),
+    i,
+    graded: 0,
+    right: 0,
+    revGraded: 0,
+    revRight: 0,
+    first: [],
+    newIds: [],
+    written: {},
+    t0: 0,
+  });
+
+  it("часть 1 начата сегодня — продолжить с 12-го из 38; можно, даже если учить по плану уже нечего", () => {
+    const all = Object.fromEntries(deck.words.map((w) => [w.id, { lvl: 3, due: addDays(TODAY, 5), intro: TODAY, right: 1, wrong: 0 }]));
+    const s = state({ srs: all, run: runOf("morning", TODAY, TODAY), runAt: 1 });
+    const p1 = lessonStatus(s, deck, at(TODAY, 12)).cards[0];
+    expect(p1).toMatchObject({ part: 1, can: true, resume: { n: 12, of: 38 } });
+    expect(resumeLabel(p1.resume!)).toBe("Продолжить · 12 из 38");
+  });
+
+  it("начата вчера — сегодня часть начинается заново", () => {
+    const s = state({ run: runOf("morning", YDAY, YDAY), runAt: 1 });
+    expect(lessonStatus(s, deck, at(TODAY, 12)).cards[0].resume).toBeNull();
+  });
+
+  it("перенесённая часть 2 начата сегодня — продолжить её; часть 1 нового урока — начать", () => {
+    const s = state({
+      days: { [YDAY]: { morning: res(at(YDAY, 21, 30)) } },
+      srs: introOn(YDAY, 6),
+      run: runOf("evening", YDAY, TODAY, 3, 20),
+      runAt: 1,
+    });
+    const ls = lessonStatus(s, deck, at(TODAY, 9));
+    expect(ls.cards[0]).toMatchObject({ part: 2, carried: true, resume: { n: 4, of: 20 } });
+    expect(ls.cards[1]).toMatchObject({ part: 1, resume: null });
+  });
 });
