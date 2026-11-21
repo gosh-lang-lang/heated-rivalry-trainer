@@ -76,6 +76,13 @@ switch (cmd) {
     for (const p of openProgress(store.db).summary())
       console.log(`${p.name}\tслов: ${p.words}\tдней: ${p.days}\tизменён ${date(p.upd)}\tсохранён ${date(p.savedAt)}\t${Math.ceil(p.bytes / 1024)} КБ`);
     break;
+  case "progress:reset": {
+    // слова, дни и свои предложения — с нуля, настройки остаются; устройства со старым кэшем его не вернут
+    const u = need(args[0]);
+    const s = openProgress(store.db).reset(u.id);
+    console.log(`прогресс ${u.name} сброшен (${date(s.reset)}); настройки оставлены`);
+    break;
+  }
   case "user:remove":
     console.log(store.removeUser(args[0] ?? "") ? "удалён" : "нет такого пользователя");
     break;
@@ -84,6 +91,6 @@ switch (cmd) {
 }
 
 function readmeUsage() {
-  return `Команды: user:add <имя> [Имя], users, enroll <имя> [минут], passkeys [имя], passkey:remove <id>, sessions [имя], logout <имя>, user:remove <имя>, progress
+  return `Команды: user:add <имя> [Имя], users, enroll <имя> [минут], passkeys [имя], passkey:remove <id>, sessions [имя], logout <имя>, user:remove <имя>, progress, progress:reset <имя>
 База: ${process.env.AUTH_DB ?? "server/cache/auth.db"} · адрес: ${cfg.origin}`;
 }

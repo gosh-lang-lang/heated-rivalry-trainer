@@ -11,6 +11,7 @@ export const isThemePref = (v: unknown): v is ThemePref => THEME_PREFS.includes(
 
 export const emptyState = (): AppState => ({
   upd: 0,
+  reset: 0,
   settings: { newPerDay: 12, voice: DEFAULT_VOICE, look: "ice", theme: "system", avatar: "" },
   settingsAt: { newPerDay: 0, voice: 0, look: 0, theme: 0, avatar: 0 },
   srs: {},
@@ -59,6 +60,7 @@ export const parseState = (raw: unknown): AppState => {
     : [];
   return {
     upd: num(v.upd),
+    reset: Math.max(0, num(v.reset)),
     settings: {
       newPerDay: num(settings.newPerDay, 12) || 12,
       voice: isTtsVoice(settings.voice) ? settings.voice : DEFAULT_VOICE,
@@ -81,9 +83,16 @@ export const parseState = (raw: unknown): AppState => {
  *  - дни — по полям: утро и вечер — более позднее занятие, дополнительные — все, «перечитал» — если хоть где-то;
  *  - свои предложения — все с обоих устройств; одно и то же — проверенная версия, а не ждущая проверки;
  *  - личные настройки — по пунктам: пункт, изменённый позже (settingsAt), побеждает;
- *  - upd — наибольший.
+ *  - upd — наибольший;
+ *  - прогресс сброшен (reset) на одной копии позже, чем на другой — слова, дни и предложения только из неё:
+ *    кэш устройства, сделанный до сброса, не возвращает сброшенное. Настройки сливаются как обычно.
  */
 export const mergeStates = (a: AppState, b: AppState): AppState => {
+  if (a.reset !== b.reset) {
+    const [cur, old] = a.reset > b.reset ? [a, b] : [b, a];
+    const s = mergeStates(cur, { ...old, reset: cur.reset, srs: {}, days: {}, sent: [] });
+    return { ...s, upd: Math.max(a.upd, b.upd) };
+  }
   const newer = b.upd > a.upd || (b.upd === a.upd && canonical(b) > canonical(a)) ? b : a;
   const older = newer === a ? b : a;
 
@@ -101,7 +110,7 @@ export const mergeStates = (a: AppState, b: AppState): AppState => {
   const days: AppState["days"] = { ...older.days };
   for (const [d, log] of Object.entries(newer.days)) days[d] = days[d] ? mergeDay(log, days[d]) : log;
 
-  return { upd: newer.upd, settings, settingsAt, srs: sortKeys(srs), days: sortKeys(days), sent: mergeSent(newer.sent, older.sent) };
+  return { upd: newer.upd, reset: newer.reset, settings, settingsAt, srs: sortKeys(srs), days: sortKeys(days), sent: mergeSent(newer.sent, older.sent) };
 };
 
 const answers = (w: WordState) => w.right + w.wrong;
@@ -139,6 +148,12 @@ const mergeSent = (n: SentenceRecord[], o: SentenceRecord[]): SentenceRecord[] =
 
 /** Ключи по порядку — чтобы одинаковые копии одинаково сериализовались (sameState). */
 const sortKeys = <T>(r: Record<string, T>): Record<string, T> => Object.fromEntries(Object.entries(r).sort(([x], [y]) => (x < y ? -1 : x > y ? 1 : 0)));
+
+/** Сбросить прогресс (слова, дни, свои предложения), настройки оставить. now — метка сброса, строго больше прежней. */
+export const resetProgress = (s: AppState, now = Date.now()): AppState => {
+  const reset = Math.max(now, s.reset + 1);
+  return { ...s, reset, upd: Math.max(reset, s.upd + 1), srs: {}, days: {}, sent: [] };
+};
 
 /** Изменить пункт настроек (метка времени пункта — строго растёт, даже если часы ушли назад). */
 export const changeSetting = <K extends keyof Settings>(s: AppState, key: K, value: Settings[K], now = Date.now()): AppState => ({

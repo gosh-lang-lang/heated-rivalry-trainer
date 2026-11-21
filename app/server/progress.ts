@@ -9,7 +9,7 @@
  * по отдельности, личные настройки — по пунктам. Ничего, сделанное на одном устройстве, не затирается другим.
  */
 import type { DatabaseSync } from "node:sqlite";
-import { mergeStates, parseState, sameState } from "../src/core/state.ts";
+import { emptyState, mergeStates, parseState, resetProgress, sameState } from "../src/core/state.ts";
 import type { AppState } from "../src/core/types.ts";
 
 /** Состояние одного пользователя — десятки КБ; запас на годы занятий. */
@@ -50,6 +50,18 @@ export const openProgress = (db: DatabaseSync, now: () => number = Date.now) => 
         db.exec("ROLLBACK");
         throw e;
       }
+    },
+    /**
+     * Сбросить прогресс пользователя (слова, дни, предложения), настройки оставить. Метка reset — устройства с кэшем
+     * до сброса при синхронизации получат пустой прогресс, а не вернут свой (core/state.ts mergeStates).
+     */
+    reset(userId: number): AppState {
+      const next = resetProgress(get(userId) ?? emptyState(), now());
+      db.prepare(
+        `INSERT INTO progress (user_id, state, upd, saved_at) VALUES (?, ?, ?, ?)
+         ON CONFLICT(user_id) DO UPDATE SET state = excluded.state, upd = excluded.upd, saved_at = excluded.saved_at`,
+      ).run(userId, JSON.stringify(next), next.upd, now());
+      return next;
     },
     /** Голоса озвучки, выбранные пользователями (для прогрева). */
     voices: (): string[] => [

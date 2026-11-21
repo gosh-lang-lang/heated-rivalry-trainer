@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { changeSetting, emptyState, mergeStates, parseState, sameState } from "./state";
+import { changeSetting, emptyState, mergeStates, parseState, resetProgress, sameState } from "./state";
 import { state } from "./fixtures";
 
 const prototypeExport = {
@@ -161,5 +161,43 @@ describe("слияние прогресса с двух устройств", () 
     const y = state({ srs: { b: w(2), a: w(1) } });
     expect(sameState(x, y)).toBe(true);
     expect(sameState(x, state({ srs: { a: w(1), b: w(3) } }))).toBe(false);
+  });
+});
+
+describe("сброс прогресса (reset): кэш устройства до сброса не возвращает сброшенное", () => {
+  const r = { score: 1, total: 1, mins: 1, newN: 1, at: "2026-11-20T09:00:00.000Z" };
+  const before = {
+    ...changeSetting(emptyState(), "voice", "bf_emma", 1000),
+    upd: 9000, // устройство занималось «позже» сервера по часам — всё равно проигрывает сбросу
+    srs: { a: { lvl: 2, due: "2026-11-22", intro: "2026-11-20", right: 3, wrong: 0 } },
+    days: { "2026-11-20": { morning: r } },
+    sent: [{ at: "2026-11-20T10:00:00.000Z", words: ["a"], text: "An a." }],
+  };
+  const server = resetProgress({ ...before, upd: 2000 }, 5000);
+
+  it("resetProgress: слова, дни и предложения — пусто, настройки остаются, метки растут", () => {
+    expect(server).toMatchObject({ reset: 5000, upd: 5000, srs: {}, days: {}, sent: [] });
+    expect(server.settings.voice).toBe("bf_emma");
+    expect(resetProgress(server, 10).reset).toBe(5001); // часы ушли назад — метка всё равно больше
+  });
+
+  it("слияние со старым кэшем: прогресс — с сервера (пустой), настройки — по пунктам, порядок не важен", () => {
+    const phone = changeSetting(before, "theme", "dark", 7000);
+    const m = mergeStates(phone, server);
+    expect(m).toEqual(mergeStates(server, phone));
+    expect(m).toMatchObject({ reset: 5000, upd: 9000, srs: {}, days: {}, sent: [] });
+    expect(m.settings).toMatchObject({ voice: "bf_emma", theme: "dark" });
+    expect(mergeStates(m, phone)).toEqual(m); // повторно — то же
+  });
+
+  it("после сброса новое занятие сливается как обычно", () => {
+    const after = { ...server, upd: 6000, srs: { b: { lvl: 1, due: "2026-11-23", intro: "2026-11-22", right: 1, wrong: 0 } } };
+    expect(mergeStates(after, server).srs).toEqual(after.srs);
+    expect(mergeStates(after, before).srs).toEqual(after.srs);
+  });
+
+  it("parseState: метка сброса читается, старые данные без неё — 0", () => {
+    expect(parseState({ srs: {}, reset: 77 }).reset).toBe(77);
+    expect(parseState({ srs: {} }).reset).toBe(0);
   });
 });

@@ -114,6 +114,11 @@ export type SettingsAt = Record<keyof Settings, number>;
 export interface AppState {
   /** ms — для слияния «кто новее» */
   upd: number;
+  /**
+   * Когда прогресс сброшен (ms; 0 — никогда; командой progress:reset). Копия со старой меткой (кэш устройства
+   * до сброса) при слиянии отдаёт слова, дни и предложения копии с новой — иначе сброшенное вернулось бы синхронизацией.
+   */
+  reset: number;
   settings: Settings;
   settingsAt: SettingsAt;
   srs: Record<string, WordState>;

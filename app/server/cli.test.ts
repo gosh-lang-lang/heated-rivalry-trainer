@@ -92,6 +92,20 @@ describe("CLI входа", () => {
     expect(cli("progress").out).toMatch(/^evgeny\tслов: 1\t/m);
   });
 
+  it("progress:reset сбрасывает прогресс, настройки оставляет; кэш устройства до сброса его не вернёт", () => {
+    const u = store().userByName("evgeny")!;
+    const p = openProgress(openAuthStore(db).db);
+    const cache = { ...emptyState(), upd: Date.now(), settings: { ...emptyState().settings, voice: "bf_emma" }, settingsAt: { ...emptyState().settingsAt, voice: 1 }, srs: { sacred: { lvl: 1, due: "2026-11-21", intro: "2026-11-20", right: 1, wrong: 0 } } };
+    p.put(u.id, cache);
+    const r = cli("progress:reset", "evgeny");
+    expect(r.out).toMatch(/прогресс evgeny сброшен/);
+    const after = openProgress(openAuthStore(db).db);
+    expect(after.get(u.id)).toMatchObject({ srs: {}, days: {}, sent: [], settings: { voice: "bf_emma" } });
+    expect(after.put(u.id, cache).state.srs).toEqual({}); // телефон прислал старый кэш — слова не вернулись
+    expect(cli("progress").out).toMatch(/^evgeny\tслов: 0\tдней: 0/m);
+    expect(cli("progress:reset", "nobody").code).toBe(1);
+  });
+
   it("user:remove удаляет пользователя со всем, что к нему привязано", () => {
     cli("user:add", "anna");
     const s = store();

@@ -70,3 +70,16 @@ test("без сети работаем с кэшем, а когда сеть п�
   await page.evaluate(() => window.dispatchEvent(new Event("online")));
   await expect.poll(() => (log.server.state as { settings?: { newPerDay: number } }).settings?.newPerDay).toBe(6);
 });
+
+test("прогресс сброшен на сервере (progress:reset) — кэш устройства до сброса его не возвращает", async ({ page }) => {
+  // на устройстве — 6 слов и часть 1 сегодня (кэш до сброса), на сервере — сброшено, голос оставлен
+  const remote = { ...afterMorning(0), srs: {}, days: {}, upd: 10, reset: 10, settings: { newPerDay: 12, voice: "bf_emma" }, settingsAt: { voice: 3 } };
+  const log = await setup(page, { state: { ...afterMorning(6), upd: 99 }, remote });
+  await openHome(page);
+  await expect(page.locator(".legend")).toContainText("Новые62");
+  await expect(page.getByRole("button", { name: "0 дней подряд — подробнее о серии" })).toBeVisible();
+  await expect.poll(async () => Object.keys((await readState(page)).srs).length).toBe(0);
+  expect((await readState(page)).settings.voice).toBe("bf_emma");
+  await page.waitForTimeout(600);
+  expect(Object.keys((log.server.state as { srs?: object }).srs ?? {})).toHaveLength(0); // на сервер слова не вернулись
+});
