@@ -17,7 +17,7 @@ import { fileURLToPath } from "node:url";
 import { describeDevice } from "../src/core/device.ts";
 import { decodeHint, openAuthStore } from "./auth-store.ts";
 import { authConfigFromEnv } from "./auth.ts";
-import { openProgress } from "./progress.ts";
+import { DEFAULT_TZ, openProgress } from "./progress.ts";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const store = openAuthStore(process.env.AUTH_DB ?? join(ROOT, "server/cache/auth.db"));
@@ -74,7 +74,7 @@ switch (cmd) {
   }
   case "progress":
     for (const p of openProgress(store.db).summary())
-      console.log(`${p.name}\tслов: ${p.words}\tдней: ${p.days}\tизменён ${date(p.upd)}\tсохранён ${date(p.savedAt)}\t${Math.ceil(p.bytes / 1024)} КБ`);
+      console.log(`${p.name}\tслов: ${p.words}\tдней: ${p.days}\tизменён ${date(p.upd)}\tсохранён ${date(p.savedAt)}\t${Math.ceil(p.bytes / 1024)} КБ\tпояс: ${p.tz || `нет (пока ${DEFAULT_TZ})`}`);
     break;
   case "progress:reset": {
     // слова, дни и свои предложения — с нуля, настройки остаются; устройства со старым кэшем его не вернут

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
+import { clockTz, nowDate } from "./core/dates";
 import { createPortal } from "react-dom";
 import type { View } from "./App";
 import { say, useSpeaking } from "./lib/speech";
@@ -105,7 +106,7 @@ export function TabBar({ current, go }: { current: Section; go: (v: View) => voi
 
 /** Верхняя навигация на широком экране. На телефоне вместо неё — TabBar внизу. */
 export function TopNav({ current, go }: { current: Section; go: (v: View) => void }) {
-  const today = new Date().toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" });
+  const today = nowDate().toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long", timeZone: clockTz() });
   return (
     <nav className="topnav" aria-label="Разделы">
       <div className="in">

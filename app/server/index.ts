@@ -11,7 +11,7 @@
  *
  * Переменные: PORT (8787), AUTH_ORIGIN (https://домен), AUTH_DB (server/cache/auth.db),
  * TTS_CACHE_DIR (server/cache/tts), TTS_DTYPE (fp32 | q8), TTS_WARM=0 — не прогревать колоду,
- * TTS_DISABLED=1 — без озвучки (тесты входа), AUTH_DEV_BYPASS=1 — без passkey: сервер сам заводит сессию
+ * TTS_DISABLED=1 — без озвучки (тесты входа), DEFAULT_TZ — пояс уроков, пока устройство не прислало свой (Europe/Moscow), AUTH_DEV_BYPASS=1 — без passkey: сервер сам заводит сессию
  * пользователю dev (только не в production; для локальной сборки и проверки с телефона по Wi-Fi).
  */
 import { existsSync, readFileSync, statSync } from "node:fs";
@@ -56,7 +56,9 @@ const tts = createTtsRoutes(engine, {
 const store = openAuthStore(process.env.AUTH_DB ?? join(ROOT, "server/cache/auth.db"));
 const authCfg = authConfigFromEnv();
 const auth = createAuth(store, authCfg, { json, readBody: (req) => readBody(req), clientIp });
-const progress = openProgress(store.db);
+const DECK_WORDS = (JSON.parse(readFileSync(join(ROOT, "../words.json"), "utf8")) as { words: { id: string; rare?: boolean }[] }).words;
+const RARE = new Set(DECK_WORDS.filter((w) => w.rare).map((w) => w.id));
+const progress = openProgress(store.db, { rare: (id) => RARE.has(id) });
 /** Без входа (AUTH_DEV_BYPASS) прогресс пишется локальному пользователю dev. */
 const devUser = () => store.userByName("dev") ?? store.addUser("dev", "Разработчик");
 
@@ -88,22 +90,34 @@ const server = createServer(async (req, res) => {
     }
     if (req.method !== "GET" && req.method !== "HEAD" && !auth.sameOrigin(req)) return json(res, 403, { error: "чужой источник запроса" });
 
-    if (url.pathname === "/api/state") {
+    if (url.pathname === "/api/state" || url.pathname === "/api/tz") {
       const who = user ?? (DEV_BYPASS ? devUser() : undefined);
       if (!who) return json(res, 401, { error: "нужен вход" });
-      if (req.method === "GET") return json(res, 200, { state: progress.get(who.id) });
+      // now — часы сервера: по ним приложение считает «сегодня» (core/dates.ts setClock)
+      if (url.pathname === "/api/state" && req.method === "GET") return json(res, 200, { state: progress.get(who.id), now: progress.now() });
       if (req.method !== "PUT") return json(res, 405, { error: "метод не поддерживается" });
+      if (url.pathname === "/api/tz") {
+        let tz: unknown;
+        try {
+          tz = (JSON.parse(await readBody(req, 1024)) as { tz?: unknown })?.tz;
+        } catch {
+          return json(res, 400, { error: "нужен JSON { tz }" });
+        }
+        const r = progress.setTz(who.id, typeof tz === "string" ? tz : "");
+        if ("error" in r) return json(res, r.next ? 429 : 400, { ...r, now: progress.now() });
+        return json(res, 200, { state: r.state, now: progress.now() });
+      }
       let raw: string;
       try {
         raw = await readBody(req, STATE_MAX_BYTES);
       } catch {
         return json(res, 413, { error: "слишком большое состояние" });
       }
-      const s = parseStateBody(raw);
-      if (typeof s === "string") return json(res, 400, { error: s });
-      const saved = progress.put(who.id, s).state;
+      const body = parseStateBody(raw);
+      if (typeof body === "string") return json(res, 400, { error: body });
+      const saved = progress.put(who.id, body.state, body.tz).state;
       warm?.(saved.settings.voice); // сменил голос — озвучиваем колоду новым голосом заранее
-      return json(res, 200, { state: saved });
+      return json(res, 200, { state: saved, now: progress.now() });
     }
 
     if (await tts(req, res, url.pathname)) return;

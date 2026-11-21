@@ -265,3 +265,41 @@ describe("незаконченная часть урока (run) в прогре
     expect(parseState({ srs: {}, run: { ...run(1), i: 99 } }).run!.i).toBe(3);
   });
 });
+
+describe("mergeStates: дни, которые решает сервер", () => {
+  const r = (at: string, srv?: number) => ({ score: 1, total: 1, mins: 1, newN: 1, at, ...(srv !== undefined && { srv }) });
+  const s = (upd: number, days: Record<string, object>, p = {}) => ({ ...emptyState(), upd, days, ...p }) as ReturnType<typeof emptyState>;
+
+  it("одно и то же занятие под разными днями — одно, там, куда положил сервер; порядок не важен", () => {
+    const local = s(50, { "2026-11-24": { morning: r("2026-11-24T08:55:00Z"), reread: true } });
+    const remote = s(10, { "2026-11-21": { morning: r("2026-11-24T08:55:00Z", 1795251600000) } });
+    for (const m of [mergeStates(local, remote), mergeStates(remote, local)]) {
+      expect(Object.keys(m.days)).toEqual(["2026-11-21", "2026-11-24"]);
+      expect(m.days["2026-11-21"].morning?.srv).toBe(1795251600000);
+      expect(m.days["2026-11-24"]).toEqual({ reread: true }); // занятие уехало, «перечитал» осталось
+    }
+    expect(sameState(mergeStates(local, remote), mergeStates(remote, local))).toBe(true);
+  });
+
+  it("опустевший день пропадает", () => {
+    const m = mergeStates(s(50, { "2026-11-24": { morning: r("a") } }), s(10, { "2026-11-21": { morning: r("a", 5) } }));
+    expect(Object.keys(m.days)).toEqual(["2026-11-21"]);
+  });
+
+  it("в одном дне подтверждённое сервером побеждает неподтверждённое, даже более позднее", () => {
+    const m = mergeStates(s(50, { d: { evening: r("2026-11-21T20:00:00Z") } }), s(10, { d: { evening: r("2026-11-21T10:00:00Z", 7) } }));
+    expect(m.days.d.evening?.srv).toBe(7);
+  });
+
+  it("часовой пояс — из копии, где сервер поставил его позже", () => {
+    const m = mergeStates(s(50, {}, { tz: "Europe/Moscow", tzAt: 5 }), s(10, {}, { tz: "Asia/Tokyo", tzAt: 9 }));
+    expect(m).toMatchObject({ tz: "Asia/Tokyo", tzAt: 9 });
+  });
+
+  it("parseState: пояс — только IANA, метка srv — только число", () => {
+    const p = parseState({ srs: {}, tz: "Mars/Olympus", tzAt: 5, days: { d1: {}, "2026-11-21": { morning: { ...r("a"), srv: "x" }, evening: r("b", 3) } } });
+    expect(p).toMatchObject({ tz: "", tzAt: 0 });
+    expect(p.days["2026-11-21"].morning).not.toHaveProperty("srv");
+    expect(p.days["2026-11-21"].evening?.srv).toBe(3);
+  });
+});
