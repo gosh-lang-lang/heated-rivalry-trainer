@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 
 /**
  * «Потяни, чтобы обновить» — свой, с двумя хоккеистами (сцена — PullScene в ui.tsx, стили — pull.css).
@@ -60,15 +60,11 @@ const reload = () => location.reload();
 const reducedMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
 
 /**
- * Подключает жест к странице. enabled = false (занятие, итог) — слушателей нет, сцена спрятана.
- * refresh — что делать после столкновения (по умолчанию перезагрузить страницу).
+ * Подключает жест к странице; после столкновения — перезагрузка. Где жеста нет (занятие, итог),
+ * компонент с ним просто не монтируется (ui.tsx PullRefresh).
  */
-export function usePullToRefresh(enabled: boolean, refresh: () => void = reload) {
-  // свежая функция в каждой отрисовке не должна переподключать жест (и обрывать столкновение)
-  const onRefresh = useRef(refresh);
-  onRefresh.current = refresh;
+export function usePullToRefresh() {
   useEffect(() => {
-    if (!enabled) return;
     const root = document.documentElement;
     let tracking = false, // палец лёг у самого верха страницы — может быть потягиванием
       pulling = false, // уже тянем: прокрутку перехватываем
@@ -98,7 +94,7 @@ export function usePullToRefresh(enabled: boolean, refresh: () => void = reload)
       busy = true;
       // встали на порог (страница держится сдвинутой, пока идёт перезагрузка), столкнулись — и обновляем
       show("clash", PULL_THRESHOLD, 1);
-      timer = window.setTimeout(() => onRefresh.current(), reducedMotion() ? 150 : CLASH_MS);
+      timer = window.setTimeout(reload, reducedMotion() ? 150 : CLASH_MS);
     };
 
     const onStart = (e: TouchEvent) => {
@@ -224,5 +220,5 @@ export function usePullToRefresh(enabled: boolean, refresh: () => void = reload)
       cancelAnimationFrame(raf);
       hide();
     };
-  }, [enabled]);
+  }, []);
 }

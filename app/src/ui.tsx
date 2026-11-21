@@ -138,7 +138,7 @@ export function TopNav({ current, go }: { current: Section; go: (v: View) => voi
  * Монтируется только в разделах (сегодня, путь, слова, «Я» и её подстраницы) — во время занятия жеста нет.
  */
 export function PullRefresh() {
-  usePullToRefresh(true);
+  usePullToRefresh();
   return (
     <div className="ptr" aria-hidden="true">
       <i className="ptr-ice" />
