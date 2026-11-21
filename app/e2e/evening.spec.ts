@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { afterMorning, DECK, openHome, playSession, readState, say, setPron, setup, state, TODAY, ws } from "./helpers";
+import { afterMorning, DECK, openHome, playSession, readState, setup, state, TODAY, ws } from "./helpers";
 
 test.describe("часть 2 урока — применяем", () => {
   test("до части 1 часть 2 недоступна", async ({ page }) => {
@@ -50,8 +50,8 @@ test.describe("часть 2 урока — применяем", () => {
     expect(st.srs[DECK.words[0].id]).toMatchObject({ lvl: 2, due: "2026-11-21", wrong: 1 });
   });
 
-  test("«Скажи вслух»: оценка произношения фразы, ошибка — красное слово и подсказка", async ({ page }) => {
-    const log = await setup(page, { state: afterMorning(2) });
+  test("«Скажи вслух»: проверка по доле услышанных слов", async ({ page }) => {
+    await setup(page, { state: afterMorning(2) });
     await openHome(page);
     await page.getByRole("button", { name: "Начать часть 2" }).click();
     // пропускаем до говорения
@@ -62,13 +62,9 @@ test.describe("часть 2 урока — применяем", () => {
         await page.locator("#next").click();
       } else await page.locator("#next").click();
     }
-    const phrase = (await page.locator(".say-en").textContent())!.trim();
-    setPron(page, "bad");
-    await say(page);
-    expect(log.pron.at(-1)!.text).toBe(phrase);
-    expect(log.pron.at(-1)!.bytes).toBeGreaterThan(1000); // запись дошла до сервера
-    await expect(page.locator(".fb h3")).toContainText("40% — давай ещё раз");
-    await expect(page.locator(".pw.weak")).toHaveCount(1);
-    await expect(page.locator(".say-hints")).toContainText("/θ/ прозвучал как /s/");
+    await page.locator("textarea.inp").fill("the");
+    await page.locator("#chk").click();
+    await expect(page.locator(".fb h3")).toContainText("попробуй ещё завтра");
+    await expect(page.locator(".fb")).toContainText("Не расслышал");
   });
 });

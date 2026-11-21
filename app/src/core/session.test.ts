@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { advance, bumpWrong, finishSession, gradeCurrent, introduceCurrent, markSeen, skipSpeech, startSession } from "./session";
+import { advance, bumpWrong, finishSession, gradeCurrent, introduceCurrent, markSeen, startSession } from "./session";
 import { blankState } from "./srs";
 import { state, TODAY } from "./fixtures";
 import type { Step } from "./types";
@@ -50,31 +50,6 @@ describe("движок занятия", () => {
   it("write и speak не повторяются после ошибки", () => {
     const s = { ...startSession("evening", steps, 0)!, i: 3 };
     expect(gradeCurrent(s, state(), false, null, TODAY).sess.steps.length).toBe(4);
-  });
-
-  it("«Скажи слово» не повторяется после ошибки и не меняет уровень слова", () => {
-    const say: Step[] = [{ k: 0, t: "say", w: "praise" }];
-    const st = state({ srs: { praise: { ...blankState(), lvl: 1, intro: TODAY } } });
-    const r = gradeCurrent(startSession("morning", say, 0)!, st, false, null, TODAY);
-    expect(r.sess.steps).toHaveLength(1);
-    expect([r.sess.graded, r.sess.right]).toEqual([1, 0]);
-    expect(r.state.srs.praise).toEqual(st.srs.praise);
-  });
-
-  it("«Не могу сейчас говорить»: говорение до конца занятия убирается, пройденное — нет", () => {
-    const plan: Step[] = [
-      { k: 0, t: "say", w: "praise" },
-      { k: 1, t: "listen", w: "praise" },
-      { k: 2, t: "say", w: "praise" },
-      { k: 3, t: "type", w: "praise", hint: true },
-      { k: 4, t: "say", w: "praise", ex: true },
-      { k: 5, t: "section", pic: "🎙️", title: "Скажи вслух", sub: "", speech: true },
-      { k: 6, t: "speak", n: 0, w: "praise" },
-      { k: 7, t: "reread", pages: ["1"] },
-    ];
-    const s = skipSpeech({ ...startSession("morning", plan, 0)!, i: 2 });
-    expect(s.i).toBe(2);
-    expect(s.steps.map((x) => x.k)).toEqual([0, 1, 3, 7]);
   });
 
   it("markSeen не влияет на счёт", () => {

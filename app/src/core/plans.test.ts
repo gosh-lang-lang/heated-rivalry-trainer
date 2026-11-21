@@ -30,7 +30,6 @@ describe("утро", () => {
     expect(count(st, "listen")).toBe(6);
     expect(count(st, "type")).toBe(12);
     expect(count(st, "build")).toBe(6);
-    expect(count(st, "say")).toBe(8); // по блоку: 3 слова + 1 пример
     // номера шагов по порядку
     expect(st.map((s) => s.k)).toEqual(st.map((_, i) => i));
   });
@@ -38,30 +37,8 @@ describe("утро", () => {
   it("порядок лестницы внутри блока", () => {
     const st = morningPlan(deck, state({ settings: { ...emptyState().settings, newPerDay: 6 } }), TODAY, { rng: seeded(2) });
     const order = types(st).filter((t, i, a) => t !== a[i - 1]);
-    expect(order).toEqual(["section", "intro", "pick", "pairs", "listen", "say", "type", "build", "say"]);
+    expect(order).toEqual(["section", "intro", "pick", "pairs", "listen", "type", "build"]);
     expect(st.filter((s) => s.t === "type").every((s) => s.t === "type" && s.hint)).toBe(true);
-  });
-
-  it("говорение в блоке: слова, которых не было в «Что ты слышишь?», и один пример — не тот, что собирали", () => {
-    const st = morningPlan(deck, state({ settings: { ...emptyState().settings, newPerDay: 6 } }), TODAY, { rng: seeded(2) });
-    const listened = st.flatMap((s) => (s.t === "listen" ? [s.w] : []));
-    const said = st.flatMap((s) => (s.t === "say" && !s.ex ? [s.w] : []));
-    expect(said).toHaveLength(3);
-    expect(said.some((w) => listened.includes(w))).toBe(false);
-    expect(new Set([...listened, ...said]).size).toBe(6);
-    const ex = st.filter((s) => s.t === "say" && s.ex);
-    expect(ex).toHaveLength(1);
-    expect(st[st.length - 1]).toBe(ex[0]);
-    const built = st.flatMap((s) => (s.t === "build" && s.w ? [s.w] : []));
-    expect(built).not.toContain((ex[0] as { w: string }).w);
-  });
-
-  it("блок из одного слова: его же и говорим", () => {
-    const st = morningPlan(deck, state({ settings: { ...emptyState().settings, newPerDay: 1 } }), TODAY, { rng: seeded(2) });
-    expect(st.filter((s) => s.t === "say").map((s) => [(s as { w: string }).w, !!(s as { ex?: boolean }).ex])).toEqual([
-      [deck.words[0].id, false],
-      [deck.words[0].id, true],
-    ]);
   });
 
   it("новые слова идут в порядке словаря", () => {

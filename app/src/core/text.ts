@@ -36,6 +36,15 @@ export const gapSentence = (example: string, blank: string): [string, string] =>
   return [example.slice(0, i), example.slice(i + blank.length)];
 };
 
+/** Говорение: доля слов фразы, которые прозвучали. Порог — 80%. */
+export const speakScore = (target: string, heard: string) => {
+  const tw = norm(target).split(" ").filter(Boolean);
+  const gw = new Set(norm(heard).split(" "));
+  const miss = tw.filter((x) => !gw.has(x));
+  const ratio = tw.length ? 1 - miss.length / tw.length : 0;
+  return { ratio, miss, ok: ratio >= 0.8 };
+};
+
 /** Токены для «собери фразу». */
 export const buildTokens = (en: string): string[] => en.replace(/[.!?]$/, "").split(" ");
 

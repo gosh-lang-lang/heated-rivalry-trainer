@@ -25,7 +25,7 @@ const start = async (env: Record<string, string>) => {
   const dir = mkdtempSync(join(tmpdir(), "hr-bypass-"));
   const port = await freePort();
   const proc = spawn("node", ["--disable-warning=ExperimentalWarning", "server/index.ts"], {
-    env: { ...process.env, PORT: String(port), AUTH_DB: join(dir, "auth.db"), TTS_DISABLED: "1", PRON_DISABLED: "1", AUTH_ORIGIN: "http://localhost:5180", ...env },
+    env: { ...process.env, PORT: String(port), AUTH_DB: join(dir, "auth.db"), TTS_DISABLED: "1", AUTH_ORIGIN: "http://localhost:5180", ...env },
     stdio: ["ignore", "pipe", "pipe"],
   });
   running.push({ proc, dir });

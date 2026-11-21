@@ -31,16 +31,13 @@ export const currentStep = (s: Session): Step | undefined => s.steps[s.i];
 
 export const progress = (s: Session) => Math.min(s.i / s.steps.length, 1);
 
-const NO_RETRY = new Set<Step["t"]>(["write", "speak", "say", "pairs", "section", "intro", "reread"]);
-
-/** Шаг с говорением (и заголовок раздела говорения). */
-export const isSpeech = (s: Step) => s.t === "speak" || s.t === "say" || (s.t === "section" && !!s.speech);
+const NO_RETRY = new Set<Step["t"]>(["write", "speak", "pairs", "section", "intro", "reread"]);
 
 /**
  * Ответ на текущий шаг.
  * Счёт — по первой попытке: повтор того же шага (retry) в счёт не идёт.
  * SRS слова меняется только на первой попытке (и никогда — в тренировке drill).
- * Ошибка → копия шага в конец занятия (один раз; не для write/speak/say/pairs).
+ * Ошибка → копия шага в конец занятия (один раз; не для write/speak/pairs).
  */
 export const gradeCurrent = (
   sess: Session,
@@ -89,15 +86,6 @@ export const bumpWrong = (state: AppState, ids: string[]): AppState => {
 };
 
 export const advance = (sess: Session): Session => ({ ...sess, i: sess.i + 1 });
-
-/**
- * «Не могу сейчас говорить» (или нет микрофона): все задания с говорением до конца занятия — прочь,
- * включая текущее. Пройденные шаги не трогаем; дальше — следующий шаг без говорения.
- */
-export const skipSpeech = (sess: Session): Session => ({
-  ...sess,
-  steps: [...sess.steps.slice(0, sess.i), ...sess.steps.slice(sess.i).filter((s) => !isSpeech(s))],
-});
 
 export const isDone = (sess: Session) => sess.i >= sess.steps.length;
 
