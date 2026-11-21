@@ -29,3 +29,25 @@ describe("потяни, чтобы обновить: резина и путь и
     expect(pullProgress(-3)).toBe(0);
   });
 });
+
+describe("на компьютере: трекпад и клавиши обновления", () => {
+  it("прокрутка — в пикселях, строки и страницы переводятся", async () => {
+    const { wheelPixels } = await import("./pull");
+    expect(wheelPixels({ deltaY: -12, deltaMode: 0 })).toBe(-12);
+    expect(wheelPixels({ deltaY: -3, deltaMode: 1 })).toBe(-48);
+    expect(wheelPixels({ deltaY: 1, deltaMode: 2 })).toBe(600);
+  });
+
+  it("⌘R, Ctrl+R (и в русской раскладке), F5 — да; с Shift, Alt и просто R — нет", async () => {
+    const { isReloadKey } = await import("./pull");
+    const k = (key: string, m: Partial<Record<"metaKey" | "ctrlKey" | "shiftKey" | "altKey", boolean>> = {}) => ({ key, metaKey: false, ctrlKey: false, shiftKey: false, altKey: false, ...m });
+    expect(isReloadKey(k("r", { metaKey: true }))).toBe(true);
+    expect(isReloadKey(k("R", { ctrlKey: true }))).toBe(true);
+    expect(isReloadKey(k("к", { metaKey: true }))).toBe(true);
+    expect(isReloadKey(k("F5"))).toBe(true);
+    expect(isReloadKey(k("r"))).toBe(false);
+    expect(isReloadKey(k("r", { metaKey: true, shiftKey: true }))).toBe(false);
+    expect(isReloadKey(k("F5", { shiftKey: true }))).toBe(false);
+    expect(isReloadKey(k("r", { metaKey: true, altKey: true }))).toBe(false);
+  });
+});

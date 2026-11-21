@@ -6,7 +6,9 @@ import { useEffect, useRef } from "react";
  * (позиция идёт за пальцем, с резиной как у системного). Отпустил до порога — всё уезжает обратно.
  * После порога — встречаются в центре, стукаются клюшками (вбрасывание: искра и отскок), и страница перезагружается.
  *
- * Только касание: мышь и трекпад событий касания не шлют. Состояние — на <html>: data-ptr (pull / back / clash),
+ * На компьютере то же самое: трекпадом (прокрутка вверх у самого верха страницы, новым жестом — не докатившаяся
+ * инерция) и клавишами ⌘R / Ctrl+R / F5 — игроки сами выезжают навстречу, стукаются, потом перезагрузка.
+ * Кнопку обновления в панели браузера страница перехватить не может. Состояние — на <html>: data-ptr (pull / back / clash),
  * переменные --ptr-y (насколько сдвинута страница, px) и --ptr-p (0…1 — путь игроков до центра).
  * Нативный pull-to-refresh Safari выключен overscroll-behavior-y: contain (pull.css), в установленном PWA его и нет.
  */
@@ -23,6 +25,20 @@ const SLOP = 8;
 export const CLASH_MS = 620;
 /** Возврат, мс (как transition в pull.css). */
 const BACK_MS = 320;
+/** Трекпад: пауза без прокрутки, после которой жест считается новым (не инерцией прокрутки к верху), мс. */
+export const WHEEL_NEW_GESTURE_MS = 300;
+/** Трекпад: столько без событий — жест закончен (палец поднят и инерция докатилась), мс. */
+const WHEEL_END_MS = 160;
+/** Трекпад: прокрутка тянет туже пальца — случайный рывок колесом не перезагружает. */
+const WHEEL_K = 0.6;
+/** ⌘R: за сколько игроки выезжают к центру перед ударом, мс. */
+export const KEY_RIDE_MS = 420;
+
+/** Прокрутка колесом/трекпадом в пикселях (у некоторых мышей — строками или страницами). */
+export const wheelPixels = (e: Pick<WheelEvent, "deltaY" | "deltaMode">) => e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 600 : 1);
+/** ⌘R / Ctrl+R / F5 без Shift (Shift — «жёсткая» перезагрузка, её не трогаем). */
+export const isReloadKey = (e: Pick<KeyboardEvent, "key" | "metaKey" | "ctrlKey" | "shiftKey" | "altKey">) =>
+  !e.shiftKey && !e.altKey && (e.key === "F5" || ((e.metaKey || e.ctrlKey) && (e.key === "r" || e.key === "R" || e.key === "к" || e.key === "К")));
 
 /** Палец прошёл dy px вниз → на сколько сдвинуть страницу (резина: сначала почти 1:1, дальше всё туже). */
 export const pullDistance = (dy: number) => (dy <= 0 ? 0 : PULL_MAX * (1 - Math.exp((-dy * PULL_K) / PULL_MAX)));
@@ -135,6 +151,63 @@ export function usePullToRefresh(enabled: boolean, refresh: () => void = reload)
       if (was) springBack();
     };
 
+    /* ---------- компьютер: трекпад ---------- */
+    let wheelAt = 0, // время прошлого события прокрутки
+      wheelPull = false, // тянем трекпадом
+      acc = 0, // сколько «протянули» (px прокрутки вверх)
+      wheelTimer = 0;
+    const wheelEnd = () => {
+      wheelPull = false;
+      if (busy) return;
+      if (y >= PULL_THRESHOLD) fire();
+      else springBack();
+    };
+    const onWheel = (e: WheelEvent) => {
+      const now = e.timeStamp || performance.now();
+      const fresh = now - wheelAt > WHEEL_NEW_GESTURE_MS;
+      wheelAt = now;
+      if (busy || pulling || e.ctrlKey) return; // ctrl + прокрутка — масштаб
+      const d = wheelPixels(e);
+      if (!wheelPull) {
+        // только новый жест вверх у самого верха: инерция прокрутки, докатившаяся до верха, — не потягивание
+        if (!fresh || d >= 0 || window.scrollY > 0 || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+        if (scrolledInside(e.target) || inField(e.target) || inDialog(e.target)) return;
+        wheelPull = true;
+        acc = 0;
+        clearTimeout(timer);
+      }
+      if (e.cancelable) e.preventDefault();
+      acc = Math.max(0, acc - d * WHEEL_K);
+      y = pullDistance(acc);
+      show("pull", y);
+      clearTimeout(wheelTimer);
+      wheelTimer = window.setTimeout(wheelEnd, WHEEL_END_MS);
+    };
+
+    /* ---------- компьютер: ⌘R / Ctrl+R / F5 ---------- */
+    let raf = 0;
+    const onKey = (e: KeyboardEvent) => {
+      if (!isReloadKey(e) || e.repeat) return;
+      e.preventDefault();
+      if (busy) return;
+      busy = true;
+      clearTimeout(timer);
+      if (reducedMotion()) return fire();
+      // игроки сами выезжают с краёв к центру (страница отъезжает вниз до порога), потом — удар и перезагрузка
+      let t0 = -1;
+      const step = (t: number) => {
+        if (t0 < 0) t0 = t;
+        const k = Math.min(1, (t - t0) / KEY_RIDE_MS);
+        const ease = 1 - (1 - k) ** 3;
+        show("pull", PULL_THRESHOLD * ease);
+        if (k < 1) raf = requestAnimationFrame(step);
+        else fire();
+      };
+      raf = requestAnimationFrame(step);
+    };
+
+    window.addEventListener("wheel", onWheel, { passive: false });
+    window.addEventListener("keydown", onKey);
     window.addEventListener("touchstart", onStart, { passive: true });
     window.addEventListener("touchmove", onMove, { passive: false });
     window.addEventListener("touchend", onEnd, { passive: true });
@@ -144,7 +217,11 @@ export function usePullToRefresh(enabled: boolean, refresh: () => void = reload)
       window.removeEventListener("touchmove", onMove);
       window.removeEventListener("touchend", onEnd);
       window.removeEventListener("touchcancel", cancel);
+      window.removeEventListener("wheel", onWheel);
+      window.removeEventListener("keydown", onKey);
       clearTimeout(timer);
+      clearTimeout(wheelTimer);
+      cancelAnimationFrame(raf);
       hide();
     };
   }, [enabled]);
