@@ -20,6 +20,12 @@
 *{box-sizing:border-box;min-width:0}
 html,body{margin:0}
 body{background:var(--bg);color:var(--ink);font:17px/1.5 Nunito,system-ui,sans-serif;overflow-x:clip;-webkit-tap-highlight-color:transparent}
+/* Долгое нажатие по интерфейсу ничего не выделяет и не зовёт меню iOS («Скопировать», «Сохранить изображение»).
+   Выделять можно только то, что пишут (поля ввода — явно, иначе в Safari внутри «невыделяемого» нет курсора и вставки),
+   и текст для чтения в раскрытом слове «Слов»: пример, цитату, пояснение — их копируют в переводчик или заметки. */
+html{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+input,textarea,[contenteditable]:not([contenteditable="false"]),.wrow .det :is(.dtop,.dex p,.dnote){-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
+img{-webkit-touch-callout:none;-webkit-user-drag:none}
 button,input,textarea{font:inherit;color:inherit}
 button{cursor:pointer}
 button:focus-visible,textarea:focus-visible,input:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
