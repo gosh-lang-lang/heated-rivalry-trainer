@@ -286,3 +286,43 @@ test.describe("путь: текущий урок над нижней панел�
         if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/${vp.width}x${vp.height}-${vp.inset}-${what}.png` });
       });
 });
+
+test.describe("«Путь»: раскладка после смены ширины и подпись «Старт»", () => {
+  test("десктоп → телефон (поворот iPad): пузырь урока перемерян — не наезжает на урок под ним и не уходит под панель", async ({ page }) => {
+    test.skip(test.info().project.name !== "desktop-chrome", "смена ширины окна — на десктопе");
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await setup(page, { state: seasonState() }); // текущий — урок 5, под ним — пройденный урок 4
+    await openHome(page);
+    await goTab(page, "Путь");
+    await expect(page.locator(".node.cur")).toBeVisible();
+    await page.setViewportSize({ width: 390, height: 844 });
+    const cur = current(page);
+    await expect(cur).toBeVisible();
+    const below = page.locator('.node[data-pos="4"]');
+    const bar = page.getByRole("navigation", { name: "Разделы" });
+    await expect
+      .poll(async () => {
+        const [c, b] = await Promise.all([cur.boundingBox(), below.boundingBox()]);
+        return c && b ? b.y - (c.y + c.height) : -1;
+      })
+      .toBeGreaterThanOrEqual(0); // урок 4 — ниже пузыря, не под ним
+    // от низа пузыря до центра следующего урока — ровно запас раскладки (56 px, Path.tsx BUBBLE): значит, высота
+    // пузыря перемерена, а не осталась прежней (300 по умолчанию, пока пузыря не было на экране)
+    const [c0, b0] = await Promise.all([cur.boundingBox(), below.boundingBox()]);
+    expect(Math.abs(b0!.y + b0!.height / 2 - (c0!.y + c0!.height) - 56)).toBeLessThanOrEqual(2);
+    await cur.scrollIntoViewIfNeeded();
+    const [c, t] = await Promise.all([cur.boundingBox(), bar.boundingBox()]);
+    expect(c!.y + c!.height).toBeLessThanOrEqual(t!.y);
+  });
+
+  test("урок 1 — текущий: «Старт» у линии ворот и не под пузырём урока", async ({ page }) => {
+    test.skip(test.info().project.name !== "iphone", "раскладка телефона");
+    await setup(page, { state: state({ settings: { newPerDay: 6 } }) });
+    await openHome(page);
+    await goTab(page, "Путь");
+    const tag = page.locator(".start-tag");
+    await expect(tag).toHaveText(/^Старт/);
+    const [c, s] = await Promise.all([current(page).boundingBox(), tag.boundingBox()]);
+    expect(s!.y).toBeGreaterThanOrEqual(c!.y + c!.height); // ниже пузыря, не под ним
+  });
+});

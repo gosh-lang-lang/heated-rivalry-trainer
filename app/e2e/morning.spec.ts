@@ -138,6 +138,22 @@ test.describe("часть 1 урока — учим", () => {
     await expect(page.locator(".fb")).toHaveCount(0);
   });
 
+  test("скринридер: ответ «верно/неверно» — в живой области, задание — в полосе прогресса", async ({ page }) => {
+    await setup(page, { state: state({ settings: { newPerDay: 6 } }) });
+    await openHome(page);
+    await page.getByRole("button", { name: "Начать часть 1" }).click();
+    const bar = page.getByRole("progressbar", { name: "Задание" });
+    await expect(bar).toHaveAttribute("aria-valuetext", /^1 из \d+$/);
+    for (let i = 0; i < 7; i++) await page.locator("#next").click();
+    await expect(page.locator(".lbl")).toHaveText("Выбери перевод");
+    await expect(bar).toHaveAttribute("aria-valuetext", /^8 из \d+$/);
+    const live = page.getByRole("status");
+    await expect(live).toHaveText(""); // область есть до ответа — скринридер прочтёт изменение, а не новый блок
+    await page.locator(".opts .tile").first().click();
+    await page.locator("#chk").click();
+    await expect(live).toHaveText(/^(Верно|Неверно)\. .+/);
+  });
+
   test("клавиатура: Enter на другой кнопке нажимает её, а не проверяет ответ", async ({ page, isMobile }) => {
     test.skip(isMobile, "физическая клавиатура — только на десктопе");
     await setup(page, { state: state({ settings: { newPerDay: 6 } }) });

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, type RefObject } from "react";
+import { useCallback, useEffect, useMemo, useRef, type RefObject } from "react";
 import { clockOffset, deviceTz, setClock } from "../core/dates";
 import { hasPending } from "../core/serverday";
 import { mergeStates, parseState, sameState, withPersonal } from "../core/state";
@@ -82,6 +82,97 @@ export const changeTimeZone = async (tz: string): Promise<{ state: AppState } | 
   return { error: typeof r.body.error === "string" ? r.body.error : "не получилось", next: typeof r.body.next === "number" ? r.body.next : undefined };
 };
 
+/** Доступ к серверу (тесты подставляют свой). undefined — сервер недоступен; null — у сервера прогресса нет. */
+export interface SyncApi {
+  fetchRemote: () => Promise<AppState | null | undefined>;
+  pushRemote: (s: AppState, keepalive: boolean) => Promise<AppState | null | undefined>;
+}
+const httpApi: SyncApi = { fetchRemote, pushRemote };
+
+export interface SyncDeps {
+  /** актуальный прогресс */
+  current: () => AppState;
+  /** принять итог слияния с сервером */
+  adopt: (s: AppState) => void;
+  /** сейчас идёт занятие: чужой прогресс посреди него не подменяем (настройки — сразу) */
+  paused: () => boolean;
+  /** поправка на часы сервера заметно изменилась (может смениться «сегодня») */
+  onClock?: () => void;
+}
+
+/** Синхронизация без React: отправка (с очередью), забор, отложенная отправка и отправка при уходе. */
+export const createSync = (d: SyncDeps, api: SyncApi = httpApi) => {
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  let busy = false,
+    again = false;
+
+  /** часы сервера заметно сдвинулись за время запроса — пусть приложение пересчитает «сегодня» */
+  const watchClock = async <T>(f: () => Promise<T>): Promise<T> => {
+    const off = clockOffset();
+    const r = await f();
+    if (Math.abs(clockOffset() - off) > 30_000) d.onClock?.();
+    return r;
+  };
+
+  /** Слить серверную копию с нашей и применить, если что-то поменялось. true — у сервера не всё, что у нас. */
+  const reconcile = (remote: AppState | null): boolean => {
+    const local = d.current();
+    if (!remote) return local.upd > 0;
+    const merged = mergeStates(local, remote);
+    if (!sameState(merged, local)) d.adopt(d.paused() ? withPersonal(local, merged) : merged);
+    // у сервера ещё нет пояса — отправим пояс устройства
+    return !remote.tz || !sameState(mergeStates(d.current(), remote), remote);
+  };
+
+  /** Отправить прогресс. Пока идёт отправка, новая ждёт и уходит одна — с самым свежим (keepalive — сразу). */
+  const push = async (keepalive = false): Promise<void> => {
+    if (d.current().upd === 0) return;
+    if (busy && !keepalive) {
+      again = true;
+      return;
+    }
+    busy = true;
+    try {
+      const remote = await watchClock(() => api.pushRemote(d.current(), keepalive));
+      // сервер вернул итог слияния (там могло быть новее — с другого устройства)
+      if (remote !== undefined) reconcile(remote);
+    } finally {
+      busy = false;
+      if (again) {
+        again = false;
+        void push();
+      }
+    }
+  };
+
+  /** Забрать серверную копию и слить. Есть итоги, которых сервер не видел, — сначала отдать их (день им выберет сервер). */
+  const pull = async (): Promise<void> => {
+    if (hasPending(d.current()) && !d.paused()) return push();
+    const remote = await watchClock(api.fetchRemote);
+    if (remote === undefined) return;
+    if (reconcile(remote)) void push();
+  };
+
+  /** После изменения — отправить с задержкой (не каждый шаг занятия). */
+  const schedule = () => {
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(() => {
+      timer = null;
+      void push();
+    }, PUSH_DELAY_MS);
+  };
+
+  /** Уходим из приложения: отложенное — сразу и keepalive (переживает закрытие вкладки). */
+  const flush = () => {
+    if (!timer) return;
+    clearTimeout(timer);
+    timer = null;
+    void push(true);
+  };
+
+  return { push, pull, schedule, flush };
+};
+
 /**
  * @param current — актуальный прогресс (ref, чтобы не пересоздавать обработчики)
  * @param adopt — принять более новый прогресс с сервера
@@ -96,80 +187,27 @@ export const useServerSync = (
   /** поправка на часы сервера заметно изменилась (может смениться «сегодня») */
   onClock?: () => void,
 ) => {
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const busy = useRef(false);
-  const again = useRef(false);
-
-  /** Слить серверную копию с нашей и применить, если что-то поменялось. true — у сервера не всё, что у нас. */
-  const reconcile = useCallback(
-    (remote: AppState | null): boolean => {
-      const local = current.current;
-      if (!remote) return local.upd > 0;
-      const merged = mergeStates(local, remote);
-      if (!sameState(merged, local))
-        adopt(paused.current ? withPersonal(local, merged) : merged);
-      // у сервера ещё нет пояса — отправим пояс устройства
-      return !remote.tz || !sameState(mergeStates(current.current, remote), remote);
-    },
-    [current, adopt, paused],
+  // свежие обработчики без пересоздания синхронизации
+  const cb = useRef({ adopt, onClock });
+  cb.current = { adopt, onClock };
+  const sync = useMemo(
+    () =>
+      enabled
+        ? createSync({
+            current: () => current.current,
+            adopt: (s) => cb.current.adopt(s),
+            paused: () => !!paused.current,
+            onClock: () => cb.current.onClock?.(),
+          })
+        : null,
+    [enabled, current, paused],
   );
-
-  const push = useCallback(
-    async (keepalive = false) => {
-      if (!enabled || current.current.upd === 0) return;
-      if (busy.current && !keepalive) {
-        again.current = true;
-        return;
-      }
-      busy.current = true;
-      const off = clockOffset();
-      try {
-        const remote = await pushRemote(current.current, keepalive);
-        if (Math.abs(clockOffset() - off) > 30_000) onClock?.();
-        // сервер вернул итог слияния (там могло быть новее — с другого устройства)
-        if (remote !== undefined) reconcile(remote);
-      } finally {
-        busy.current = false;
-        if (again.current) {
-          again.current = false;
-          void push();
-        }
-      }
-    },
-    [enabled, current, reconcile, onClock],
-  );
-
-  const pull = useCallback(async () => {
-    if (!enabled) return;
-    // есть итоги, которых сервер не видел, — сначала отдать их ему: день им выберет сервер, ответ — уже с ними
-    if (hasPending(current.current) && !paused.current) return push();
-    const off = clockOffset();
-    const remote = await fetchRemote();
-    if (Math.abs(clockOffset() - off) > 30_000) onClock?.();
-    if (remote === undefined) return;
-    if (reconcile(remote)) void push();
-  }, [enabled, reconcile, push, current, paused, onClock]);
-
-  const schedulePush = useCallback(() => {
-    if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(() => {
-      timer.current = null;
-      void push();
-    }, PUSH_DELAY_MS);
-  }, [push]);
 
   useEffect(() => {
-    if (!enabled) return;
-    void pull();
-    const onVisibility = () => {
-      if (document.visibilityState === "visible") void pull();
-      else if (timer.current) {
-        clearTimeout(timer.current);
-        timer.current = null;
-        void push(true);
-      }
-    };
-    const onOnline = () => void pull();
+    if (!sync) return;
+    void sync.pull();
+    const onVisibility = () => (document.visibilityState === "visible" ? void sync.pull() : sync.flush());
+    const onOnline = () => void sync.pull();
     document.addEventListener("visibilitychange", onVisibility);
     window.addEventListener("online", onOnline);
     window.addEventListener("focus", onOnline); // вернулись в окно (на маке вкладка могла не скрываться)
@@ -177,8 +215,9 @@ export const useServerSync = (
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("online", onOnline);
       window.removeEventListener("focus", onOnline);
+      sync.flush(); // отложенное изменение не теряем — отправляем сразу
     };
-  }, [enabled, pull, push]);
+  }, [sync]);
 
-  return schedulePush;
+  return useCallback(() => sync?.schedule(), [sync]);
 };

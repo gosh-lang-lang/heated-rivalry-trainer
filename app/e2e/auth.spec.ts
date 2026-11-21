@@ -105,6 +105,29 @@ test("привязка по одноразовой ссылке → прилож
   await expect(page.locator("#login-msg")).toContainText("не зарегистрирован");
 });
 
+test("вкладка входа долго была в фоне: первое нажатие обновляет вызов и просит нажать ещё раз, второе — входит", async ({ page, auth }) => {
+  const { cli, origin: ORIGIN } = auth;
+  cli("user:add", "evgeny", "Евгений");
+  const link = cli("enroll", "evgeny").trim().split("\n").pop()!;
+  await addAuthenticator(page);
+  await page.goto(link);
+  await page.getByRole("button", { name: "Создать passkey" }).click();
+  await expect(page.getByText("Готово! Passkey сохранён")).toBeVisible();
+  await page.request.post("/api/auth/logout", { headers: { origin: ORIGIN }, data: {} });
+
+  // iOS почти не крутит таймеры фоновой вкладки: часы ушли на 5 минут, а обновления вызова не было
+  await page.clock.install();
+  await page.goto("/login");
+  await expect(page.getByRole("button", { name: "Войти с passkey" })).toBeEnabled();
+  await page.clock.setSystemTime(Date.now() + 5 * 60 * 1000);
+  await page.getByRole("button", { name: "Войти с passkey" }).click();
+  // WebAuthn не вызывали после ожидания сети (Safari бы отказал) — просим нажать ещё раз
+  await expect(page.locator("#login-msg")).toHaveText("Готово — нажми «Войти» ещё раз.");
+  await expect(page).toHaveURL(/\/login$/);
+  await page.getByRole("button", { name: "Войти с passkey" }).click();
+  await expect(page).toHaveURL(`${ORIGIN}/`);
+});
+
 test("устройство без привязанного passkey войти не может", async ({ page }) => {
   await addAuthenticator(page); // пустой authenticator
   await page.goto("/login");
