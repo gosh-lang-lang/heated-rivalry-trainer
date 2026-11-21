@@ -19,7 +19,8 @@ LABEL org.opencontainers.image.revision=$APP_VERSION
 ENV NODE_ENV=production PORT=8787 TTS_CACHE_DIR=/data/tts AUTH_DB=/data/auth/auth.db npm_config_onnxruntime_node_install_cuda=skip
 WORKDIR /srv/app
 COPY app/package.json app/package-lock.json ./
-RUN npm ci --omit=dev --no-audit --no-fund && npm cache clean --force
+# npm молча пропускает необязательный пакет, если тот не скачался (libvips для sharp, нужен transformers) — проверяем сразу
+RUN npm ci --omit=dev --no-audit --no-fund && npm cache clean --force && node -e "require('sharp')"
 # Модель Kokoro — в образ: контейнер работает без доступа в интернет и не качает её при каждом запуске
 RUN node --input-type=module -e "import { KokoroTTS } from 'kokoro-js'; await KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX', { dtype: 'fp32', device: 'cpu' }); console.log('model ok')"
 # Модель оценки произношения (wav2vec2, фонемы espeak, int8 ~320 МБ) — тоже в образ
