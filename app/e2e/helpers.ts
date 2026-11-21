@@ -304,16 +304,19 @@ export const playSession = async (page: Page, o: PlayOptions = {}): Promise<Play
 
 /** Открыть главную и дождаться отрисовки. */
 export const openHome = async (page: Page) => {
+  // открыть заново, а не перезагрузить: переход на тот же адрес браузер может сделать с прежним состоянием истории,
+  // а под подменёнными часами приложение не видит тип навигации (App.tsx reopened)
+  if (page.url().startsWith("http")) await page.evaluate(() => history.replaceState(null, ""));
   await page.goto("/");
   await expect(page.getByRole("heading", { level: 1 })).toContainText("Евгений");
 };
 
-export type Tab = "Сегодня" | "Путь" | "Слова" | "Я";
+export type Tab = "Главная" | "Путь" | "Слова" | "Я";
 
 /** Вкладка в навигации (нижний таб-бар на телефоне, верхнее меню на десктопе). */
 export const tabButton = (page: Page, name: Tab) => page.getByRole("navigation", { name: "Разделы" }).getByRole("button", { name, exact: true });
 
-/** Перейти в раздел через навигацию: «Сегодня · Путь · Слова · Я». */
+/** Перейти в раздел через навигацию: «Главная · Путь · Слова · Я». */
 export const goTab = async (page: Page, name: Tab) => {
   await tabButton(page, name).click();
 };

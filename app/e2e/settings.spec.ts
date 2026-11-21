@@ -52,7 +52,7 @@ test("значения на корне меняются вслед за выбо
   await expect(settingsRow(page, "Вход и устройства")).toContainText("2 устройства");
 
   // день/ночь — тумблером в шапке; на корне настроек — тоже видно
-  await goTab(page, "Сегодня");
+  await goTab(page, "Главная");
   await page.getByRole("switch", { name: "Ночная тема" }).click();
   await openSettings(page);
   await expect(settingsRow(page, "Оформление")).toContainText("Классика · ночь");

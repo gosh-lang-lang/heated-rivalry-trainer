@@ -23,7 +23,7 @@ import { Settings } from "./screens/Settings";
 import { PullRefresh, TabBar, TopNav, useWide, type Section } from "./ui";
 
 /**
- * Экран приложения. Вкладки — home («Сегодня»), path («Путь»), words («Слова»), me («Я»); подстраницы «Я» — коллекция
+ * Экран приложения. Вкладки — home («Главная»), path («Путь»), words («Слова»), me («Я»); подстраницы «Я» — коллекция
  * и настройки; карточка во весь экран — поверх экрана, с которого открыта (from). Занятие и итог — без вкладок.
  */
 export type View =
@@ -70,13 +70,36 @@ const entry = (): Entry | null => {
 /** Занятие и итог в историю не пишутся: «назад» в них не возвращает. */
 const storable = (v: View) => v.name !== "session" && v.name !== "result";
 
+const SCREENS = new Set<View["name"]>(["home", "path", "words", "me", "collection", "card", "settings"]);
+/** Экран из записи истории, если он из тех, что туда пишутся (запись могла остаться от старой версии приложения). */
+const savedView = (v: unknown): View | null => {
+  const o = v as { name?: unknown; from?: unknown } | null;
+  if (!o || typeof o !== "object" || !SCREENS.has(o.name as View["name"])) return null;
+  if (o.name === "card" && !savedView(o.from)) return null;
+  return o as View;
+};
+/**
+ * Страница перезагружена (в том числе «потяни, чтобы обновить») или открыта «назад»/«вперёд» с другого сайта —
+ * а не открыта заново (адрес, иконка на экране «Домой»). Переход на тот же адрес браузер может сделать заменой записи
+ * с её состоянием, поэтому смотрим на тип навигации, а не только на history.state.
+ */
+const reopened = (): boolean => {
+  const nav = performance.getEntriesByType?.("navigation")[0] as PerformanceNavigationTiming | undefined;
+  if (!nav) return true; // тип неизвестен (старый браузер, подменённые часы в тестах) — верим записи истории
+  return nav.type === "reload" || nav.type === "back_forward";
+};
+/** Экран, который восстановить при загрузке: после перезагрузки — тот же, что был; иначе — нет («Главная»). */
+const restoredView = (): View | null => (reopened() ? savedView(entry()?.v) : null);
+/** С какого экрана начать. */
+export const initialView = (): View => restoredView() ?? { name: "home" };
+
 /**
  * @param user — кто вошёл; null — неизвестно (без сети и без прошлого входа): только кэш, без сервера
  * @param name — как его зовут (приветствие на главной); null — неизвестно
  */
 export default function App({ user, name = null }: { user: string | null; name?: string | null }) {
   const [state, setRaw] = useState<AppState>(() => withLegacySettings(user, loadState(user)));
-  const [view, setView] = useState<View>({ name: "home" });
+  const [view, setView] = useState<View>(initialView);
   const wide = useWide();
   const current = useRef(state);
   const inSession = useRef(false);
@@ -178,10 +201,11 @@ export default function App({ user, name = null }: { user: string | null; name?:
     [],
   );
 
-  // «назад» / «вперёд» в истории: экран из записи; базовая запись без экрана (до приложения) — «Сегодня»
+  // «назад» / «вперёд» в истории: экран из записи; базовая запись без экрана (до приложения) — «Главная»
   useEffect(() => {
-    // перезагрузка на подстранице: приложение начинает с «Сегодня», эта запись теперь базовая
-    if ((entry()?.d ?? 0) > 0) history.replaceState({ d: 0, v: { name: "home" } }, "");
+    // перезагрузка открывает тот же экран (initialView), записи истории под ним остаются — «назад» работает как до неё;
+    // открыли заново или запись без понятного экрана (от старой версии) — эта запись базовая, «Главная»
+    if (!restoredView()) history.replaceState({ d: 0, v: { name: "home" } }, "");
     const onPop = () => {
       if (ownBack.current) {
         ownBack.current = false;

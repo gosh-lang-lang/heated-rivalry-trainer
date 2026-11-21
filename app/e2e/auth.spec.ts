@@ -310,7 +310,7 @@ test("устройства: оба видны, на другом можно вы
   await expect(devices(laptop)).toHaveCount(1);
   expect(cli("sessions", "evgeny")).not.toContain("iPhone");
   // телефон при следующем действии оказывается на странице входа
-  await phone.getByRole("navigation", { name: "Разделы" }).getByRole("button", { name: "Сегодня", exact: true }).click();
+  await phone.getByRole("navigation", { name: "Разделы" }).getByRole("button", { name: "Главная", exact: true }).click();
   await phone.getByRole("navigation", { name: "Разделы" }).getByRole("button", { name: "Я", exact: true }).click();
   await phone.getByRole("button", { name: "Настройки", exact: true }).click();
   await expect(phone).toHaveURL(/\/login/);
@@ -344,7 +344,9 @@ test("устройства: «Выйти везде, кроме этого» —
     await expect(page).toHaveURL(/\/login/);
   }
   await laptop.reload();
-  await expect(laptop.getByRole("button", { name: "Начать часть 1" })).toBeVisible(); // а этот остался
+  // а этот остался — и после перезагрузки на том же экране, «Вход и устройства»
+  await expect(devices(laptop)).toHaveCount(1);
+  await expect(devices(laptop)).toContainText("это устройство");
   for (const p of [laptop, phone, tablet]) await p.context().close();
 });
 

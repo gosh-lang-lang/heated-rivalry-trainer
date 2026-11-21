@@ -15,6 +15,24 @@ test.describe("голос", () => {
     await expect(page.getByText("Американский акцент")).toBeVisible();
     await expect(page.getByText("Британский акцент")).toBeVisible();
     await expect(page.getByRole("radio", { name: /Heart/ })).toHaveAttribute("aria-checked", "true");
+    // выбранный — первым, в блоке «Сейчас», с акцентом; в группах — остальные 9
+    await expect(list.getByRole("radio").first()).toContainText("Heart");
+    await expect(list.locator(".vnow")).toContainText("Сейчас");
+    await expect(list.locator(".vnow")).toContainText("🇺🇸 американский");
+    await expect(list.locator(".vrow:not(.vcur)")).toHaveCount(9);
+  });
+
+  test("выбрал другой голос — он переезжает наверх, прежний возвращается в свою группу", async ({ page }) => {
+    await setup(page);
+    await openHome(page);
+    await openSettingsSection(page, "Озвучка");
+    const list = page.getByRole("radiogroup", { name: "Голос озвучки" });
+    await list.getByRole("radio", { name: /Lewis/ }).click();
+    await expect(list.getByRole("radio").first()).toContainText("Lewis");
+    await expect(list.getByRole("radio").first()).toHaveAttribute("aria-checked", "true");
+    await expect(list.locator(".vnow")).toContainText("🇬🇧 британский");
+    await expect(list.locator(".vrow:not(.vcur)").getByRole("radio", { name: /Heart/ })).toHaveAttribute("aria-checked", "false");
+    await expect(list.locator(".vnow")).toBeInViewport();
   });
 
   test("▶ проигрывает образец выбранным голосом и не меняет выбор", async ({ page }) => {
@@ -42,7 +60,7 @@ test.describe("голос", () => {
     await expect(page.getByRole("radiogroup", { name: "Голос озвучки" }).locator('[role=radio][aria-checked="true"]')).toContainText("Emma");
 
     // занятие говорит выбранным голосом
-    await goTab(page, "Сегодня");
+    await goTab(page, "Главная");
     await page.getByRole("button", { name: "Начать часть 1" }).click();
     await page.getByRole("button", { name: "Поехали" }).click();
     await expect.poll(() => log.requests.some((r) => r.text === DECK.words[0].en && r.voice === "bf_emma")).toBe(true);

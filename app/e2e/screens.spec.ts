@@ -48,7 +48,7 @@ test.describe("главная", () => {
     await openSettingsSection(page, "Занятия");
     await page.getByRole("button", { name: "18", exact: true }).click();
     await expect(page.getByRole("button", { name: "18", exact: true })).toHaveAttribute("aria-pressed", "true");
-    await goTab(page, "Сегодня");
+    await goTab(page, "Главная");
     await expect(page.getByText("18 новых · ~15 мин")).toBeVisible();
     await page.reload();
     await expect(page.getByText("18 новых · ~15 мин")).toBeVisible();
@@ -124,10 +124,10 @@ test.describe("вёрстка", () => {
 });
 
 test.describe("навигация", () => {
-  test("вкладки «Сегодня · Путь · Слова · Я», на главной нет настроек", async ({ page }) => {
+  test("вкладки «Главная · Путь · Слова · Я», на главной нет настроек", async ({ page }) => {
     await setup(page);
     await openHome(page);
-    await expect(page.getByRole("navigation", { name: "Разделы" }).getByRole("button")).toHaveText(["Сегодня", "Путь", "Слова", "Я"]);
+    await expect(page.getByRole("navigation", { name: "Разделы" }).getByRole("button")).toHaveText(["Главная", "Путь", "Слова", "Я"]);
     await expect(page.getByRole("radiogroup", { name: "Голос озвучки" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Экспорт" })).toHaveCount(0);
     for (const [tab, h1] of [["Путь", "Путь"], ["Слова", "Слова"], ["Я", "Евгений"]] as const) {
@@ -135,9 +135,9 @@ test.describe("навигация", () => {
       await expect(page.getByRole("heading", { level: 1, name: h1 })).toBeVisible();
       await expect(tabButton(page, tab)).toHaveAttribute("aria-current", "page");
     }
-    await goTab(page, "Сегодня");
+    await goTab(page, "Главная");
     await expect(page.getByRole("button", { name: "Начать часть 1" })).toBeVisible();
-    await expect(tabButton(page, "Сегодня")).toHaveAttribute("aria-current", "page");
+    await expect(tabButton(page, "Главная")).toHaveAttribute("aria-current", "page");
   });
 
   test("«Я» → шестерёнка → «Настройки» → назад: вкладка «Я» выбрана всё время", async ({ page }) => {
@@ -155,6 +155,26 @@ test.describe("навигация", () => {
     await page.goBack();
     await expect(page.getByRole("heading", { level: 1, name: "Евгений" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Настройки", exact: true })).toBeVisible();
+  });
+
+  test("перезагрузка оставляет на том же экране, «назад» после неё — как до неё", async ({ page }) => {
+    await setup(page);
+    await openHome(page);
+    await goTab(page, "Слова");
+    await expect(page.getByRole("heading", { level: 1, name: "Слова" })).toBeVisible();
+    await page.reload();
+    await expect(page.getByRole("heading", { level: 1, name: "Слова" })).toBeVisible();
+    await expect(tabButton(page, "Слова")).toHaveAttribute("aria-current", "page");
+
+    // подстраница: «Я» → «Настройки» → перезагрузка — снова «Настройки», «назад» — в «Я»
+    await goTab(page, "Я");
+    await page.getByRole("button", { name: "Настройки", exact: true }).click();
+    await expect(page.getByRole("heading", { level: 1, name: "Настройки" })).toBeVisible();
+    await page.reload();
+    await expect(page.getByRole("heading", { level: 1, name: "Настройки" })).toBeVisible();
+    await expect(tabButton(page, "Я")).toHaveAttribute("aria-current", "page");
+    await page.goBack();
+    await expect(page.getByRole("heading", { level: 1, name: "Евгений" })).toBeVisible();
   });
 
   test("во время занятия меню скрыто", async ({ page }) => {

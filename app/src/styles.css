@@ -175,6 +175,9 @@ details summary{list-style:none;cursor:pointer}details summary::-webkit-details-
 .vgroup{font-size:13px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;color:var(--mute);margin:10px 4px 0}
 .vrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;padding:4px 10px 4px 4px;border:2px solid var(--line);border-bottom-width:4px;border-radius:18px;background:var(--card)}
 .vrow[data-on=true]{border-color:var(--blue);background:var(--blueSoft)}
+.vnow{display:grid;gap:8px;scroll-margin:96px 0 24px}
+.vrow.vcur{padding:8px 12px 8px 8px;box-shadow:0 10px 24px -16px rgba(31,95,209,.7)}
+.vrow.vcur .vtx b{font-size:21px}
 .vpick{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:center;text-align:left;border:0;background:none;padding:4px;border-radius:14px;min-height:56px}
 .vrow[data-on=true] .vtx b{color:var(--blue)}
 .vplay{width:44px;height:44px;border-radius:50%;border:2px solid var(--line);border-bottom-width:4px;background:var(--card);color:var(--blue);display:grid;place-items:center;flex:none}

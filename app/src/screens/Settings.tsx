@@ -1,4 +1,4 @@
-import { Fragment, useState, type ComponentType, type SVGProps } from "react";
+import { Fragment, useRef, useState, type ComponentType, type SVGProps } from "react";
 import type { SetState, SettingsSection, View } from "../App";
 import { NEW_PER_DAY_OPTIONS } from "../core/state";
 import type { AppState, ThemePref } from "../core/types";
@@ -302,10 +302,48 @@ export function NewPerDay({ state, setState }: { state: AppState; setState: SetS
   );
 }
 
-/** Выбор голоса. value — из личных настроек (общих для всех устройств), onPick — изменить их. */
-/** Выбор голоса — весь список сразу (у озвучки свой экран). value — из личных настроек, onPick — изменить их. */
+/**
+ * Выбор голоса — весь список сразу (у озвучки свой экран). value — из личных настроек, onPick — изменить их.
+ * Выбранный голос — первым, отдельно («Сейчас»), остальные — ниже по акцентам. Выбрал другой — он переезжает наверх,
+ * страница прокручивается к нему.
+ */
 export function VoicePicker({ value, onPick }: { value: string; onPick: (id: string) => void }) {
   const { voices, server, fallback, playing } = useVoices();
+  const curRef = useRef<HTMLDivElement>(null);
+  const cur = voices.find((v) => v.id === value) ?? null;
+  const rest = voices.filter((v) => v !== cur);
+
+  const row = (v: (typeof voices)[number], top = false) => {
+    const on = v.id === value;
+    const p = playing?.voice === v.id ? playing : null;
+    const about = [v.gender === "f" ? "женский" : "мужской", v.note].filter(Boolean).join(" · ");
+    return (
+      <div className={`vrow${top ? " vcur" : ""}`} data-on={on} key={v.id}>
+        <button
+          className="vpick"
+          role="radio"
+          aria-checked={on}
+          onClick={() => {
+            if (!on) {
+              onPick(v.id);
+              // выбранный переезжает наверх — показать его там
+              requestAnimationFrame(() => curRef.current?.scrollIntoView?.({ block: "nearest", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }));
+            }
+            say(VOICE_SAMPLE, v.id);
+          }}
+        >
+          <span className={`vav ${v.accent}${on ? " sel" : ""}`} aria-hidden="true">{on ? <Check /> : v.name[0]}</span>
+          <span className="vtx">
+            <span className="vname"><b>{v.name}</b>{v.best && <span className="vbadge">лучший</span>}</span>
+            <small>{top ? `${v.accent === "us" ? "🇺🇸 американский" : "🇬🇧 британский"} · ${about}` : about}</small>
+          </span>
+        </button>
+        <button className={`vplay${p ? " on" : ""}`} aria-label={`Послушать ${v.name}`} onClick={() => say(VOICE_SAMPLE, v.id)}>
+          {p?.loading ? <span className="spin" /> : p ? <span className="eq"><i /><i /><i /></span> : <Play />}
+        </button>
+      </div>
+    );
+  };
 
   return (
     <div className="vpage">
@@ -315,39 +353,21 @@ export function VoicePicker({ value, onPick }: { value: string; onPick: (id: str
           : "Нажми на голос, чтобы выбрать: он сразу прочитает образец. ▶ — послушать, не меняя."}
       </p>
       <div className="vlist" role="radiogroup" aria-label="Голос озвучки">
-        {(["us", "gb"] as const).map((acc) => (
-          <Fragment key={acc}>
-            <div className="vgroup">{acc === "us" ? "🇺🇸" : "🇬🇧"} {ACCENT_LABEL[acc]}</div>
-            {voices
-              .filter((v) => v.accent === acc)
-              .map((v) => {
-                const on = v.id === value;
-                const p = playing?.voice === v.id ? playing : null;
-                return (
-                  <div className="vrow" data-on={on} key={v.id}>
-                    <button
-                      className="vpick"
-                      role="radio"
-                      aria-checked={on}
-                      onClick={() => {
-                        onPick(v.id);
-                        say(VOICE_SAMPLE, v.id);
-                      }}
-                    >
-                      <span className={`vav ${v.accent}${on ? " sel" : ""}`} aria-hidden="true">{on ? <Check /> : v.name[0]}</span>
-                      <span className="vtx">
-                        <span className="vname"><b>{v.name}</b>{v.best && <span className="vbadge">лучший</span>}</span>
-                        <small>{[v.gender === "f" ? "женский" : "мужской", v.note].filter(Boolean).join(" · ")}</small>
-                      </span>
-                    </button>
-                    <button className={`vplay${p ? " on" : ""}`} aria-label={`Послушать ${v.name}`} onClick={() => say(VOICE_SAMPLE, v.id)}>
-                      {p?.loading ? <span className="spin" /> : p ? <span className="eq"><i /><i /><i /></span> : <Play />}
-                    </button>
-                  </div>
-                );
-              })}
-          </Fragment>
-        ))}
+        {cur && (
+          <div className="vnow" ref={curRef}>
+            <div className="vgroup">Сейчас</div>
+            {row(cur, true)}
+          </div>
+        )}
+        {(["us", "gb"] as const).map((acc) => {
+          const list = rest.filter((v) => v.accent === acc);
+          return list.length ? (
+            <Fragment key={acc}>
+              <div className="vgroup">{acc === "us" ? "🇺🇸" : "🇬🇧"} {ACCENT_LABEL[acc]}</div>
+              {list.map((v) => row(v))}
+            </Fragment>
+          ) : null;
+        })}
       </div>
       <p className="mute sm vfoot">Нейросетевой голос Kokoro, озвучка на сервере. Выбор — один на все твои устройства.</p>
     </div>

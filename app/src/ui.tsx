@@ -69,10 +69,10 @@ export function useMedia(q: string) {
 
 export const useWide = () => useMedia(WIDE_QUERY);
 
-/** Вкладки: «Сегодня» (главная), «Путь», «Слова» (словарь), «Я» (коллекция, достижения, статистика; настройки — шестерёнкой). */
+/** Вкладки: «Главная» (урок дня), «Путь», «Слова» (словарь), «Я» (коллекция, достижения, статистика; настройки — шестерёнкой). */
 export type Section = "home" | "path" | "words" | "me";
 const TABS: [Section, string][] = [
-  ["home", "Сегодня"],
+  ["home", "Главная"],
   ["path", "Путь"],
   ["words", "Слова"],
   ["me", "Я"],
@@ -81,7 +81,7 @@ const TABS: [Section, string][] = [
 /* иконки нижней панели — 24×24, обводка, как в lib/icons */
 const ic = { viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2.2, strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": true } as const;
 const TAB_ICON: Record<Section, ReactNode> = {
-  // сегодня — площадка: борт, центральный круг
+  // главная — площадка: борт, центральный круг
   home: <svg {...ic}><rect x="2.5" y="5" width="19" height="14" rx="6" /><circle cx="12" cy="12" r="2.6" /><path d="M12 5v4.4M12 14.6V19" /></svg>,
   // путь — дорожка от старта к флажку
   path: <svg {...ic}><circle cx="6" cy="19" r="2.2" /><path d="M8.2 19H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h7" /><path d="M17 3v7" /><path d="M17 3.4h4l-1.3 1.8L21 7h-4" /></svg>,
