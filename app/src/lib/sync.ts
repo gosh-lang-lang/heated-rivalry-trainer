@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, type RefObject } from "react";
 import { clockOffset, deviceTz, setClock } from "../core/dates";
 import { hasPending } from "../core/serverday";
-import { mergeStates, parseState, sameState } from "../core/state";
+import { mergeStates, parseState, sameState, withPersonal } from "../core/state";
 import type { AppState } from "../core/types";
 import { goLogin } from "./auth";
 
@@ -107,7 +107,7 @@ export const useServerSync = (
       if (!remote) return local.upd > 0;
       const merged = mergeStates(local, remote);
       if (!sameState(merged, local))
-        adopt(paused.current ? { ...local, settings: merged.settings, settingsAt: merged.settingsAt, tz: merged.tz, tzAt: merged.tzAt } : merged);
+        adopt(paused.current ? withPersonal(local, merged) : merged);
       // у сервера ещё нет пояса — отправим пояс устройства
       return !remote.tz || !sameState(mergeStates(current.current, remote), remote);
     },

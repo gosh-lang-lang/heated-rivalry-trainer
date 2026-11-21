@@ -88,6 +88,10 @@ export function SessionScreen({ deck, kind, day, words, title, restart = false, 
     return { sess: startSession(kind, steps), seed: Math.floor(Math.random() * 2 ** 31), restarted: false };
   });
   const [sess, setSess] = useState<Session | null>(init.sess);
+  /** самое свежее занятие и прогресс — для записи после ожидания (проверка предложения): за это время синхронизация
+   *  могла принять настройки или пояс с сервера, и запись поверх старой копии их бы затёрла */
+  const live = useRef({ sess, state });
+  live.current = { sess, state };
   const seed = init.seed;
   // экран занятия — ровно видимая область: клавиатура не прокручивает страницу (lib/viewport.ts)
   useLessonViewport();
@@ -171,8 +175,10 @@ export function SessionScreen({ deck, kind, day, words, title, restart = false, 
     },
     addSentence: (rec, n, graded) => {
       prefetch(rec.corrected || rec.text); // его скажут вслух через пару шагов
-      let s = { ...sess, written: { ...sess.written, [n]: rec } };
-      let st: AppState = { ...state, sent: [...state.sent, rec] };
+      const cur = live.current.sess ?? sess,
+        base = live.current.state;
+      let s = { ...cur, written: { ...cur.written, [n]: rec } };
+      let st: AppState = { ...base, sent: [...base.sent, rec] };
       if (graded) ({ sess: s, state: st } = gradeCurrent(s, st, !!rec.ok, null, t));
       else s = markSeen(s);
       commit(s, st, s.i + 1);

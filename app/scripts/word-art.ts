@@ -29,7 +29,7 @@ interface SourceScene {
   cropRect?: [number, number, number, number];
 }
 
-const webp = (img: sharp.Sharp, quality = 75) => img.webp({ quality, alphaQuality: 90, effort: 6, smartSubsample: true }).toBuffer();
+const webp = (img: ReturnType<typeof sharp>, quality = 75) => img.webp({ quality, alphaQuality: 90, effort: 6, smartSubsample: true }).toBuffer();
 const K = ART_CANVAS / ART_EXPORT;
 
 /** Рамка непрозрачного (альфа > 8) в raw RGBA. */
@@ -129,7 +129,7 @@ async function build(id: string): Promise<ArtGen[string]> {
       drop.delete(name);
       continue;
     }
-    let canvas = await sharp(join(srcDir, l.file)).ensureAlpha().png().toBuffer();
+    let canvas: Buffer = await sharp(join(srcDir, l.file)).ensureAlpha().png().toBuffer();
     if (spec.reshape?.["*"]) canvas = await reshape(canvas, spec.reshape["*"]);
     if (spec.reshape?.[name]) (canvas = await reshape(canvas, spec.reshape[name])), fixes.delete(name);
     const floor = spec.alphaFloor?.[name];

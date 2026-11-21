@@ -285,6 +285,18 @@ export const changeSetting = <K extends keyof Settings>(s: AppState, key: K, val
   settingsAt: { ...s.settingsAt, [key]: Math.max(now, s.settingsAt[key] + 1) } as SettingsAt,
 });
 
+/**
+ * Только личное — настройки и пояс — из другой копии, прогресс свой. Посреди занятия синхронизация берёт так:
+ * занятие идёт по своему плану, а смена голоса или оформления на другом устройстве видна сразу.
+ */
+export const withPersonal = (s: AppState, from: AppState): AppState => ({
+  ...s,
+  settings: from.settings,
+  settingsAt: from.settingsAt,
+  tz: from.tz,
+  tzAt: from.tzAt,
+});
+
 /** JSON с ключами объектов по порядку: одинаковые копии — одинаковая строка, как бы ни были собраны. */
 const canonical = (v: unknown): string =>
   JSON.stringify(v, (_, x: unknown) =>

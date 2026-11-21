@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { changeSetting, emptyState, mergeStates, parseState, resetProgress, sameState } from "./state";
+import { changeSetting, emptyState, mergeStates, parseState, resetProgress, sameState, withPersonal } from "./state";
 import { state } from "./fixtures";
 import type { SavedRun } from "./types";
 
@@ -301,5 +301,18 @@ describe("mergeStates: дни, которые решает сервер", () => 
     expect(p).toMatchObject({ tz: "", tzAt: 0 });
     expect(p.days["2026-11-21"].morning).not.toHaveProperty("srv");
     expect(p.days["2026-11-21"].evening?.srv).toBe(3);
+  });
+});
+
+describe("withPersonal", () => {
+  it("берёт настройки и пояс из другой копии, прогресс оставляет свой", () => {
+    const mine = { ...emptyState(), upd: 5, srs: { sacred: { lvl: 2, due: "2026-11-22", intro: "2026-11-20", right: 1, wrong: 0 } } };
+    const other = { ...changeSetting(emptyState(), "voice", "bf_emma", 9), tz: "Europe/Berlin", tzAt: 7, upd: 9 };
+    const r = withPersonal(mine, other);
+    expect(r.settings.voice).toBe("bf_emma");
+    expect(r.settingsAt.voice).toBe(9);
+    expect([r.tz, r.tzAt]).toEqual(["Europe/Berlin", 7]);
+    expect(r.srs).toBe(mine.srs);
+    expect(r.upd).toBe(5);
   });
 });
