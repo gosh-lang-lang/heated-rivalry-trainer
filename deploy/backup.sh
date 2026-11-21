@@ -26,17 +26,29 @@ trap 'rm -f "$part"' EXIT
 
 # Согласованный снимок через VACUUM INTO внутри контейнера: база в режиме WAL, и простое копирование файла
 # может поймать её посреди записи. Снимок идёт в stdout ssh и сразу удаляется на сервере.
+# Контейнер не работает (упал, перезапускается по кругу — например, по памяти) — снимок из того же тома
+# одноразовым контейнером на том же образе: иначе прод, который лежит, нельзя было бы и починить выкаткой.
 snapshot() {
   ssh -o BatchMode=yes -o ConnectTimeout=20 -o ServerAliveInterval=15 "$HOST" 'bash -s' >"$part" <<'REMOTE'
 set -euo pipefail
-f=/tmp/hr-backup-$$.db
-trap 'docker exec heated-rivalry rm -f "$f" >/dev/null 2>&1 || true' EXIT
-docker exec -e F="$f" heated-rivalry node --disable-warning=ExperimentalWarning -e '
-  const { DatabaseSync } = require("node:sqlite");
+js='const { DatabaseSync } = require("node:sqlite");
   const db = new DatabaseSync("/data/auth/auth.db");
   db.prepare("VACUUM INTO ?").run(process.env.F);
   db.close();'
-docker exec heated-rivalry cat "$f"
+if [ "$(docker inspect -f '{{.State.Running}} {{.State.Restarting}}' heated-rivalry 2>/dev/null)" = "true false" ]; then
+  f=/tmp/hr-backup-$$.db
+  trap 'docker exec heated-rivalry rm -f "$f" >/dev/null 2>&1 || true' EXIT
+  docker exec -e F="$f" heated-rivalry node --disable-warning=ExperimentalWarning -e "$js"
+  docker exec heated-rivalry cat "$f"
+else
+  echo "контейнер не работает — снимок из тома heated_rivalry_auth" >&2
+  out=$(mktemp -d)
+  trap 'rm -rf "$out"' EXIT
+  image=$(docker inspect -f '{{.Image}}' heated-rivalry)
+  docker run --rm --network none -u 0 -e F=/out/auth.db -v heated_rivalry_auth:/data/auth -v "$out":/out \
+    --entrypoint node "$image" --disable-warning=ExperimentalWarning -e "$js"
+  cat "$out/auth.db"
+fi
 REMOTE
 }
 
