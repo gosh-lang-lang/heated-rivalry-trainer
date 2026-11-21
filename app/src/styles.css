@@ -130,6 +130,20 @@ textarea.inp{min-height:110px;resize:vertical;font-size:18px;font-weight:600}
 .fb .c{color:var(--ink);font-weight:600}
 .frow{display:flex;gap:10px;align-items:center}
 .frow .btn{flex:1}
+/* строка отзыва в панели задания (.foot.fx): до проверки — подсказка или ссылка, после — результат, в одной клетке.
+   .fbg — невидимая «примерка» отзыва (текст в псевдоэлементах, как у .fb h3 и .fb p): высота панели до и после
+   проверки одна и та же, ничего не прыгает */
+.fz{display:grid;min-height:0}
+.fz>*{grid-area:1/1}
+.fbg{visibility:hidden;pointer-events:none}
+.fbg::before{content:attr(data-t);display:block;min-height:28px;padding-left:36px;font-size:22px;font-weight:900;line-height:1.1;padding-top:2px}
+.fbg::after{content:attr(data-b);display:block;margin-top:4px;font-weight:700;white-space:pre-line}
+.fz-pre{align-self:center;justify-self:center;text-align:center;line-height:1.35}
+.fz-pre .link{min-height:40px;padding-block:4px}
+.foot.fx{transition:background-color .2s}
+.fx .fb{animation:fb-in .22s ease-out}
+@keyframes fb-in{from{opacity:0;transform:translateY(6px)}}
+@media(prefers-reduced-motion:reduce){.foot.fx{transition:none}.fx .fb{animation:none}}
 .spin{display:inline-block;width:18px;height:18px;border:3px solid currentColor;border-right-color:transparent;border-radius:50%;animation:sp 1s linear infinite;vertical-align:-3px;margin-right:8px}
 @keyframes sp{to{transform:rotate(360deg)}}
 .result{text-align:center;padding-top:28px}
@@ -304,8 +318,6 @@ details summary{list-style:none;cursor:pointer}details summary::-webkit-details-
 /* --- занятие на телефоне: ответы внизу, у большого пальца --- */
 .st-pick,.st-listen,.st-pairs,.st-section,.st-reread,.result{display:flex;flex-direction:column}
 .st-pick,.st-listen,.st-pairs{padding-bottom:calc(108px + env(safe-area-inset-bottom))}
-/* после проверки панель выше — поднимаем ответы, чтобы она их не закрывала */
-.app:has(.foot.good,.foot.badf) .st-pick,.app:has(.foot.good,.foot.badf) .st-listen{padding-bottom:calc(200px + env(safe-area-inset-bottom))}
 .sect h2,.hero h1,.st-pick .word h2{text-wrap:balance}
 /* пары: общие ряды у колонок — одинаковая высота, блок прижат вниз */
 .pairs{position:relative;grid-auto-flow:column;grid-template-rows:repeat(var(--n,6),auto);row-gap:10px;margin-top:auto}
@@ -321,6 +333,30 @@ details summary{list-style:none;cursor:pointer}details summary::-webkit-details-
 .intro .ru{font-size:22px}
 .result{justify-content:center;padding-bottom:calc(120px + env(safe-area-inset-bottom))}
 .result .stats3{margin-bottom:0}
+
+/* --- занятие на телефоне и планшете: экран без прокрутки страницы ---
+   Коробка ровно с видимую область (--vvh, --vv-top — lib/viewport.ts): сверху полоска прогресса, снизу панель
+   «Проверить», между ними задание — оно и прокручивается, если не влезло. Страница целиком не едет, даже когда
+   iOS открывает клавиатуру (она не уменьшает страницу, а ложится поверх — видимая область становится ниже). */
+@media(max-width:899px){
+  html:has(.stage.lesson),html:has(.stage.lesson) body{height:100%;overflow:hidden;overscroll-behavior:none}
+  .app:has(>.stage.lesson){position:fixed;left:0;right:0;top:var(--vv-top,0px);height:var(--vvh,100dvh);min-height:0;overflow:hidden}
+  .app>.stage.lesson{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding-bottom:16px}
+  .app:has(>.stage.lesson)>.bar,.app:has(>.stage.lesson)>.foot{position:relative;flex:none}
+  /* клавиатура открыта: под панелью нет «домашней» полоски; «Не помню» — рядом с «Проверить», строка отзыва пустая */
+  .vv-kb .foot .in{padding-bottom:10px;padding-top:10px}
+  .vv-kb .foot.fx:not(.good,.badf) .in{grid-template-columns:auto minmax(0,1fr);align-items:center}
+  .vv-kb .foot.fx:not(.good,.badf) .fbg,.vv-kb .foot.fx:not(.good,.badf) .fz-pre>.mute{display:none}
+  /* низкая видимая область (клавиатура, телефон боком): задание сжимается, чтобы поле и кнопка влезли */
+  .vv-short .app>.bar{padding-block:6px}
+  .vv-short .stage.lesson{padding-top:0}
+  .vv-short .stage.lesson .lbl{font-size:20px;margin:2px 0 10px}
+  .vv-short .st-type>.pic{display:none}
+  .vv-short .st-type .inp{margin-top:12px;padding-block:10px}
+}
+@media(min-width:720px) and (max-width:899px){
+  .app>.stage.lesson{max-width:none;padding-inline:max(16px,calc((100% - var(--stage))/2))}
+}
 
 /* --- только телефон и планшет --- */
 @media(max-width:899px){
@@ -507,6 +543,9 @@ details summary{list-style:none;cursor:pointer}details summary::-webkit-details-
   .foot .frow .btn{width:100%}
   .foot .in>.link{grid-column:1;grid-row:1;justify-self:start}
   .foot .in>.mute{grid-column:1/-1;font-size:16px}
+  .foot .fz{grid-column:1;grid-row:1}
+  .fbg{display:none}
+  .fz-pre{justify-self:start;text-align:left}
   .foot .fb{grid-column:1;grid-row:1;display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:16px;align-items:center}
   .fb h3{font-size:24px;display:contents}
   .fb h3 svg{grid-row:1/span 2;width:56px;height:56px;padding:12px;border-radius:50%;background:var(--card)}

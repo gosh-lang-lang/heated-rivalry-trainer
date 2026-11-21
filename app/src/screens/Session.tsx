@@ -22,6 +22,7 @@ import type { AppState, Deck, SentenceRecord, SessionKind, Step } from "../core/
 import { checkerAvailable, checkSentence } from "../lib/checker";
 import { Check, Close, Cross, Mic } from "../lib/icons";
 import { prefetch, say, useDictation } from "../lib/speech";
+import { useLessonViewport } from "../lib/viewport";
 import { hasWordArt, WordArt } from "../lib/WordArt";
 import { SpeakBtn } from "../ui";
 
@@ -62,6 +63,8 @@ export function SessionScreen({ deck, kind, day, words, title, state, setState, 
           : morningPlan(deck, state, t, { extra: kind === "extra" });
     return startSession(kind, steps);
   });
+  // экран занятия — ровно видимая область: клавиатура не прокручивает страницу (lib/viewport.ts)
+  useLessonViewport();
 
   // при входе в шаг: знакомство со словом и озвучка
   useEffect(() => {
@@ -187,8 +190,14 @@ function StepView({ step, api }: { step: Step; api: Api }) {
   };
 
   /* ----- проверка ----- */
+  /** Поле станет неактивным — убираем клавиатуру сразу, а не когда система заметит. */
+  const dropKeyboard = () => {
+    const el = document.activeElement;
+    if (el instanceof HTMLElement && el.matches("input, textarea")) el.blur();
+  };
   const check = async () => {
     if (checked || busy) return;
+    dropKeyboard();
     if ((step.t === "pick" || step.t === "listen") && w) {
       const ok = sel === w.id;
       api.grade(ok, w.id);
@@ -244,6 +253,7 @@ function StepView({ step, api }: { step: Step; api: Api }) {
 
   const dontKnow = () => {
     if (!w) return;
+    dropKeyboard();
     api.grade(false, w.id);
     setTyped("");
     setFb({ ok: false, title: "Правильно так:", body: <span className="c">{w.example}</span> });
@@ -480,6 +490,29 @@ function StepView({ step, api }: { step: Step; api: Api }) {
   }
 
   /* ----- нижняя панель ----- */
+  // «примерка» отзыва: самый длинный из возможных заголовков и текст, который покажем после проверки
+  const ghost: { t: string; b?: string } =
+    (step.t === "pick" || step.t === "listen") && w
+      ? { t: "Правильный ответ:", b: `${w.en} — ${w.ru}` }
+      : step.t === "type" && w
+        ? { t: "Почти — опечатка", b: w.example }
+        : step.t === "build"
+          ? { t: "Правильно так:", b: `${step.en}\nТвой вариант: ${step.en}` }
+          : step.t === "pairs"
+            ? { t: "Все пары верно!", b: "Ошибок по ходу: 0" }
+            : step.t === "speak"
+              ? { t: "100% слов — попробуй ещё завтра", b: "Не расслышал: …" }
+              : { t: "Почти — вот как лучше:", b: "…\n…" };
+  // до проверки в строке отзыва — то, что помогает сделать задание
+  const pre: ReactNode =
+    step.t === "type" ? <button className="link" onClick={dontKnow}>Не помню</button>
+    : step.t === "write" ? <button className="link" onClick={api.next}>Пропустить</button>
+    : step.t === "speak" ? <button className="link" onClick={api.next}>Не могу сейчас говорить</button>
+    : step.t === "pairs" ? <span className="mute sm">Нажми слово слева, потом его перевод справа</span>
+    : step.t === "listen" ? <span className="mute sm">Нажми на динамик, чтобы послушать ещё раз</span>
+    : step.t === "pick" ? <span className="mute sm">Нажми на динамик, чтобы услышать слово</span>
+    : step.t === "build" ? <span className="mute sm">Нажми на слово в ответе, чтобы убрать его</span>
+    : null;
   let foot: ReactNode;
   if (step.t === "section" || step.t === "intro") {
     foot = <div className="foot"><div className="in"><button className="btn wide" id="next" onClick={api.next}>{step.t === "section" ? "Поехали" : "Дальше"}</button></div></div>;
@@ -490,36 +523,40 @@ function StepView({ step, api }: { step: Step; api: Api }) {
         <button className="link" id="next" onClick={api.next}>Сделаю позже</button>
       </div></div>
     );
-  } else if (step.t === "pairs" && !checked) {
-    foot = <div className="foot"><div className="in"><div className="mute sm" style={{ textAlign: "center" }}>Нажми слово слева, потом его перевод справа</div></div></div>;
-  } else if (!checked) {
-    foot = (
-      <div className="foot"><div className="in">
-        <div className="frow">
-          <button className="btn wide" id="chk" disabled={!canCheck || busy} onClick={check}>
-            {busy ? <><span className="spin" />Проверяю…</> : "Проверить"}
-          </button>
-        </div>
-        {step.t === "speak" && <button className="link" onClick={api.next}>Не могу сейчас говорить</button>}
-        {step.t === "write" && <button className="link" onClick={api.next}>Пропустить</button>}
-        {step.t === "type" && <button className="link" onClick={dontKnow}>Не помню</button>}
-      </div></div>
-    );
   } else {
     foot = (
-      <div className={`foot ${fb!.ok ? "good" : "badf"}`}><div className="in">
-        <div className="fb">
-          <h3>{fb!.ok ? <Check /> : <Cross />}{fb!.title}</h3>
-          {fb!.body && <p>{fb!.body}</p>}
+      <div className={`foot fx${fb ? (fb.ok ? " good" : " badf") : ""}`}><div className="in">
+        {/* строка отзыва: до проверки — подсказка или ссылка, после — результат. Высота одна и та же: невидимая
+            «примерка» отзыва (.fbg, текст — в псевдоэлементах) заранее занимает место, панель и задание не прыгают */}
+        <div className="fz">
+          <div className="fbg" aria-hidden="true" data-t={ghost.t} data-b={ghost.b} />
+          {fb ? (
+            <div className="fb" role="status">
+              <h3>{fb.ok ? <Check /> : <Cross />}{fb.title}</h3>
+              {fb.body && <p>{fb.body}</p>}
+            </div>
+          ) : (
+            <div className="fz-pre">{pre}</div>
+          )}
         </div>
-        <button className={`btn ${fb!.ok ? "okb" : "bad"} wide`} id="next" onClick={api.next}>Дальше</button>
+        <div className="frow">
+          {fb ? (
+            <button className={`btn ${fb.ok ? "okb" : "bad"} wide`} id="next" onClick={api.next}>Дальше</button>
+          ) : step.t === "pairs" ? (
+            <button className="btn wide" disabled>Дальше</button>
+          ) : (
+            <button className="btn wide" id="chk" disabled={!canCheck || busy} onClick={check}>
+              {busy ? <><span className="spin" />Проверяю…</> : "Проверить"}
+            </button>
+          )}
+        </div>
       </div></div>
     );
   }
 
   return (
     <>
-      <main className={`stage st-${step.t}`}>{body}</main>
+      <main className={`stage lesson st-${step.t}`}>{body}</main>
       {foot}
     </>
   );
