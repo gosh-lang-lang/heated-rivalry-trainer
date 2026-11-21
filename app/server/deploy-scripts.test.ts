@@ -1,10 +1,11 @@
 /**
  * Скрипты деплоя (deploy/*.sh) — без сервера: ssh, npm и curl подменены записывающими заглушками.
- *   deploy.sh — выкатывает ровно origin/main (проверяет его чистую копию), ничего с красными тестами.
+ *   deploy.sh — выкатывает ровно origin/main (проверяет его чистую копию, на маке собирает образ, на сервер —
+ *               только образ и deploy/, без исходников), ничего с красными тестами или сломанной сборкой.
  *   backup.sh — проверяет копию до ротации, хранит KEEP последних дней.
  */
 import { execFileSync, spawnSync } from "node:child_process";
-import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -38,6 +39,12 @@ if [[ "\${@: -1}" == *"tar -x"* ]]; then cat > "${root}/shipped.tar"; else cat >
 echo "ssh $(echo "\${@: -1}" | tr '\\n' ' ')" >> "${log}"`,
   );
   script(join(bin, "curl"), `if [[ "$*" == *api/health* ]]; then echo 200; else echo 302; fi`);
+  // docker на маке: сборка (FAKE_DOCKER_FAIL=build — падает), save — байты образа; zstd — как есть
+  script(
+    join(bin, "docker"),
+    `echo "docker $*" >> "${log}"; [[ -n "\${FAKE_DOCKER_FAIL:-}" && "$*" == *"$FAKE_DOCKER_FAIL"* ]] && exit 1; [[ "$1" == save ]] && echo IMAGE-BYTES; exit 0`,
+  );
+  script(join(bin, "zstd"), `cat`);
   return { bin, log, calls: () => (existsSync(log) ? readFileSync(log, "utf8") : "") };
 };
 
@@ -53,6 +60,9 @@ describe("deploy.sh", () => {
     git("checkout", "-q", "-B", "main");
     mkdirSync(join(root, "work/deploy"));
     copyFileSync(join(DEPLOY, "deploy.sh"), join(root, "work/deploy/deploy.sh"));
+    for (const f of ["compose.yaml", "edge-connect.sh", "caddy-site.conf", "caddy-install.sh", "caddy-reload.sh", "server-backup.sh"]) writeFileSync(join(root, "work/deploy", f), "#\n");
+    mkdirSync(join(root, "work/app"));
+    writeFileSync(join(root, "work/app/secret-source.ts"), "исходник — на сервер не уходит");
     const f = fakeBin(root);
     script(join(root, "work/deploy/backup.sh"), `echo backup >> "${f.log}"`);
     git("add", "-A");
@@ -70,7 +80,7 @@ describe("deploy.sh", () => {
 
   const shipped = (root: string) => execFileSync("tar", ["-tf", join(root, "shipped.tar")], { encoding: "utf8" }).trim().split("\n").sort();
 
-  it("всё на GitHub и тесты зелёные: проверки чистой копии → бэкап → выкатка этого коммита → проверка прода", () => {
+  it("всё на GitHub и тесты зелёные: проверки чистой копии → сборка на маке → бэкап → образ и deploy/ на сервер → проверка", () => {
     const { root, git, run, calls } = repo();
     const rev = git("rev-parse", "HEAD");
     const r = run({ FAKE_PROD_REV: rev });
@@ -86,9 +96,22 @@ describe("deploy.sh", () => {
       "test --silent",
       "run -s e2e -- --reporter=dot",
     ]);
-    expect(lines.slice(4).map((l) => l.split(" ")[0])).toEqual(["backup", "ssh", "ssh"]);
-    expect(lines[6]).toContain(`APP_VERSION=${rev} docker compose up -d --build`);
-    expect(shipped(root)).toEqual(["deploy/", "deploy/backup.sh", "deploy/deploy.sh"]);
+    // образ — на маке, из той же чистой копии коммита, под архитектуру сервера
+    const build = lines.find((l) => l.startsWith("docker buildx build"))!;
+    expect(build).toContain("--platform linux/amd64");
+    expect(build).toContain(`--build-arg APP_VERSION=${rev} -t heated-rivalry:${rev} --load `);
+    expect(build).toMatch(/\/src$/); // контекст — копия коммита, не рабочая папка
+    const at = (p: string) => lines.findIndex((l) => l.startsWith(p));
+    expect(at("docker buildx")).toBeLessThan(at("backup"));
+    expect(at("backup")).toBeLessThan(at("ssh"));
+    // на сервер: deploy/ (без исходников), образ через docker load, запуск без сборки
+    expect(lines.some((l) => l.startsWith("ssh ") && l.includes("docker load"))).toBe(true);
+    expect(lines.some((l) => l.startsWith(`docker save heated-rivalry:${rev}`))).toBe(true);
+    const up = lines.find((l) => l.includes("docker compose up"))!;
+    expect(up).toContain(`TAG=${rev} docker compose up -d --no-build`);
+    expect(lines.some((l) => l.startsWith("ssh ") && /docker (compose )?build|--build\b/.test(l))).toBe(false); // на сервере не собираем
+    // на сервер — только файлы для работы: ни исходников app/, ни скриптов выкатки и бэкапа
+    expect(shipped(root)).toEqual(["deploy/", ...["caddy-install.sh", "caddy-reload.sh", "caddy-site.conf", "compose.yaml", "edge-connect.sh", "server-backup.sh"].map((f) => `deploy/${f}`)]);
     expect(git("worktree", "list").split("\n")).toHaveLength(1); // временная копия убрана
   });
 
@@ -121,9 +144,19 @@ describe("deploy.sh", () => {
     writeFileSync(join(root, "work/feature.txt"), "x");
     git("add", "-A");
     git("commit", "-qm", "feature");
+    const { calls } = { calls: () => readFileSync(join(root, "calls.log"), "utf8") };
     const r = run({ FAKE_PROD_REV: rev });
     expect(r.code).toBe(0);
     expect(shipped(root)).not.toContain("feature.txt");
+    expect(calls()).toContain(`-t heated-rivalry:${rev} `); // образ — из origin/main, не из ветки
+  });
+
+  it("сборка образа не удалась — ни бэкапа, ни выкатки", () => {
+    const { git, run, calls } = repo();
+    const r = run({ FAKE_DOCKER_FAIL: "buildx", FAKE_PROD_REV: git("rev-parse", "HEAD") });
+    expect(r.code).not.toBe(0);
+    expect(calls()).not.toContain("backup");
+    expect(calls()).not.toContain("ssh");
   });
 
   it.each(["typecheck", "test --silent", "e2e"])("красный %s — ни бэкапа, ни выкатки", (step) => {
@@ -208,3 +241,73 @@ describe("caddy-site.conf", () => {
     expect(bytes).toBeGreaterThanOrEqual(STATE_MAX_BYTES);
   });
 });
+
+describe("server-backup.sh (на сервере)", () => {
+  const today = execFileSync("date", ["+%Y-%m-%d"], { encoding: "utf8" }).trim();
+  /** «Сервер»: docker отдаёт снимок (running — контейнер работает, иначе — одноразовым контейнером в /out). */
+  const setup = (snapshot: "good" | "corrupt", running = true) => {
+    const root = tmp();
+    const db = join(root, "snapshot.db");
+    if (snapshot === "good") {
+      const d = new DatabaseSync(db);
+      d.exec("CREATE TABLE users (id INTEGER); INSERT INTO users VALUES (1), (2);");
+      d.close();
+    } else writeFileSync(db, "это не база");
+    const bin = join(root, "bin");
+    mkdirSync(bin);
+    const log = join(root, "docker.log");
+    script(
+      join(bin, "docker"),
+      `echo "docker $*" >> "${log}"
+case "$1" in
+  inspect) [[ "$*" == *State.Running* ]] && echo "${running ? "true false" : "false true"}" || echo sha256:img ;;
+  exec) [[ "$*" == *" cat "* ]] && cat "${db}" ;;
+  run) for a in "$@"; do [[ "$a" == *:/out ]] && cp "${db}" "\${a%:/out}/auth.db"; done ;;
+esac
+exit 0`,
+    );
+    const dir = join(root, "backups");
+    const run = () =>
+      spawnSync(join(DEPLOY, "server-backup.sh"), [], { env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, HR_BACKUP_DIR: dir, HR_BACKUP_KEEP: "3" }, encoding: "utf8" });
+    return { dir, run, calls: () => readFileSync(log, "utf8") };
+  };
+
+  it("снимок за сегодня + 2 самых свежих старых; лишние удалены; папка закрыта от чужих", () => {
+    const { dir, run } = setup("good");
+    mkdirSync(dir);
+    for (const d of ["2020-01-01", "2020-01-02", "2020-01-03", "2020-01-04"]) writeFileSync(join(dir, `auth-${d}.db`), "old");
+    const r = run();
+    expect(r.status, r.stderr).toBe(0);
+    expect(r.stdout).toContain("пользователей: 2");
+    expect(readdirSync(dir).sort()).toEqual(["auth-2020-01-03.db", "auth-2020-01-04.db", `auth-${today}.db`]);
+    expect(statSync(dir).mode & 0o777).toBe(0o700);
+  });
+
+  it("второй запуск за день заменяет сегодняшнюю копию", () => {
+    const { dir, run } = setup("good");
+    mkdirSync(dir);
+    writeFileSync(join(dir, `auth-${today}.db`), "утренняя");
+    expect(run().status).toBe(0);
+    expect(readdirSync(dir)).toEqual([`auth-${today}.db`]);
+    expect(readFileSync(join(dir, `auth-${today}.db`), "utf8")).not.toBe("утренняя");
+  });
+
+  it("битый снимок — ошибка, хорошие копии не тронуты, мусора нет", () => {
+    const { dir, run } = setup("corrupt");
+    mkdirSync(dir);
+    for (const d of ["2020-01-01", "2020-01-02", "2020-01-03"]) writeFileSync(join(dir, `auth-${d}.db`), "good");
+    const r = run();
+    expect(r.status).not.toBe(0);
+    expect(r.stderr).toContain("снимок повреждён");
+    expect(readdirSync(dir).sort()).toEqual(["auth-2020-01-01.db", "auth-2020-01-02.db", "auth-2020-01-03.db"]);
+  });
+
+  it("контейнер лежит — снимок из тома одноразовым контейнером того же образа, без сети", () => {
+    const { dir, run, calls } = setup("good", false);
+    const r = run();
+    expect(r.status, r.stderr).toBe(0);
+    expect(readdirSync(dir)).toEqual([`auth-${today}.db`]);
+    expect(calls()).toMatch(/docker run --rm --network none .*-v heated_rivalry_auth:\/data\/auth .*sha256:img/);
+  });
+});
+

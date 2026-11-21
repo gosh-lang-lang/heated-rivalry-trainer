@@ -3,10 +3,13 @@
 #   deploy/deploy.sh          проверки → бэкап → выкатка коммита origin/main → проверка, что прод на нём
 #   deploy/deploy.sh status   какие версии сейчас: локальная, GitHub, прод
 # Выкатывается ровно origin/main: его отдельная чистая копия (git worktree) проходит typecheck / unit / e2e,
-# из неё же собирается архив. Незакоммиченное в рабочей папке (в том числе правки параллельных сессий)
+# из неё же на этом маке собирается образ (linux/amd64 — как сервер). На сервер уходят только готовый образ
+# (docker save | zstd | ssh docker load) и файлы для работы из deploy/ (RUNTIME: compose, Caddy, подключение к сети) —
+# без исходников; на сервере ничего не собирается. Незакоммиченное в рабочей папке (в том числе правки параллельных сессий)
 # на прод не попадает и выкатку не блокирует. Не выкатит, если в локальном main есть незапушенные коммиты
 # (значит, на GitHub ещё не то, что задумано) или проверки красные.
-# На проде в образе остаётся метка коммита (org.opencontainers.image.revision); unknown — собрали в обход скрипта.
+# Образ помечен коммитом (тег heated-rivalry:<коммит> и org.opencontainers.image.revision); на сервере остаются
+# текущий и предыдущий образ — для отката (deploy/README.md).
 # Переменные: HR_HOST (root@195.133.197.130).
 set -euo pipefail
 HOST="${HR_HOST:-root@195.133.197.130}"
@@ -59,13 +62,21 @@ npm --prefix "$WT/app" run -s typecheck
 npm --prefix "$WT/app" test --silent
 E2E_PORT=5190 E2E_FRESH=1 npm --prefix "$WT/app" run -s e2e -- --reporter=dot
 
+IMAGE="heated-rivalry:$REV"
+# на сервере — только то, что нужно для работы: запуск контейнера, подключение Caddy к сети, конфиг Caddy и его применение,
+# ежедневный бэкап базы на сервере
+RUNTIME=(deploy/compose.yaml deploy/edge-connect.sh deploy/caddy-site.conf deploy/caddy-install.sh deploy/caddy-reload.sh deploy/server-backup.sh)
+say "Сборка образа на маке: $IMAGE (linux/amd64)"
+docker buildx build --platform linux/amd64 -f "$WT/app/Dockerfile" --build-arg APP_VERSION="$REV" -t "$IMAGE" --load "$WT"
+
 say "Бэкап базы с прода"
 "$ROOT/deploy/backup.sh"
 
-say "Выкатка ${REV:0:7}"
-git archive "$REV" | ssh "$HOST" 'set -e; rm -rf /opt/heated-rivalry/src.new; mkdir -p /opt/heated-rivalry/src.new
-  tar -x -C /opt/heated-rivalry/src.new; rm -rf /opt/heated-rivalry/src; mv /opt/heated-rivalry/src.new /opt/heated-rivalry/src'
-ssh "$HOST" "cd /opt/heated-rivalry/src/deploy && APP_VERSION=$REV docker compose up -d --build --quiet-pull"
+say "Выкатка ${REV:0:7}: на сервер — образ и файлы для работы, без исходников"
+git archive "$REV" "${RUNTIME[@]}" | ssh "$HOST" 'set -e; D=/opt/heated-rivalry; rm -rf $D/deploy.new; mkdir -p $D/deploy.new
+  tar -x -C $D/deploy.new --strip-components=1; rm -rf $D/deploy; mv $D/deploy.new $D/deploy'
+docker save "$IMAGE" | zstd -T0 -3 -q | ssh "$HOST" "zstd -d -q | docker load -q && docker tag $IMAGE heated-rivalry:latest"
+ssh "$HOST" "cd /opt/heated-rivalry/deploy && TAG=$REV docker compose up -d --no-build --pull never"
 
 say "Проверка прода"
 for _ in $(seq 1 40); do
@@ -79,4 +90,10 @@ code=$(curl -s -o /dev/null -w '%{http_code}' --resolve "${SITE#https://}:443:$I
 [[ "$code" == "200" ]] || fail "$SITE/api/health ответил $code"
 code=$(curl -s -o /dev/null -w '%{http_code}' -H 'Accept: text/html' --resolve "${SITE#https://}:443:$IP" "$SITE/")
 [[ "$code" == "302" ]] || fail "без входа / должен отдавать 302 на /login, а отдал $code"
+
+say "Уборка: на сервере и на маке — текущий и один предыдущий образ"
+# список docker image ls — от нового к старому; latest — тот же текущий образ
+prune='docker image ls heated-rivalry --format "{{.Tag}}" | grep -vx -e latest -e "$1" | tail -n +2 | while read -r t; do docker rmi "heated-rivalry:$t" >/dev/null || true; done; docker image prune -f >/dev/null'
+ssh "$HOST" "bash -c '$prune' _ $REV"
+bash -c "$prune" _ "$REV" || true
 printf '\n\033[32m✓ прод на %s\033[0m\n' "${REV:0:7}"

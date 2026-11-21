@@ -1,0 +1,10 @@
+[Unit]
+Description=Heated Rivalry: daily database snapshot on the server
+
+[Timer]
+OnCalendar=*-*-* 03:30
+Persistent=true
+RandomizedDelaySec=10m
+
+[Install]
+WantedBy=timers.target

@@ -1,13 +1,10 @@
-# VPS: /opt/heated-rivalry/src/deploy/compose.yaml (см. deploy/README.md)
+# VPS: /opt/heated-rivalry/deploy/compose.yaml (см. deploy/README.md)
 name: heated-rivalry
 services:
   app:
+    # образ собирается на маке (deploy/deploy.sh) и приходит готовым: docker save | ssh docker load; здесь не собирается
     image: heated-rivalry:${TAG:-latest}
-    build:
-      context: ..
-      dockerfile: app/Dockerfile
-      args:
-        APP_VERSION: ${APP_VERSION:-unknown}
+    pull_policy: never
     container_name: heated-rivalry
     restart: unless-stopped
     mem_limit: ${APP_MEM_LIMIT:-1536m}

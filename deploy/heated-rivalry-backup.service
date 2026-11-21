@@ -1,0 +1,8 @@
+[Unit]
+Description=Heated Rivalry: daily database snapshot on the server
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/heated-rivalry/deploy/server-backup.sh
