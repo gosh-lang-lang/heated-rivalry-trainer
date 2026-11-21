@@ -126,3 +126,16 @@ export const finishSession = (sess: Session, state: AppState, today: string, now
   else d[kind] = result;
   return { state: { ...state, days: { ...state.days, [today]: d } }, result, prev, kind, day: today };
 };
+
+/**
+ * Слова, которые человек уже учит: знакомые по прогрессу и все слова этого занятия.
+ * Из них — отвлекающие варианты в «Выбери перевод» и «Что ты слышишь?» (core/text.ts options).
+ */
+export const studiedIds = (state: Pick<AppState, "srs">, steps: readonly Step[]): Set<string> => {
+  const ids = new Set(Object.keys(state.srs));
+  for (const s of steps) {
+    if ("w" in s && s.w) ids.add(s.w);
+    if ("ws" in s) s.ws.forEach((id) => ids.add(id));
+  }
+  return ids;
+};

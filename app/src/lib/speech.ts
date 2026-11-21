@@ -93,16 +93,37 @@ const SILENCE = (() => {
   s(36, "data"), d.setUint32(40, n * 2, true);
   return "data:audio/wav;base64," + btoa(String.fromCharCode(...b));
 })();
-if (audio && typeof document !== "undefined") {
-  const unlock = () => {
-    if (!audio.src) {
-      audio.src = SILENCE;
-      audio.play().catch(() => {});
+/*
+ * iOS (Safari и приложение на экране «Домой») даёт играть звук только тому, что хоть раз запустили касанием.
+ * Озвучка же стартует после сетевого запроса — уже не «в касании». Поэтому на касании будим оба канала:
+ *  - audio — тишиной (пока он не сыграл ни разу; если в этот момент готовится фраза — не перебиваем, ждём следующего касания);
+ *  - speechSynthesis — пустой фразой: без этого запасной системный голос на iOS молчит, когда сервер недоступен
+ *    (так было 21.11.2026: прод падал, сервер отвечал 502, и ни озвучка, ни кнопка не давали звука).
+ * Если браузер всё же отказал (NotAllowedError) — будим снова на следующем касании.
+ */
+let audioReady = false;
+let speechReady = false;
+const unlock = () => {
+  if (audio && !audioReady && !playing?.loading) {
+    audio.src = SILENCE;
+    audio.play().catch(() => {});
+  }
+  if (!speechReady) {
+    try {
+      const u = new SpeechSynthesisUtterance(" ");
+      u.volume = 0;
+      speechSynthesis.speak(u);
+    } catch {
+      /* нет speechSynthesis */
     }
-    document.removeEventListener("pointerdown", unlock, true);
-  };
-  document.addEventListener("pointerdown", unlock, true);
-}
+    speechReady = true;
+  }
+  if (audioReady || !audio) document.removeEventListener("pointerdown", unlock, true);
+};
+const armUnlock = () => {
+  if (typeof document !== "undefined") document.addEventListener("pointerdown", unlock, true);
+};
+armUnlock();
 
 const urls = new Map<string, Promise<string>>();
 let retryAt = 0;
@@ -147,9 +168,14 @@ const setPlaying = (p: typeof playing) => {
   notify();
 };
 if (audio) {
-  audio.addEventListener("playing", () => playing && setPlaying({ ...playing, loading: false }));
-  audio.addEventListener("ended", () => setPlaying(null));
-  audio.addEventListener("pause", () => playing && !playing.loading && setPlaying(null));
+  // тишина, которой будили звук, — не фраза: её начало и конец не трогают фразу, которая в это время готовится
+  const phrase = () => audio.src !== SILENCE;
+  audio.addEventListener("playing", () => {
+    audioReady = true;
+    if (playing && phrase()) setPlaying({ ...playing, loading: false });
+  });
+  audio.addEventListener("ended", () => phrase() && setPlaying(null));
+  audio.addEventListener("pause", () => phrase() && playing && !playing.loading && playing.voice !== "system" && setPlaying(null));
 }
 
 /** Озвучить (голосом из настроек или указанным). Новый вызов прерывает предыдущий. */
@@ -171,6 +197,22 @@ export const say = (text: string, voice: string = ttsVoice) => {
     audio.src = url;
     return audio.play();
   };
+  /** Браузер не дал играть (не было касания) — сервер тут ни при чём: будим звук на следующем касании, пробуем системный голос. */
+  const blocked = (e: unknown) => {
+    if ((e as { name?: string })?.name !== "NotAllowedError") return false;
+    audioReady = false;
+    armUnlock();
+    setPlaying(null);
+    systemSay(text);
+    return true;
+  };
+  /** Сервер недоступен или не ответил вовремя — полминуты говорим системным голосом. */
+  const serverDown = () => {
+    setServer("down");
+    setPlaying(null);
+    retryAt = Date.now() + RETRY_MS;
+    systemSay(text);
+  };
   const viaServer = () =>
     serverUrl(text, voice)
       .then((url) => {
@@ -178,13 +220,19 @@ export const say = (text: string, voice: string = ttsVoice) => {
         setServer("ok");
         return play(url);
       })
-      .catch(() => {
-        if (id !== seq) return;
-        setServer("down");
-        setPlaying(null);
-        retryAt = Date.now() + 30_000; // сервер лежит — полминуты не пытаемся
-        systemSay(text);
+      .catch((e: unknown) => {
+        if (id !== seq || (e as { name?: string })?.name === "AbortError" || blocked(e)) return;
+        serverDown();
       });
+  // сервер завис (502/504 приходят через десятки секунд) — не держим кнопку в «загрузке», говорим системным голосом
+  setTimeout(() => {
+    if (id !== seq || playing?.text !== text || !playing.loading) return;
+    seq++; // поздний ответ сервера уже не должен зазвучать поверх
+    audio.pause();
+    audio.removeAttribute("src");
+    audio.load(); // прерывает загрузку файла
+    serverDown();
+  }, SLOW_MS);
   void directUrl(text, voice).then((url) => {
     if (id !== seq) return;
     if (!url) return viaServer();
@@ -192,12 +240,17 @@ export const say = (text: string, voice: string = ttsVoice) => {
     p?.then(
       () => setServer("ok"),
       (e: unknown) => {
-        if (id !== seq || (e as { name?: string })?.name === "AbortError") return;
+        if (id !== seq || (e as { name?: string })?.name === "AbortError" || blocked(e)) return;
         void viaServer(); // не вышло (лимит, ошибка) — запасной путь: POST, потом системный голос
       },
     );
   });
 };
+
+/** Сколько ждать звука с сервера, прежде чем сказать системным голосом. Новая фраза на сервере озвучивается за 1–3 с. */
+const SLOW_MS = 7000;
+/** Сервер недоступен — столько не пытаемся к нему обращаться. */
+const RETRY_MS = 30_000;
 
 /** Что сейчас с этой фразой: готовится (loading), звучит (playing) или ничего. */
 export const useSpeaking = (text: string): "loading" | "playing" | null => {

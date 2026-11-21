@@ -14,6 +14,7 @@ import {
   markSeen,
   progress,
   startSession,
+  studiedIds,
   type Finished,
   type Session,
 } from "../core/session";
@@ -44,6 +45,8 @@ interface Props {
 interface Api {
   deck: Deck;
   sess: Session;
+  /** слова, которые человек уже учит: из них — отвлекающие варианты ответа */
+  known: ReadonlySet<string>;
   grade: (ok: boolean, wordId: string | null) => void;
   seen: () => void;
   next: () => void;
@@ -95,6 +98,7 @@ export function SessionScreen({ deck, kind, day, words, title, state, setState, 
   const api: Api = {
     deck,
     sess,
+    known: studiedIds(state, sess.steps),
     grade: (ok, wordId) => {
       const r = gradeCurrent(sess, state, ok, wordId, t, wordId ? deck.byId[wordId]?.rare : undefined);
       setSess(r.sess);
@@ -161,7 +165,7 @@ function StepView({ step, api }: { step: Step; api: Api }) {
   const w = "w" in step && step.w ? deck.byId[step.w] : null;
 
   // данные задания создаются один раз на шаг (компонент пересоздаётся по key)
-  const [opts] = useState(() => (w && (step.t === "pick" || step.t === "listen") ? options(w, deck.words, Math.random) : []));
+  const [opts] = useState(() => (w && (step.t === "pick" || step.t === "listen") ? options(w, deck.words, Math.random, api.known) : []));
   const [pairs] = useState(() => (step.t === "pairs" ? { L: shuffle(step.ws), R: shuffle(step.ws) } : null));
   const [toks] = useState(() => (step.t === "build" ? buildTokens(step.en) : []));
   const [ord] = useState(() => shuffle(toks.map((_, i) => i)));

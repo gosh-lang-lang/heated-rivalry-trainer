@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { advance, bumpWrong, finishSession, gradeCurrent, introduceCurrent, markSeen, startSession } from "./session";
+import { advance, bumpWrong, finishSession, gradeCurrent, introduceCurrent, markSeen, startSession, studiedIds } from "./session";
 import { blankState } from "./srs";
 import { state, TODAY } from "./fixtures";
 import type { Step } from "./types";
@@ -131,5 +131,17 @@ describe("тренировка «Пройти все слова» (drill)", () =
     expect(fin.state).toBe(st);
     expect(fin.prev).toBeNull();
     expect(fin.kind).toBe("drill");
+  });
+});
+
+describe("studiedIds", () => {
+  it("знакомые по прогрессу и все слова занятия (w и ws)", () => {
+    const st = state({ srs: { novel: blankState() } });
+    const ids = studiedIds(st, [
+      { k: 0, t: "section", pic: "", title: "", sub: "" },
+      { k: 1, t: "listen", w: "praise" },
+      { k: 2, t: "pairs", ws: ["sacred", "mix"] },
+    ]);
+    expect([...ids].sort()).toEqual(["mix", "novel", "praise", "sacred"]);
   });
 });

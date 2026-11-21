@@ -74,7 +74,8 @@ export const setup = async (
     state?: unknown;
     remote?: unknown;
     voice?: string;
-    tts?: "ok" | "down";
+    /** down — соединение отклонено; hang — сервер не отвечает (как прод в падении: 504 через десятки секунд) */
+    tts?: "ok" | "down" | "hang";
     sync?: "ok" | "down";
     now?: Date;
     /** фразы, уже озвученные на сервере (прогрев): [текст, голос] */
@@ -125,6 +126,7 @@ export const setup = async (
   const made = new Set((opts.ready ?? []).map(([t, v]) => ttsKey(t, v)));
   await page.route("**/api/tts", async (route) => {
     if (opts.tts === "down") return route.abort("connectionrefused");
+    if (opts.tts === "hang") return; // ответа нет
     const body = route.request().postDataJSON() as { text: string; voice: string };
     log.requests.push(body);
     const key = ttsKey(body.text, body.voice ?? "af_heart");
@@ -133,6 +135,7 @@ export const setup = async (
   });
   await page.route(/\/api\/tts\/[0-9a-f]{20}\.mp3(\?.*)?$/, (route) => {
     if (opts.tts === "down") return route.abort("connectionrefused");
+    if (opts.tts === "hang") return;
     const u = new URL(route.request().url());
     const key = u.pathname.match(/([0-9a-f]{20})\.mp3$/)?.[1] ?? "";
     const t = u.searchParams.get("t"),
@@ -166,6 +169,80 @@ const silentWav = () => {
   b.writeUInt32LE(n * 2, 40);
   return b;
 };
+
+/** Что прозвучало на странице под правилами iOS (iosSound). */
+export interface Sound {
+  /** адреса файлов, которые audio начал играть */
+  played: string[];
+  /** фразы системного голоса (speechSynthesis) */
+  spoken: string[];
+  /** сколько раз браузер не дал звуку начаться: не было касания */
+  blocked: number;
+}
+
+/**
+ * Правила звука iOS Safari: audio и speechSynthesis молчат, пока их хоть раз не запустили прямо в касании
+ * (обработчик pointerdown/click/keydown); после этого играют и без касания. Звук не воспроизводится по-настоящему —
+ * play() ждёт, пока у файла загрузится начало (ошибка загрузки — отказ), и записывает его в window.__sound. Вызывать до page.goto.
+ */
+export const iosSound = (page: Page) =>
+  page.addInitScript(() => {
+    const log = { played: [] as string[], spoken: [] as string[], blocked: 0 };
+    (window as unknown as { __sound: typeof log }).__sound = log;
+    const gesture = () => ["pointerdown", "pointerup", "mousedown", "mouseup", "click", "touchend", "keydown", "keyup"].includes(window.event?.type ?? "");
+    const blocked = () => (log.blocked++, Promise.reject(new DOMException("нужно касание", "NotAllowedError")));
+
+    const allowed = new WeakSet<HTMLMediaElement>();
+    HTMLMediaElement.prototype.play = function (this: HTMLMediaElement) {
+      if (gesture()) allowed.add(this);
+      if (!allowed.has(this)) return blocked();
+      // играем то, что задано в src сейчас (currentSrc меняется позже); ждём начала файла, ошибки или смены src
+      const el = this,
+        src = el.src;
+      el.preload = "auto";
+      return new Promise<void>((resolve, reject) => {
+        const tick = () => {
+          if (el.src !== src) return reject(new DOMException("src сменился", "AbortError"));
+          if (el.error) return reject(new DOMException("файл не загрузился", "NotSupportedError"));
+          if (el.readyState < 1) return void setTimeout(tick, 20);
+          if (!src.startsWith("data:")) log.played.push(src);
+          resolve();
+          el.dispatchEvent(new Event("playing"));
+          setTimeout(() => el.src === src && el.dispatchEvent(new Event("ended")), 30); // смена src отменяет события старого файла
+        };
+        tick();
+      });
+    };
+
+    let speechAllowed = false;
+    const synth = {
+      speaking: false,
+      pending: false,
+      paused: false,
+      onvoiceschanged: null,
+      getVoices: () => [],
+      cancel() {},
+      pause() {},
+      resume() {},
+      addEventListener() {},
+      removeEventListener() {},
+      speak(u: SpeechSynthesisUtterance) {
+        if (gesture()) speechAllowed = true;
+        if (!speechAllowed) return void log.blocked++; // iOS молча пропускает фразу
+        if (u.text.trim()) log.spoken.push(u.text);
+        setTimeout(() => u.onend?.(new Event("end") as SpeechSynthesisEvent), 30);
+      },
+    };
+    Object.defineProperty(window, "speechSynthesis", { value: synth, configurable: true });
+    if (!("SpeechSynthesisUtterance" in window))
+      (window as unknown as { SpeechSynthesisUtterance: unknown }).SpeechSynthesisUtterance = class {
+        volume = 1;
+        onend: ((e: Event) => void) | null = null;
+        constructor(public text: string) {}
+      };
+  });
+
+export const sound = (page: Page) => page.evaluate(() => (window as unknown as { __sound: Sound }).__sound);
 
 export const ttsRequest = (r: Request) => r.url().endsWith("/api/tts") && r.method() === "POST";
 

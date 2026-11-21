@@ -51,9 +51,44 @@ export const buildTokens = (en: string): string[] => en.replace(/[.!?]$/, "").sp
 /** Пример годится для сборки: без прямой речи и не длиннее 9 слов. */
 export const canBuild = (w: Word): boolean => !/["“”]/.test(w.example) && w.example.split(" ").length <= 9;
 
-/** Варианты ответа: верное слово + n−1 других с другим переводом. */
-export const options = (w: Word, all: readonly Word[], rng: Rng, n = 4): string[] =>
-  shuffle([w, ...shuffle(all.filter((x) => x !== w && x.ru !== w.ru), rng).slice(0, n - 1)], rng).map((x) => x.id);
+/** Насколько слова различаются на письме (а значит, и на слух): 0 — одинаковые; разное число слов — дальше. */
+export const formDistance = (a: string, b: string): number => {
+  const x = norm(a),
+    y = norm(b);
+  const words = Math.abs(x.split(" ").length - y.split(" ").length);
+  return lev(x, y) / Math.max(x.length, y.length, 1) + 0.4 * words;
+};
+
+/**
+ * Варианты ответа: верное слово + n−1 отвлекающих — с другим переводом и другим написанием.
+ * Отвлекающие берём из слов, которые человек уже учит (known: знакомые по прогрессу и слова этого занятия),
+ * а из них — похожие на ответ: иначе в «Что ты слышишь?» ответ угадывается без звука — он единственный знакомый
+ * (жалоба 21.11.2026). Похожих берём вдвое больше нужного и выбираем из них случайно — чтобы набор не повторялся.
+ * Знакомых не хватает (первые занятия) — добираем похожими из остальной колоды. Без known — вся колода «знакома».
+ */
+export const options = (w: Word, all: readonly Word[], rng: Rng, known?: ReadonlySet<string>, n = 4): string[] => {
+  const need = n - 1;
+  const cand = all.filter((x) => x.id !== w.id && x.ru !== w.ru && norm(x.en) !== norm(w.en));
+  const near = (xs: Word[]) =>
+    xs
+      .map((x) => ({ x, d: formDistance(x.en, w.en) }))
+      .sort((a, b) => a.d - b.d)
+      .map((e) => e.x);
+  const fam = near(known ? cand.filter((x) => known.has(x.id)) : cand);
+  const rest = known ? near(cand.filter((x) => !known.has(x.id))) : [];
+  const picked: Word[] = [];
+  const take = (xs: Word[]) => {
+    for (const x of xs) {
+      if (picked.length >= need) return;
+      if (!picked.includes(x) && !picked.some((p) => p.ru === x.ru || norm(p.en) === norm(x.en))) picked.push(x);
+    }
+  };
+  take(shuffle(fam.slice(0, 2 * need), rng));
+  take(fam);
+  take(shuffle(rest.slice(0, 2 * need), rng));
+  take(rest);
+  return shuffle([w, ...picked], rng).map((x) => x.id);
+};
 
 export const plural = (n: number, one: string, few: string, many: string): string => {
   n = Math.abs(n) % 100;
