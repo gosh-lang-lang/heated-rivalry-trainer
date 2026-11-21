@@ -60,3 +60,6 @@ export const plural = (n: number, one: string, few: string, many: string): strin
   const k = n % 10;
   return n > 10 && n < 20 ? many : k > 1 && k < 5 ? few : k === 1 ? one : many;
 };
+
+/** Длина самого длинного куска, который нельзя перенести (по пробелам и после дефиса): по ней заголовок слова ужимается, чтобы влезть в строку. */
+export const longestRun = (en: string): number => Math.max(1, ...en.split(/\s+|(?<=-)/).map((s) => s.length));

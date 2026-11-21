@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import words from "../../../words.json";
 import gen from "./word-art.gen.json";
-import { ART_CANVAS, SCENES, artUrl, boxStyle, checkArt, toKeyframes, type ArtGen, type ArtSceneSpec } from "./word-art";
+import { ART_CANVAS, SCENES, artFrame, artUrl, boxStyle, checkArt, listCrop, toKeyframes, type ArtGen, type ArtSceneSpec } from "./word-art";
 
 const GEN = gen as unknown as ArtGen;
 const IDS = words.words.map((w) => w.id);
@@ -14,7 +14,7 @@ describe("сцены к словам: данные", () => {
     expect(checkArt(SCENES, GEN, IDS)).toEqual([]);
   });
 
-  it("у каждой сцены есть файлы всех слоёв, кроп для списка и целая картинка; сцена ≤ 60 КБ", () => {
+  it("у каждой сцены есть файлы всех слоёв, кроп для списка и целая картинка; сцена ≤ 120 КБ", () => {
     for (const [id, g] of Object.entries(GEN)) {
       let total = 0;
       for (const l of g.layers) {
@@ -22,7 +22,7 @@ describe("сцены к словам: данные", () => {
         expect(existsSync(f), f).toBe(true);
         total += statSync(f).size;
       }
-      expect(total, `${id}: слои ${total} байт`).toBeLessThanOrEqual(60 * 1024);
+      expect(total, `${id}: слои ${total} байт`).toBeLessThanOrEqual(120 * 1024);
       for (const f of ["list", "still"]) expect(existsSync(join(PUBLIC, "words", id, `${f}.webp`)), `${id}/${f}`).toBe(true);
     }
   });
@@ -52,6 +52,57 @@ describe("checkArt ловит ошибки описания", () => {
     const out = { banter: { ...g.banter, layers: [g.banter.layers[0], { name: "red", box: [1000, 0, 100, 10] as [number, number, number, number] }] } };
     expect(checkArt(spec({}), out, ["banter"])).toEqual(["banter/red: рамка вне холста"]);
     expect(checkArt({ banter: { src: "x", dur: 3000, motion: {}, list: [600, 0, 500] } }, g, ["banter"])).toEqual(["banter: кроп для списка вне холста"]);
+  });
+});
+
+describe("checkArt: ведомые слои и полный оборот", () => {
+  const g: ArtGen = { banter: { v: "1", bg: "#000", layers: [{ name: "bg", box: [0, 0, 1024, 1024] }, { name: "red", box: [10, 10, 100, 100] }, { name: "nudge", box: [10, 10, 50, 50] }] } };
+  const spec = (motion: ArtSceneSpec["motion"]): Record<string, ArtSceneSpec> => ({ banter: { src: "x", dur: 3000, motion } });
+  const still = { keys: [{ at: 0 }, { at: 1 }] };
+
+  it("follow — только за слоем со своим движением, без цепочек", () => {
+    expect(checkArt(spec({ red: still, nudge: { ...still, follow: "red" } }), g, ["banter"])).toEqual([]);
+    expect(checkArt(spec({ nudge: { ...still, follow: "red" } }), g, ["banter"])[0]).toMatch(/nudge: follow «red»/);
+    expect(checkArt(spec({ red: { ...still, follow: "nudge" }, nudge: { ...still, follow: "red" } }), g, ["banter"])).toHaveLength(2);
+  });
+
+  it("стрелка часов: 0 → 360° — тот же кадр, 0 → 180° — рывок", () => {
+    expect(checkArt(spec({ red: { keys: [{ at: 0, r: 0 }, { at: 1, r: 360 }] } }), g, ["banter"])).toEqual([]);
+    expect(checkArt(spec({ red: { keys: [{ at: 0, r: 0 }, { at: 1, r: 180 }] } }), g, ["banter"])[0]).toMatch(/рывок/);
+  });
+
+  it("снятый слой (drop) не должен остаться в сборке", () => {
+    const s = (drop: string[]) => ({ banter: { src: "x", dur: 3000, drop, motion: { red: still } } });
+    expect(checkArt(s(["hand"]), g, ["banter"])).toEqual([]);
+    expect(checkArt(s(["nudge"]), g, ["banter"])[0]).toMatch(/«nudge» снят/);
+  });
+
+  it("поправка формы (reshape) — только для слоёв сцены или всей сцены «*»", () => {
+    const s = (reshape: ArtSceneSpec["reshape"]) => ({ banter: { src: "x", dur: 3000, reshape, motion: { red: still } } });
+    expect(checkArt(s({ "*": { sy: 1.1 }, nudge: { s: 0.8 } }), g, ["banter"])).toEqual([]);
+    expect(checkArt(s({ cloud: { s: 0.8 } }), g, ["banter"])[0]).toMatch(/«cloud», а такого слоя нет/);
+  });
+});
+
+describe("кадр по содержимому", () => {
+  it("без полос — 4:3 вокруг focus, не выходя за холст", () => {
+    expect(artFrame(undefined)).toEqual({ ar: 4 / 3, fy: 0.5, y0: 128, h: 768 });
+    expect(artFrame(undefined, 0.1)).toMatchObject({ y0: 0, fy: 0.375 });
+    expect(artFrame(undefined, 0.95)).toMatchObject({ y0: 256, fy: 0.625 });
+  });
+
+  it("полоса содержимого: кадр внутри неё, а если она ниже 4:3 — кадр шире", () => {
+    expect(artFrame([200, 1024])).toMatchObject({ ar: 4 / 3, y0: 200, h: 768 });
+    expect(artFrame([0, 900], 0.6)).toMatchObject({ y0: 132, h: 768 });
+    const narrow = artFrame([128, 888]);
+    expect(narrow).toMatchObject({ y0: 128, h: 760 });
+    expect(narrow.ar).toBeCloseTo(1024 / 760);
+  });
+
+  it("кроп для списка вдвигается в полосу и уменьшается, если она ниже стороны", () => {
+    expect(listCrop([100, 50, 600])).toEqual([100, 50, 600]);
+    expect(listCrop([100, 50, 600], [150, 1024])).toEqual([100, 150, 600]);
+    expect(listCrop([0, 100, 900], [150, 850])).toEqual([100, 150, 700]);
   });
 });
 

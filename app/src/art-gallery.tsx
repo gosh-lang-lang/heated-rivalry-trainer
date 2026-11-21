@@ -3,9 +3,10 @@
  * Каждая сцена во всех местах, где она живёт: карточка нового слова на телефоне (кадр 4:3) и на десктопе (квадрат),
  * строка списка (56 px), неподвижная картинка. Переключатели — день/ночь, оформление, движение.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { createRoot } from "react-dom/client";
 import { DECK } from "./data";
+import { longestRun } from "./core/text";
 import { SCENES } from "./core/word-art";
 import { hasWordArt, WordArt } from "./lib/WordArt";
 import "./styles.css";
@@ -26,14 +27,16 @@ function Gallery() {
     else delete r.dataset.players;
   }, [theme, look]);
 
-  const words = Object.keys(SCENES).filter(hasWordArt).map((id) => DECK.byId[id]);
+  // ?ids=a,b — только эти сцены (вся витрина тяжёлая)
+  const only = new URLSearchParams(location.search).get("ids")?.split(",");
+  const words = (only ?? Object.keys(SCENES)).filter(hasWordArt).map((id) => DECK.byId[id]);
   const seg = <T extends string>(val: T, set: (v: T) => void, opts: [T, string][]) => (
     <div className="seg">{opts.map(([v, l]) => <button key={v} aria-pressed={val === v} onClick={() => set(v)}>{l}</button>)}</div>
   );
   return (
     <div className="wrap" style={{ maxWidth: 1100, margin: "0 auto" }}>
       {/* карточка «как на телефоне» при любой ширине окна */}
-      <style>{`.g-phone .intro{display:block!important}.g-phone .wart{--wart-ar:4/3!important;margin:0 0 16px!important;border-radius:24px!important}`}</style>
+      <style>{`.g-phone .intro{display:block!important}.g-phone .intro .wart{--wart-ar:4/3;margin:0 0 16px!important;border-radius:24px!important}`}</style>
       <h1>Сцены к словам</h1>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
         {seg(theme, setTheme, [["light", "День"], ["dark", "Ночь"]])}
@@ -45,7 +48,7 @@ function Gallery() {
           <div className="card g-phone" style={{ width: 343 }}>
             <div className="intro">
               <WordArt wordId={w.id} label={w.example} animated={moving} />
-              <div className="word"><h2>{w.en}</h2></div>
+              <div className="word"><h2 style={{ "--lw": longestRun(w.en) } as CSSProperties}>{w.en}</h2></div>
               <div className="ru">{w.ru}</div>
               <div className="mute sm" style={{ marginTop: 8 }}><b>{w.example}</b><br />{w.exampleRu}</div>
             </div>

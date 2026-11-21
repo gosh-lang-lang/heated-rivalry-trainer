@@ -8,6 +8,8 @@
  * Новое слово: сцена в art-inbox → запись в SCENES → `node scripts/word-art.ts <id>`. Экраны не трогаем.
  */
 
+import { STAGE_05 } from "./word-art-05.ts";
+
 /** Координаты — в пикселях исходного холста сцены (1024×1024, начало сверху слева). */
 export const ART_CANVAS = 1024;
 /** Сторона холста в webp: ~2× ширины карточки на телефоне. */
@@ -35,6 +37,8 @@ export interface ArtMotion {
   /** точка, вокруг которой поворот и масштаб (пиксели холста); по умолчанию — центр слоя */
   origin?: [number, number];
   keys: ArtKey[];
+  /** слой едет вместе с другим (пламя на свитере, накладка лица, рука) — движение того слоя снаружи, свои keys поверх */
+  follow?: string;
 }
 
 export interface ArtSceneSpec {
@@ -44,10 +48,26 @@ export interface ArtSceneSpec {
   dur: number;
   /** что держать в кадре по вертикали (доля холста), когда кадр ниже квадрата; по умолчанию 0.5 */
   focus?: number;
-  /** качество webp слоёв (по умолчанию 75); ниже — если сцена не влезает в 60 КБ */
+  /** качество webp слоёв (по умолчанию 75); ниже — если сцена не влезает в 120 КБ */
   quality?: number;
   /** свой кроп для списка [x, y, сторона] в пикселях холста; без него — кроп от художника (crop в layers.json) */
   list?: [x: number, y: number, size: number];
+  /**
+   * "content" — художник залил края под кадр 4:3 (или оставил ровное небо): экспорт срезает ровные полосы сверху и снизу,
+   * и кадр сцены, кроп для списка и неподвижная картинка не выходят за содержимое (на десктопе тогда не квадрат).
+   */
+  frame?: "content";
+  /**
+   * слои художника, которые не берём (неудачные): их нет в сцене, а full для кропа и неподвижной картинки
+   * собирается заново из оставшихся слоёв
+   */
+  drop?: string[];
+  /**
+   * поправка формы при экспорте (художник нарисовал сплюснуто): слой масштабируется на s и растягивается по высоте
+   * на sy вокруг at (по умолчанию — центр слоя); "*" — вся сцена, каждый слой вокруг одной точки
+   * (at по умолчанию — центр холста). full для кропа и неподвижной картинки собирается из поправленных слоёв.
+   */
+  reshape?: Record<string, { s?: number; sy?: number; at?: [number, number] }>;
   /** движение слоёв по имени (word-<id>-<имя>.png); слои без записи стоят на месте */
   motion: Record<string, ArtMotion>;
 }
@@ -57,6 +77,8 @@ export interface ArtLayerGen {
   name: string;
   /** рамка слоя на холсте (обрезан по непрозрачному), пиксели холста */
   box: ArtBox;
+  /** непрозрачность в неподвижном кадре, если не 1 (состояние «до»: разбитое сердце, молния, капа в руке) */
+  o?: number;
 }
 export interface ArtSceneGen {
   /** версия файлов — в адрес, чтобы кэш не держал старую картинку */
@@ -65,8 +87,32 @@ export interface ArtSceneGen {
   bg: string;
   /** от заднего к переднему */
   layers: ArtLayerGen[];
+  /** ряды с содержимым [сверху, снизу), если по краям ровные полосы (заливка под 4:3, пустое небо) — кадр не выходит за них */
+  fit?: [number, number];
 }
 export type ArtGen = Record<string, ArtSceneGen>;
+
+/**
+ * Кадр сцены ниже квадрата: высота h (768 — это 4:3, меньше — если полоса содержимого уже), его верх y0 и
+ * соотношение сторон ar; fy — середина кадра в долях холста (для CSS --fy). focus сдвигается так, чтобы кадр
+ * целиком лежал в полосе fit.
+ */
+export function artFrame(fit: [number, number] | undefined, focus = 0.5): { ar: number; fy: number; y0: number; h: number } {
+  const [t, b] = fit ?? [0, ART_CANVAS];
+  const h = Math.min(ART_CANVAS * 0.75, b - t);
+  const cy = Math.min(Math.max(focus * ART_CANVAS, t + h / 2), b - h / 2);
+  return { ar: ART_CANVAS / h, fy: cy / ART_CANVAS, y0: cy - h / 2, h };
+}
+
+/** Квадратный кроп для списка [x, y, сторона], вдвинутый в полосу содержимого (и уменьшенный, если она ниже стороны). */
+export function listCrop([x, y, side]: [number, number, number], fit?: [number, number]): [number, number, number] {
+  const [t, b] = fit ?? [0, ART_CANVAS];
+  const s = Math.min(side, b - t);
+  const cx = x + side / 2,
+    cy = y + side / 2;
+  const clamp = (v: number, lo: number, hi: number) => Math.round(Math.min(Math.max(v, lo), hi));
+  return [clamp(cx - s / 2, 0, ART_CANVAS - s), clamp(cy - s / 2, t, b - s), s];
+}
 
 /* --- общие движения (один объект на несколько слоёв — двигаются как одно целое) --- */
 
@@ -115,7 +161,7 @@ const puppy2: ArtMotion = {
 /** слой виден в неподвижном кадре, а в движении скрыт (его роль играет другой слой) */
 const hidden: ArtMotion = { keys: [{ at: 0, o: 0 }, { at: 1, o: 0 }] };
 
-export const SCENES: Record<string, ArtSceneSpec> = {
+const STAGE_03: Record<string, ArtSceneSpec> = {
   /* The players enjoy friendly banter before the game.
      Жёлтый наклоняется и подкалывает → над ними вспыхивает «подкол» → Красный хохочет, запрокинув голову. */
   banter: {
@@ -170,10 +216,10 @@ export const SCENES: Record<string, ArtSceneSpec> = {
   },
 
   /* The new book got a lot of praise.
-     Два критика хохочут от восторга над книгой — покачиваются в разном ритме, книга приподнимается.
+     Два критика хохочут от восторга над книгой — покачиваются в разном ритме, книга приподнимается, над ней вспыхивают звёзды.
      Кисти поверх книги (grip) — вместе со своим критиком. */
   praise: {
-    src: "stage-03/layers-v1",
+    src: "stage-03/layers-v2", // v2 = v1 + золотые вспышки над книгой
     dur: 3200,
     focus: 0.55,
     motion: {
@@ -184,6 +230,19 @@ export const SCENES: Record<string, ArtSceneSpec> = {
       book: {
         origin: [523, 980],
         keys: [{ at: 0 }, { at: 0.18, y: -4 }, { at: 0.32 }, { at: 0.5, y: -6, r: 0.6 }, { at: 0.66, y: -1 }, { at: 0.86 }, { at: 1 }],
+      },
+      // вспышки над книгой едут с ней, приподнимаются веером и вспыхивают на каждом взрыве смеха
+      stars: {
+        follow: "book",
+        origin: [510, 674],
+        keys: [
+          { at: 0, o: 0.75, s: 0.94 },
+          { at: 0.15, o: 1, s: 1.1, y: -10, ease: "ease-out" },
+          { at: 0.3, o: 0.85, s: 0.98, y: -4 },
+          { at: 0.47, o: 1, s: 1.12, y: -12, ease: "ease-out" },
+          { at: 0.62, o: 0.85, s: 1, y: -5 },
+          { at: 1, o: 0.75, s: 0.94 },
+        ],
       },
     },
   },
@@ -304,6 +363,8 @@ export const SCENES: Record<string, ArtSceneSpec> = {
   },
 };
 
+export const SCENES: Record<string, ArtSceneSpec> = { ...STAGE_03, ...STAGE_05 };
+
 const pct = (n: number) => `${+n.toFixed(3)}%`;
 
 /** Движение слоя → transform-origin и кадры Web Animations (сдвиг — в % от рамки слоя, чтобы не зависеть от размера на экране). */
@@ -316,6 +377,9 @@ export function toKeyframes(m: ArtMotion, box: ArtBox): { origin: string; frames
   });
   return { origin: `${pct(((ox - bx) / bw) * 100)} ${pct(((oy - by) / bh) * 100)}`, frames };
 }
+
+/** Весь холст как рамка — для обёртки слоя, который едет вместе с другим (follow). */
+export const CANVAS_BOX: ArtBox = [0, 0, ART_CANVAS, ART_CANVAS];
 
 /** Рамка слоя в % от холста — для абсолютного позиционирования. */
 export const boxStyle = ([x, y, w, h]: ArtBox) => ({ left: pct((x / ART_CANVAS) * 100), top: pct((y / ART_CANVAS) * 100), width: pct((w / ART_CANVAS) * 100), height: pct((h / ART_CANVAS) * 100) });
@@ -338,13 +402,17 @@ export function checkArt(specs: Record<string, ArtSceneSpec>, gen: ArtGen, wordI
     if (!(s.dur >= 2000 && s.dur <= 4000)) errs.push(`${id}: цикл ${s.dur} мс — нужно 2–4 с`);
     if (s.list && (s.list[0] < 0 || s.list[1] < 0 || s.list[2] <= 0 || s.list[0] + s.list[2] > ART_CANVAS || s.list[1] + s.list[2] > ART_CANVAS)) errs.push(`${id}: кроп для списка вне холста`);
     const names = new Set(g.layers.map((l) => l.name));
+    for (const d of s.drop ?? []) if (names.has(d)) errs.push(`${id}: слой «${d}» снят (drop), а в сборке остался`);
+    for (const r of Object.keys(s.reshape ?? {})) if (r !== "*" && !names.has(r)) errs.push(`${id}: поправка формы для слоя «${r}», а такого слоя нет`);
     for (const [name, m] of Object.entries(s.motion)) {
       if (!names.has(name)) errs.push(`${id}: движение для слоя «${name}», а такого слоя нет`);
+      if (m.follow !== undefined && (!s.motion[m.follow] || s.motion[m.follow].follow !== undefined)) errs.push(`${id}/${name}: follow «${m.follow}» — у того слоя должно быть своё движение (без follow)`);
       const at = m.keys.map((k) => k.at);
       if (at[0] !== 0 || at[at.length - 1] !== 1) errs.push(`${id}/${name}: кадры должны идти от 0 до 1`);
       if (at.some((a, i) => i > 0 && a < at[i - 1])) errs.push(`${id}/${name}: кадры не по порядку`);
       const [a, b] = [m.keys[0], m.keys[m.keys.length - 1]];
-      if (["x", "y", "r", "s", "sx", "sy", "o"].some((p) => a[p as keyof ArtKey] !== b[p as keyof ArtKey])) errs.push(`${id}/${name}: конец цикла не совпадает с началом — будет рывок`);
+      // r: полный оборот (0 → 360) — тот же кадр
+      if (["x", "y", "s", "sx", "sy", "o"].some((p) => a[p as keyof ArtKey] !== b[p as keyof ArtKey]) || ((a.r ?? 0) - (b.r ?? 0)) % 360 !== 0) errs.push(`${id}/${name}: конец цикла не совпадает с началом — будет рывок`);
     }
     for (const l of g.layers) {
       const [x, y, w, h] = l.box;

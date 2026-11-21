@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { buildTokens, checkTyped, gapSentence, norm, plural, speakScore } from "./text";
+import { buildTokens, checkTyped, gapSentence, longestRun, norm, plural, speakScore } from "./text";
+
+describe("longestRun", () => {
+  it("самый длинный кусок без переноса: по пробелам и после дефиса", () => {
+    expect(longestRun("comprehensible")).toBe(14);
+    expect(longestRun("get under someone's skin")).toBe(9);
+    expect(longestRun("enemies-to-lovers")).toBe(8);
+    expect(longestRun("")).toBe(1);
+  });
+});
 
 describe("сравнение ответов", () => {
   it("нормализация: регистр, апострофы, пунктуация", () => {

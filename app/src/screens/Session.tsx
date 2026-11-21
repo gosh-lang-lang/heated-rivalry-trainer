@@ -17,7 +17,7 @@ import {
   type Finished,
   type Session,
 } from "../core/session";
-import { buildTokens, checkTyped, gapSentence, options, speakScore } from "../core/text";
+import { buildTokens, checkTyped, gapSentence, longestRun, options, speakScore } from "../core/text";
 import type { AppState, Deck, SentenceRecord, SessionKind, Step } from "../core/types";
 import { checkerAvailable, checkSentence } from "../lib/checker";
 import { Check, Close, Cross, Mic } from "../lib/icons";
@@ -310,7 +310,7 @@ function StepView({ step, api }: { step: Step; api: Api }) {
           <div className={`intro${hasWordArt(w.id) ? "" : " noart"}`}>
             <WordArt wordId={w.id} label={w.example} />
             <div className="intro-info">
-              <div className="word"><h2>{w.en}</h2><SpeakBtn text={w.en} /></div>
+              <div className="word"><h2 style={{ "--lw": longestRun(w.en) } as CSSProperties}>{w.en}</h2><SpeakBtn text={w.en} /></div>
               <div className="ipa">{w.ipa}</div>
               <div className="ru">{w.ru}</div>
               {w.note && (

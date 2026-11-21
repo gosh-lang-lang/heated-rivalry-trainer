@@ -5,7 +5,7 @@ import { addDays, DECK, goTab, openHome, setup, state, TODAY, ws } from "./helpe
 
 const byId = (id: string) => DECK.words.find((w) => w.id === id)!;
 
-/** Первые 8 слов уже выучены — следующие новые: banter (есть сцена), exploration (нет). */
+/** Первые 8 слов уже выучены — следующие новые: banter (есть сцена) … mix (сцену переделывают — пока без картинки). */
 const startLesson = async (page: Page) => {
   const srs = Object.fromEntries(DECK.words.slice(0, 8).map((w) => [w.id, ws({ intro: addDays(TODAY, -3), due: addDays(TODAY, 5), lvl: 3 })]));
   await setup(page, { state: state({ srs }) });
@@ -38,10 +38,27 @@ test("новое слово со сценой: слои загружены и д
   // движутся Красный, Жёлтый и вспышка; фон стоит
   expect(await page.evaluate(() => document.getAnimations().flatMap((a) => (a.effect as KeyframeEffect | null)?.target?.getAttribute("data-layer") ?? []).sort())).toEqual(["nudge", "red", "yellow"]);
 
-  await toIntro(page, "exploration");
+  await toIntro(page, "mix");
   await expect(page.locator(".intro")).toHaveClass(/\bnoart\b/);
   await expect(page.locator(".intro .wart, .intro .pic")).toHaveCount(0);
-  await expect(page.locator(".intro")).not.toContainText(byId("exploration").picture);
+  await expect(page.locator(".intro")).not.toContainText(byId("mix").picture);
+});
+
+test("длинное слово на карточке нового слова не шире строки (на широком экране ужимается)", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  const i = DECK.words.findIndex((w) => w.id === "comprehensible");
+  const srs = Object.fromEntries(DECK.words.slice(0, i).map((w) => [w.id, ws({ intro: addDays(TODAY, -3), due: addDays(TODAY, 5), lvl: 3 })]));
+  await setup(page, { state: state({ srs }) });
+  await openHome(page);
+  await page.getByRole("button", { name: "Начать часть 1" }).click();
+  await toIntro(page, "comprehensible");
+  const fit = await page.locator(".intro .word h2").evaluate((h) => {
+    const r = document.createRange();
+    r.selectNodeContents(h);
+    return { text: r.getBoundingClientRect().right, row: h.parentElement!.getBoundingClientRect().right, fs: parseFloat(getComputedStyle(h).fontSize) };
+  });
+  expect(fit.text).toBeLessThanOrEqual(fit.row);
+  expect(fit.fs).toBeGreaterThan(30);
 });
 
 test("«Уменьшить движение» — сцена неподвижна", async ({ page }) => {
@@ -55,10 +72,10 @@ test("«Уменьшить движение» — сцена неподвижн�
 });
 
 test("словарь: сцена — в раскрытой строке слова и в движении; закрытая строка и слово без сцены — без картинки", async ({ page }) => {
-  // урок 1 (вчера): praise (есть сцена) и novel (нет)
+  // урок 1 (вчера): praise и wink (есть сцены; у wink веко и искра едут вместе с головой) и mix (сцены пока нет)
   const Y = addDays(TODAY, -1);
-  const morning = { score: 30, total: 38, mins: 15, newN: 2, at: `${Y}T06:00:00.000Z` };
-  await setup(page, { state: state({ days: { [Y]: { morning } }, srs: { praise: ws({ intro: Y, lvl: 2 }), novel: ws({ intro: Y, lvl: 2 }) } }) });
+  const morning = { score: 30, total: 38, mins: 15, newN: 3, at: `${Y}T06:00:00.000Z` };
+  await setup(page, { state: state({ days: { [Y]: { morning } }, srs: { praise: ws({ intro: Y, lvl: 2 }), wink: ws({ intro: Y, lvl: 2 }), mix: ws({ intro: Y, lvl: 2 }) } }) });
   await openHome(page);
   await goTab(page, "Слова");
   await page.locator(".lrow").filter({ hasText: "Урок 1" }).click();
@@ -70,10 +87,28 @@ test("словарь: сцена — в раскрытой строке слов
   await expect(art).toHaveClass(/\bready\b/);
   expect(await page.evaluate(() => document.getAnimations().filter((a) => (a.effect as KeyframeEffect | null)?.target?.closest(".wart[data-art=praise]")).length)).toBeGreaterThan(0);
 
-  const novel = rows.filter({ hasText: byId("novel").ru });
-  await novel.locator("summary").click();
-  await expect(novel).toContainText(byId("novel").example);
-  await expect(novel.locator(".wart")).toHaveCount(0);
+  const wink = rows.filter({ hasText: byId("wink").ru });
+  await wink.locator("summary").click();
+  await expect(wink.getByRole("img", { name: byId("wink").example })).toHaveClass(/\bready\b/);
+  // веко и искра — внутри обёрток, которые повторяют движение головы; и у обёрток, и у самих слоёв своя анимация
+  await expect(wink.locator('[data-follow="yellow"] img[data-layer]')).toHaveCount(2);
+  // анимации стартуют эффектом после ready — ждём, а не читаем один раз
+  const moving = () =>
+    page.evaluate(() =>
+      document
+        .getAnimations()
+        .flatMap((a) => {
+          const el = (a.effect as KeyframeEffect | null)?.target;
+          return el?.closest(".wart[data-art=wink]") ? [el.getAttribute("data-layer") ?? `follow:${el.getAttribute("data-follow")}`] : [];
+        })
+        .sort(),
+    );
+  await expect.poll(moving).toEqual(["eye-closed", "follow:yellow", "follow:yellow", "spark", "yellow"]);
+
+  const mix = rows.filter({ hasText: byId("mix").ru });
+  await mix.locator("summary").click();
+  await expect(mix).toContainText(byId("mix").example);
+  await expect(mix.locator(".wart")).toHaveCount(0);
 
   await praise.locator("summary").click(); // свернули — сцены нет
   await expect(praise.locator(".wart")).toHaveCount(0);
