@@ -4,10 +4,11 @@
 .wart-cv{position:absolute;left:0;width:100%;aspect-ratio:1;top:clamp(calc(100cqh - 100cqw),calc(50cqh - var(--fy,.5) * 100cqw),0px);opacity:0;transition:opacity .35s ease-out}
 .wart.ready .wart-cv{opacity:1}
 .wart-cv img{position:absolute;display:block;max-width:none;user-select:none;-webkit-user-select:none;-webkit-user-drag:none;pointer-events:none}
-.wart:not(.still) .wart-cv img{will-change:transform,opacity}
+.wart-fl{position:absolute;inset:0}
+.wart:not(.still) .wart-cv img,.wart:not(.still) .wart-fl{will-change:transform,opacity}
 .wart-img{display:block;border-radius:14px;object-fit:cover}
 .wart-img.list{width:56px;height:56px}
-.wart-img.still{width:100%;height:auto;aspect-ratio:1}
+.wart-img.still{width:100%;height:auto}
 /* ночью сцена чуть приглушена, чтобы не слепила на тёмной странице */
 :root[data-theme=dark] .wart,:root[data-theme=dark] .wart-img{filter:brightness(.9)}
 @media(prefers-color-scheme:dark){:root:not([data-theme=light]) .wart,:root:not([data-theme=light]) .wart-img{filter:brightness(.9)}}
