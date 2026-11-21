@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { LessonCard } from "../core/cards";
 import { SEASON } from "../core/cards";
 import type { Deck } from "../core/types";
 import { Back, Close, Flip } from "../lib/icons";
+import { useModal } from "../ui";
 import { CardBack, CardFront, cardNo, ruDay } from "./cards";
 
 /**
@@ -10,13 +12,7 @@ import { CardBack, CardFront, cardNo, ruDay } from "./cards";
  * (при «уменьшить движение» — без поворота). Листать — стрелками, свайпом или клавишами ← →; Esc — закрыть.
  * На обороте — слова урока, нажатие — озвучка.
  */
-export function CardViewer({
-  cards,
-  no,
-  deck,
-  onClose,
-  onOpen,
-}: {
+type Props = {
   /** карточки, которые можно листать (полученные) */
   cards: LessonCard[];
   /** номер открытой карточки */
@@ -25,7 +21,15 @@ export function CardViewer({
   onClose: () => void;
   /** открыть другую карточку (листание) */
   onOpen: (no: number) => void;
-}) {
+};
+
+/** Нет полученных карточек — нечего показывать (и страницу не блокируем). */
+export function CardViewer(p: Props) {
+  return p.cards.length ? <Viewer {...p} /> : null;
+}
+
+function Viewer({ cards, no, deck, onClose, onOpen }: Props) {
+  // открытой карточки нет среди полученных (например, ссылка из истории) — первая
   const i = Math.max(0, cards.findIndex((c) => c.no === no));
   const card = cards[i];
   const [back, setBack] = useState(false);
@@ -33,9 +37,11 @@ export function CardViewer({
   const next = i < cards.length - 1 ? cards[i + 1] : null;
   const closeRef = useRef<HTMLButtonElement>(null);
 
+  const wrapRef = useRef<HTMLDivElement>(null);
+  useModal(wrapRef, closeRef);
+
   // новая карточка — с лица
   useEffect(() => setBack(false), [no]);
-  useEffect(() => closeRef.current?.focus(), []);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -45,21 +51,11 @@ export function CardViewer({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [prev, next, onClose, onOpen]);
-  // под карточкой страница не прокручивается
-  useEffect(() => {
-    const html = document.documentElement;
-    const was = html.style.overflow;
-    html.style.overflow = "hidden";
-    return () => {
-      html.style.overflow = was;
-    };
-  }, []);
-
   const touch = useRef<{ x: number; y: number } | null>(null);
   if (!card) return null;
 
-  return (
-    <div className="cmodal-wrap" role="dialog" aria-modal="true" aria-label={`Карточка ${cardNo(card.pos)}: ${card.name}`}>
+  return createPortal(
+    <div ref={wrapRef} className="cmodal-wrap" role="dialog" aria-modal="true" aria-label={`Карточка ${cardNo(card.pos)}: ${card.name}`}>
       <div className="scrim" onClick={onClose} />
       <div
         className="cmodal"
@@ -93,6 +89,7 @@ export function CardViewer({
           <button className="glassbtn r" aria-label="Следующая карточка" disabled={!next} onClick={() => next && onOpen(next.no)}><Back /></button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

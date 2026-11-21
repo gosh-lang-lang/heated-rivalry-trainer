@@ -104,24 +104,41 @@ if (!enrollToken) {
   });
 }
 
-// параметры входа готовим заранее и обновляем раньше, чем истечёт вызов (5 минут)
+// параметры входа готовим заранее и обновляем раньше, чем истечёт вызов (5 минут); вкладка в фоне таймеры
+// почти не крутит (iOS), поэтому ещё и при возвращении на неё
+const STALE_MS = 4.5 * 60 * 1000;
+const stale = () => !loginOptions || Date.now() - loadedAt > STALE_MS;
 void refreshOptions();
 setInterval(() => void refreshOptions(), 4 * 60 * 1000);
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && stale()) void refreshOptions();
+});
 
+let signingIn = false;
 $("signin").addEventListener("click", async () => {
   const btn = $<HTMLButtonElement>("signin");
+  if (signingIn) return; // двойное нажатие — второй вход не запускаем
+  signingIn = true;
   say("login-msg", "");
-  if (!loginOptions || Date.now() - loadedAt > 4.5 * 60 * 1000) await refreshOptions();
-  if (!loginOptions) return;
   busy(btn, true, "Войти с passkey");
+  const options = stale() ? null : loginOptions;
+  if (!options) {
+    // Safari пускает WebAuthn только сразу в обработчике нажатия: после ожидания сети откажет — просим нажать ещё раз
+    await refreshOptions();
+    busy(btn, false, "Войти с passkey");
+    signingIn = false;
+    if (loginOptions) say("login-msg", "Готово — нажми «Войти» ещё раз.", "ok");
+    return;
+  }
   try {
-    const response = await startAuthentication({ optionsJSON: loginOptions });
+    const response = await startAuthentication({ optionsJSON: options });
     loginOptions = null;
     await post("/api/auth/login/verify", { response });
     location.replace(nextPath());
   } catch (e) {
     say("login-msg", humanError(e));
     busy(btn, false, "Войти с passkey");
+    signingIn = false;
     void refreshOptions(); // прежний вызов уже использован или отменён
   }
 });

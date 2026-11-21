@@ -83,3 +83,11 @@ test("прогресс сброшен на сервере (progress:reset) — �
   await page.waitForTimeout(600);
   expect(Object.keys((log.server.state as { srs?: object }).srs ?? {})).toHaveLength(0); // на сервер слова не вернулись
 });
+
+test("сервер входа не отвечает — приложение открывается из кэша последнего вошедшего, без белого экрана", async ({ page }) => {
+  await setup(page, { state: afterMorning() });
+  await openHome(page); // вошли: запомнили, кто это
+  await page.route("**/api/auth/me", () => {}); // плохая сеть: запрос висит
+  await page.goto("/");
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("Евгений", { timeout: 8000 });
+});

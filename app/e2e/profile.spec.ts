@@ -168,6 +168,28 @@ test.describe("значки в шапке", () => {
     await expect(s.getByRole("button", { name: /Начать часть 2/ })).toHaveCount(0);
   });
 
+  test("окно поверх страницы держит фокус; Esc закрывает только его, фокус — обратно на значок", async ({ page, isMobile }) => {
+    test.skip(isMobile, "клавиатура — на десктопе");
+    await setup(page, { state: seasonState() });
+    await openHome(page);
+    await goTab(page, "Путь");
+    const chip = page.getByRole("button", { name: "5 дней подряд — подробнее о серии" });
+    await chip.click();
+    const s = sheet(page, "Серия дней");
+    await expect(s).toBeVisible();
+    await expect(page.locator("#root")).toHaveJSProperty("inert", true);
+    for (let i = 0; i < 8; i++) {
+      await page.keyboard.press("Tab");
+      // фокус — в окне (или в интерфейсе браузера после последней кнопки, как у нативного <dialog>), но не на странице под ним
+      expect(await page.evaluate(() => !!document.activeElement?.closest("#root")), `Tab №${i + 1}`).toBe(false);
+    }
+    await page.keyboard.press("Escape");
+    await expect(s).toBeHidden();
+    await expect(page.locator("#root")).toHaveJSProperty("inert", false);
+    await expect(chip).toBeFocused();
+    await expect(page.getByRole("region", { name: "Текущий урок" })).toBeVisible(); // пузырь урока остался
+  });
+
   test("главная: серия 0 — подсказка, как начать; «Достижения серии» ведут в «Я»", async ({ page }) => {
     await setup(page);
     await openHome(page);

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type MouseEvent, type ReactNode, type RefObject } from "react";
 import { clockTz, nowDate } from "./core/dates";
 import { createPortal } from "react-dom";
 import type { View } from "./App";
@@ -157,31 +157,49 @@ export function PullRefresh() {
   );
 }
 
+/** Открыто ли сейчас окно поверх страницы (Sheet, карточка): тогда Esc и клавиши — его, а не страницы под ним. */
+export const modalOpen = () => !!document.querySelector('[aria-modal="true"]');
+
+/**
+ * Окно поверх страницы (элемент `wrap` — прямо в body, через портал): фокус — на `first`, Tab не уходит за окно
+ * (всё остальное в body — inert, его не видят и скринридеры), страница под окном не прокручивается.
+ * По закрытии — всё как было, фокус — обратно на кнопку, которая окно открыла.
+ */
+export function useModal(wrap: RefObject<HTMLElement | null>, first: RefObject<HTMLElement | null>) {
+  useEffect(() => {
+    const was = document.activeElement as HTMLElement | null;
+    first.current?.focus();
+    const html = document.documentElement;
+    const overflow = html.style.overflow;
+    html.style.overflow = "hidden";
+    const others = [...document.body.children].filter((el): el is HTMLElement => el instanceof HTMLElement && el !== wrap.current && !el.inert);
+    for (const el of others) el.inert = true;
+    return () => {
+      for (const el of others) el.inert = false;
+      html.style.overflow = overflow;
+      was?.focus?.({ preventScroll: true });
+    };
+  }, [wrap, first]);
+}
+
 /**
  * Панель поверх страницы: на телефоне выезжает снизу, на широком экране — окно по центру.
  * Закрыть — крестик, Esc или нажатие на затемнение; под панелью страница не прокручивается.
  * В body через портал: у шапок бывает backdrop-filter, внутри него position: fixed считается от шапки.
  */
 export function Sheet({ title, onClose, children, className = "" }: { title: string; onClose: () => void; children: ReactNode; className?: string }) {
+  const wrapRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const done = useRef(onClose);
   done.current = onClose;
+  useModal(wrapRef, closeRef);
   useEffect(() => {
-    const was = document.activeElement as HTMLElement | null;
-    closeRef.current?.focus();
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && done.current();
     window.addEventListener("keydown", onKey);
-    const html = document.documentElement;
-    const overflow = html.style.overflow;
-    html.style.overflow = "hidden";
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      html.style.overflow = overflow;
-      was?.focus?.({ preventScroll: true }); // фокус — обратно на кнопку, которая открыла панель
-    };
+    return () => window.removeEventListener("keydown", onKey);
   }, []);
   return createPortal(
-    <div className="sheet-wrap" role="dialog" aria-modal="true" aria-label={title}>
+    <div ref={wrapRef} className="sheet-wrap" role="dialog" aria-modal="true" aria-label={title}>
       <div className="scrim" onClick={onClose} />
       <section className={`sheet ${className}`}>
         <div className="sheet-head">

@@ -19,8 +19,9 @@ const cached = peekSettings(lastUser());
 applyTheme(legacyTheme() ?? cached.theme);
 initGlass(legacyLook() ?? cached.look);
 
-// прогресс привязан к пользователю: сначала узнаём, кто вошёл (без сети — последний вошедший)
-void ensureSession().then((me) => {
+// прогресс привязан к пользователю: сначала узнаём, кто вошёл (без сети или долго нет ответа — последний вошедший)
+const STARTUP_WAIT_MS = 4000;
+void ensureSession(lastUser() ? STARTUP_WAIT_MS : undefined).then((me) => {
   if (me) rememberUser(me.user.name, me.user.displayName);
   createRoot(document.getElementById("root")!).render(<App user={me?.user.name ?? lastUser()} name={me?.user.displayName ?? lastUserName()} />);
 });

@@ -183,7 +183,9 @@ export function SessionScreen({ deck, kind, day, words, title, restart = false, 
     <>
       <div className="bar">
         <button className="x" aria-label="Выйти" onClick={onQuit}><Close /></button>
-        <div className="prog"><b style={{ width: `${progress(sess) * 100}%` }} /></div>
+        <div className="prog" role="progressbar" aria-label="Задание" aria-valuemin={1} aria-valuemax={sess.steps.length} aria-valuenow={Math.min(sess.i + 1, sess.steps.length)} aria-valuetext={`${Math.min(sess.i + 1, sess.steps.length)} из ${sess.steps.length}`}>
+          <b style={{ width: `${progress(sess) * 100}%` }} />
+        </div>
         <span className="bar-n" aria-hidden="true">{Math.min(sess.i + 1, sess.steps.length)} / {sess.steps.length}</span>
       </div>
       <StepView key={sess.i} step={step} api={api} />
@@ -618,8 +620,10 @@ function StepView({ step, api }: { step: Step; api: Api }) {
             «примерка» отзыва (.fbg, текст — в псевдоэлементах) заранее занимает место, панель и задание не прыгают */}
         <div className="fz">
           <div className="fbg" aria-hidden="true" data-t={ghost.t} data-b={ghost.b} />
+          {/* живая область есть всегда — скринридер читает только изменения в ней, а не появившийся вместе с текстом блок */}
+          <p className="sr-only" role="status">{fb ? `${fb.ok ? "Верно" : "Неверно"}. ${fb.title}` : ""}</p>
           {fb ? (
-            <div className="fb" role="status">
+            <div className="fb">
               <h3>{fb.ok ? <Check /> : <Cross />}{fb.title}</h3>
               {fb.body && <p>{fb.body}</p>}
             </div>

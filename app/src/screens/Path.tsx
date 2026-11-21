@@ -12,6 +12,7 @@ import { useNow } from "./Home";
 import { Fan } from "./Me";
 import { PathPlayer } from "./PathPlayer";
 import { StreakSheet, streakLabel, useIgnite } from "./streak";
+import { modalOpen } from "../ui";
 
 /*
  * «Путь»: сезон из 10 уроков нарисован катком. Каждая точка — урок (место карточки в сезоне): пройден / сейчас / закрыт;
@@ -448,7 +449,7 @@ export function PathScreen({ deck, state, go, wide }: { deck: Deck; state: AppSt
   // закрыть пузырь пройденного урока — Esc
   useEffect(() => {
     if (!sel) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setSel(null);
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && !modalOpen() && setSel(null); // Esc окна поверх — окну
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [sel]);
@@ -531,6 +532,8 @@ export function PathScreen({ deck, state, go, wide }: { deck: Deck; state: AppSt
   const [cx, cy] = geo.P(sv.next);
   const [sx, sy] = selCard ? geo.P(sel!) : [0, 0];
   const first = sv.got[0]?.day ?? (sv.todayDone ? null : sv.day);
+  // «Старт» — над нижней линией ворот (RinkSvg: H − 92), но не под пузырём, когда текущий урок — первый
+  const startTop = Math.max(H - 92 - 44, sv.next === 1 ? cy + 62 + popH + 12 : 0);
 
   return (
     <div className="pathpage">
@@ -550,7 +553,7 @@ export function PathScreen({ deck, state, go, wide }: { deck: Deck; state: AppSt
             <DoneBody card={selCard} go={go} />
           </section>
         )}
-        <div className="start-tag" style={{ top: ys[1] + 440 - 92 - 44 }}>{first ? `Старт · ${ruDay(first)}` : "Старт"}</div>
+        <div className="start-tag" style={{ top: startTop }}>{first ? `Старт · ${ruDay(first)}` : "Старт"}</div>
       </div>
     </div>
   );

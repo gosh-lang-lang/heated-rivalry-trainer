@@ -17,13 +17,16 @@ export const goLogin = () => {
 /**
  * Сессия жива? Нет — на вход (промис не завершится). Без сети — null: работаем дальше
  * (приложение может быть из кэша), прогресс — из кэша последнего вошедшего.
+ * timeoutMs — сколько ждать ответа, если есть кэш: на плохой сети (не офлайн) запрос висит долго, а экран белый.
+ * Сессию, которая на самом деле истекла, поймает первая синхронизация (401 → вход).
  */
-export const ensureSession = async (): Promise<Me | null> => {
+export const ensureSession = async (timeoutMs?: number): Promise<Me | null> => {
   let r: Response;
   try {
-    r = await fetch("/api/auth/me", { credentials: "same-origin" });
+    const signal = timeoutMs && typeof AbortSignal.timeout === "function" ? AbortSignal.timeout(timeoutMs) : undefined;
+    r = await fetch("/api/auth/me", { credentials: "same-origin", signal });
   } catch {
-    return null; // офлайн
+    return null; // офлайн или не дождались
   }
   if (r.status === 401) {
     goLogin();
