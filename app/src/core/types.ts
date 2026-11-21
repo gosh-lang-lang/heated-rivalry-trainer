@@ -105,6 +105,8 @@ export interface Settings {
   theme: ThemePref;
   /** аватарка в «Я»: "" — буква имени; формат — core/avatar.ts */
   avatar: string;
+  /** номер на свитере, набранный в выборе аватарки ("" — буква имени); хранится, даже когда выбран не свитер */
+  avatarNum: string;
 }
 export type Look = "classic" | "ice" | "match" | "cities-red" | "cities-black" | "away";
 export type ThemePref = "system" | "light" | "dark";

@@ -6,6 +6,8 @@ import type { LessonCard } from "./cards";
  *  "player:red|black"      — хоккеист: Шейн (красная форма) или Илья (чёрно-жёлтая);
  *  "jersey:<кит>:<номер>"  — свитер команды с номером 0–99; без номера — с буквой имени;
  *  "card:<рисунок>"        — сюжет карточки коллекции; открывается, когда такая карточка получена.
+ * Набранный номер хранится ещё и отдельно (settings.avatarNum): при выборе игрока, буквы или карточки он не теряется,
+ * и свитер, выбранный потом, — снова с ним.
  */
 
 export const KITS = ["red", "black", "white", "blue"] as const;
@@ -63,6 +65,18 @@ export const isAvatar = (v: unknown): v is string => typeof v === "string" && av
 export const cleanNumber = (s: string): string => {
   const d = s.replace(/\D/g, "").slice(0, 2);
   return d ? String(Number(d)) : "";
+};
+
+/** Допустимый ли номер для settings.avatarNum: "" или 0–99 без ведущих нулей. */
+export const isAvatarNum = (v: unknown): v is string => typeof v === "string" && cleanNumber(v) === v;
+
+/**
+ * Номер на свитере из сохранённых настроек. Копия, сохранённая до settings.avatarNum, — номер из выбранного свитера.
+ */
+export const savedNumber = (avatarNum: unknown, avatar: unknown): string => {
+  if (isAvatarNum(avatarNum)) return avatarNum;
+  const a = parseAvatar(avatar);
+  return a.kind === "jersey" ? a.num : "";
 };
 
 /** Рисунки карточек, которые уже открыты для аватарки: есть хоть одна полученная карточка с этим сюжетом. */

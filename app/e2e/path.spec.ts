@@ -238,3 +238,51 @@ test.describe("«Я»", () => {
     await expect(page.locator(".sline")).toContainText("I endure it.");
   });
 });
+
+test.describe("путь: текущий урок над нижней панелью", () => {
+  // пузырь текущего урока с кнопкой «Начать часть …» — целиком над панелью вкладок, с зазором, сразу при открытии;
+  // iPhone SE (375×667) и iPhone 13–16 (390×844), на них — ещё и с полоской «домой» (safe-area-inset-bottom 34px:
+  // панель выше; в эмуляторе env() всегда 0 — поднимаем панель стилем, как на телефоне)
+  const sizes = [
+    { width: 375, height: 667, inset: 0 },
+    { width: 390, height: 844, inset: 0 },
+    { width: 390, height: 844, inset: 34 },
+  ];
+  for (const vp of sizes)
+    for (const [what, st, btn] of [
+      ["новый пользователь", () => state({ settings: { newPerDay: 6 } }), "Начать часть 1"],
+      ["урок 1 после части 1", () => ({ ...afterMorning(6), settings: { newPerDay: 6 } }), "Начать часть 2"],
+      ["урок 5 после части 1", seasonState, "Начать часть 2"],
+    ] as const)
+      test(`${vp.width}×${vp.height}${vp.inset ? ` с полоской «домой»` : ""}, ${what}: «${btn}» над панелью`, async ({ page }) => {
+        test.skip(test.info().project.name !== "iphone", "раскладка телефона — достаточно одного движка");
+        await page.setViewportSize({ width: vp.width, height: vp.height });
+        if (vp.inset) await page.addInitScript((px) => {
+          addEventListener("DOMContentLoaded", () => {
+            const st = document.createElement("style");
+            st.textContent = `.tabbar{bottom:${10 + px}px!important}`;
+            document.head.append(st);
+          });
+        }, vp.inset);
+        await setup(page, { state: st() });
+        await openHome(page);
+        await goTab(page, "Путь");
+        const cur = current(page);
+        const start = cur.getByRole("button", { name: btn });
+        await expect(start).toBeVisible();
+        const bar = page.getByRole("navigation", { name: "Разделы" });
+        const box = async () => {
+          const [b, c, n, h, t] = await Promise.all([start, cur, page.locator(".node.cur"), page.locator(".hud"), bar].map(async (l) => (await l.boundingBox())!));
+          return { btn: b.y + b.height, card: c.y + c.height, node: n.y, hud: h.y + h.height, bar: t.y };
+        };
+        // прокрутка — сразу при открытии, без анимации; ждём, пока пузырь измерится
+        await expect.poll(async () => { const r = await box(); return r.card <= r.bar - 16; }).toBe(true);
+        const r = await box();
+        if (vp.inset) expect(r.bar).toBeLessThan(vp.height - 10 - 70 - vp.inset + 1); // панель действительно поднята
+        expect(r.btn).toBeLessThanOrEqual(r.bar - 16); // кнопка целиком над панелью, с зазором
+        expect(r.card).toBeLessThanOrEqual(r.bar - 16); // и весь пузырь
+        expect(r.node).toBeGreaterThanOrEqual(r.hud); // узел урока — не под шапкой
+        expect(r.node + 44).toBeLessThanOrEqual(vp.height * 0.4); // экран поднят: урок — в верхней части, не у панели
+        if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/${vp.width}x${vp.height}-${vp.inset}-${what}.png` });
+      });
+});

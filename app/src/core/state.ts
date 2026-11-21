@@ -1,4 +1,4 @@
-import { isAvatar } from "./avatar.ts";
+import { isAvatar, savedNumber } from "./avatar.ts";
 import { DEFAULT_VOICE, isTtsVoice } from "./tts.ts";
 import type { AppState, DayLog, Look, SavedRun, SentenceRecord, SessionResult, Settings, SettingsAt, Step, ThemePref, WordState } from "./types";
 
@@ -12,8 +12,8 @@ export const isThemePref = (v: unknown): v is ThemePref => THEME_PREFS.includes(
 export const emptyState = (): AppState => ({
   upd: 0,
   reset: 0,
-  settings: { newPerDay: 12, voice: DEFAULT_VOICE, look: "ice", theme: "system", avatar: "" },
-  settingsAt: { newPerDay: 0, voice: 0, look: 0, theme: 0, avatar: 0 },
+  settings: { newPerDay: 12, voice: DEFAULT_VOICE, look: "ice", theme: "system", avatar: "", avatarNum: "" },
+  settingsAt: { newPerDay: 0, voice: 0, look: 0, theme: 0, avatar: 0, avatarNum: 0 },
   srs: {},
   days: {},
   sent: [],
@@ -21,7 +21,7 @@ export const emptyState = (): AppState => ({
   runAt: 0,
 });
 /** Все личные настройки: каждая сливается отдельно (mergeStates). Новая настройка — поле в Settings и здесь. */
-const SETTING_KEYS = ["newPerDay", "voice", "look", "theme", "avatar"] as const satisfies readonly (keyof Settings)[];
+const SETTING_KEYS = ["newPerDay", "voice", "look", "theme", "avatar", "avatarNum"] as const satisfies readonly (keyof Settings)[];
 
 const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && !Array.isArray(v);
 const num = (v: unknown, d = 0) => (typeof v === "number" && Number.isFinite(v) ? v : d);
@@ -99,6 +99,7 @@ export const parseState = (raw: unknown): AppState => {
       look: isLook(settings.look) ? settings.look : "ice",
       theme: isThemePref(settings.theme) ? settings.theme : "system",
       avatar: isAvatar(settings.avatar) ? settings.avatar : "",
+      avatarNum: savedNumber(settings.avatarNum, settings.avatar),
     },
     settingsAt: Object.fromEntries(SETTING_KEYS.map((k) => [k, Math.max(0, num(at[k]))])) as SettingsAt,
     srs,

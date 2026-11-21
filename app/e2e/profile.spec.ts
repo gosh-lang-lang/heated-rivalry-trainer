@@ -57,6 +57,35 @@ test.describe("аватарка", () => {
     await expect(page.getByRole("button", { name: "Аватарка: свитер, красный, № 7. Сменить" })).toBeVisible();
   });
 
+  test("номер на свитере не теряется: 43 → Шейн (и после перезагрузки) → снова свитер с 43", async ({ page }) => {
+    await setup(page, { state: seasonState() });
+    await openHome(page);
+    await goTab(page, "Я");
+    await page.getByRole("button", { name: /^Аватарка: / }).click();
+    let s = sheet(page, "Аватарка");
+    const num = () => s.getByRole("textbox", { name: /Номер на свитере/ });
+    await s.getByRole("button", { name: "Свитер: красный" }).click();
+    await num().fill("43");
+    await expect(s).toContainText("Сейчас: свитер, красный, № 43");
+
+    await s.getByRole("button", { name: "Шейн Холландер" }).click();
+    await expect(s).toContainText("Сейчас: Шейн Холландер");
+    await expect(num()).toHaveValue("43"); // поле не очищается
+    await expect(s.getByRole("list", { name: "Свитер" }).locator(".ava text").first()).toHaveText("43"); // свитеры — с номером, не с буквой
+    expect(await avatarSetting(page)).toBe("player:red");
+
+    // номер хранится в настройках, а не в панели: и после перезагрузки
+    await page.reload();
+    await goTab(page, "Я");
+    await page.getByRole("button", { name: "Аватарка: Шейн Холландер. Сменить" }).click();
+    s = sheet(page, "Аватарка");
+    await expect(num()).toHaveValue("43");
+    await s.getByRole("button", { name: "Свитер: красный" }).click();
+    await expect(s).toContainText("Сейчас: свитер, красный, № 43");
+    await expect(s.locator(".av-now .ava text")).toHaveText("43");
+    expect(await avatarSetting(page)).toBe("jersey:red:43");
+  });
+
   test("из коллекции: открыты сюжеты полученных карточек, остальные — под замком", async ({ page }) => {
     await setup(page, { state: seasonState() }); // карточки 1–4: Шейн, Илья, Раздевалка, «Вояжёры»
     await openHome(page);

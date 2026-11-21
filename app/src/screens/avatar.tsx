@@ -1,4 +1,4 @@
-import { useId, useState } from "react";
+import { useId } from "react";
 import { avatarId, CARD_AVATARS, cleanNumber, KIT_NAME, KITS, parseAvatar, PLAYERS, unlockedArts, type Avatar as AvatarT, type Kit } from "../core/avatar";
 import type { LessonCard } from "../core/cards";
 import { jerseySvg, playerSvg } from "../lib/avatars";
@@ -10,6 +10,7 @@ import { CardArt, cardNo } from "./cards";
 /**
  * Аватарка в «Я»: буква имени, хоккеист, свитер с номером или сюжет полученной карточки (core/avatar.ts).
  * Выбор — панель снизу по нажатию на аватарку; сохраняется сразу, в общих настройках (как тема и голос).
+ * Номер на свитере — своя настройка (avatarNum): переключение на игрока его не стирает.
  */
 
 const initial = (name: string) => (name.trim()[0] ?? "Я").toUpperCase();
@@ -60,7 +61,7 @@ export function AvatarSheet({ name, cards, onClose }: { name: string; cards: Les
   const { settings, set } = useSettings();
   const cur = parseAvatar(settings.avatar);
   const id = avatarId(cur);
-  const [num, setNum] = useState(cur.kind === "jersey" ? cur.num : "");
+  const num = settings.avatarNum; // набранный номер — отдельно от выбора: игрок или буква его не стирают
   const open = unlockedArts(cards);
   const pick = (a: AvatarT) => set("avatar", avatarId(a));
   const L = initial(name);
@@ -101,7 +102,7 @@ export function AvatarSheet({ name, cards, onClose }: { name: string; cards: Les
           value={num}
           onChange={(e) => {
             const n = cleanNumber(e.target.value);
-            setNum(n);
+            set("avatarNum", n);
             if (cur.kind === "jersey") pick({ ...cur, num: n });
           }}
         />

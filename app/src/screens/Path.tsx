@@ -209,6 +209,26 @@ function useHeight<T extends HTMLElement>(init: number): [RefObject<T | null>, n
   return [ref, h];
 }
 
+/**
+ * Высота экрана и сколько снизу занимает панель вкладок (с её отступом и safe-area-inset-bottom: на iPhone с полоской
+ * «домой» панель выше на 34px; нет панели — 0). Следит за поворотом и изменением окна.
+ */
+function useScreen(): { vh: number; bar: number } {
+  const [v, setV] = useState({ vh: 800, bar: 96 });
+  useLayoutEffect(() => {
+    const upd = () => {
+      const vh = window.innerHeight;
+      const t = document.querySelector(".tabbar");
+      const bar = t ? Math.max(0, Math.round(vh - t.getBoundingClientRect().top)) : 0;
+      setV((o) => (o.vh === vh && o.bar === bar ? o : { vh, bar }));
+    };
+    upd();
+    window.addEventListener("resize", upd);
+    return () => window.removeEventListener("resize", upd);
+  }, []);
+  return v;
+}
+
 interface Geo {
   W: number;
   H: number;
@@ -417,6 +437,8 @@ export function PathScreen({ deck, state, go, wide }: { deck: Deck; state: AppSt
   const selCard = sel ? (sv.got.find((c) => c.pos === sel) ?? null) : null;
   const [wrapRef, W0] = useWidth<HTMLDivElement>(wide ? 1152 : 390);
   const [popRef, popH] = useHeight<HTMLElement>(300);
+  const screen = useScreen();
+  const hudRef = useRef<HTMLElement>(null);
 
   // закрыть пузырь пройденного урока — Esc
   useEffect(() => {
@@ -487,9 +509,11 @@ export function PathScreen({ deck, state, go, wide }: { deck: Deck; state: AppSt
 
   // телефон: снизу вверх — от старта к воротам; под текущим уроком — место для пузыря
   const W = Math.min(Math.max(W0, 300), 620);
+  // под уроком 1 (внизу дорожки) — его пузырь, панель вкладок с зазором и столько льда, чтобы урок можно было поднять
+  // на треть экрана (ScrollToCurrent): иначе прокрутка упирается в конец страницы и пузырь с кнопкой уходит под панель
   const GAP = 112,
     TOP = 250,
-    BOTTOM = 440,
+    BOTTOM = Math.max(440, 62 + popH + screen.bar + BAR_GAP, Math.ceil(screen.vh * (1 - THIRD))),
     BUBBLE = Math.max(GAP, 62 + popH + 56);
   const ys: number[] = [];
   let y = TOP;
@@ -505,11 +529,11 @@ export function PathScreen({ deck, state, go, wide }: { deck: Deck; state: AppSt
 
   return (
     <div className="pathpage">
-      <header className="hud">
+      <header className="hud" ref={hudRef}>
         <div><h1>Путь</h1><span>{meta}</span></div>
         {chips(false)}
       </header>
-      <ScrollToCurrent y={cy} />
+      <ScrollToCurrent y={cy} pop={popRef} hud={hudRef} deps={[H, popH, screen.bar, screen.vh]} />
       <div className="rinkwrap" ref={wrapRef} style={{ height: H }} onClick={(e) => e.target === e.currentTarget && setSel(null)}>
         <RinkSvg geo={geo} cur={sv.next} season={sv.season} vertical ys={ys} />
         <Marks geo={geo} sv={sv} sel={sel} onNode={toggle} go={go} vertical />
@@ -521,23 +545,40 @@ export function PathScreen({ deck, state, go, wide }: { deck: Deck; state: AppSt
             <DoneBody card={selCard} go={go} />
           </section>
         )}
-        <div className="start-tag" style={{ top: H - 92 - 44 }}>{first ? `Старт · ${ruDay(first)}` : "Старт"}</div>
+        <div className="start-tag" style={{ top: ys[1] + 440 - 92 - 44 }}>{first ? `Старт · ${ruDay(first)}` : "Старт"}</div>
       </div>
     </div>
   );
 }
 
-/** При открытии «Пути» — прокрутить к текущему уроку (он и пузырь — на экране). */
-function ScrollToCurrent({ y }: { y: number }) {
-  const done = useRef(false);
+/** Зазор между пузырём текущего урока и панелью вкладок; где на экране — узел текущего урока (доля высоты). */
+const BAR_GAP = 24,
+  THIRD = 0.32;
+
+/**
+ * При открытии «Пути» — прокрутить к текущему уроку: узел — на трети экрана, но пузырь с кнопкой «Начать» целиком
+ * над панелью вкладок (с зазором BAR_GAP) — тогда всё поднимается выше; узел при этом не уходит под шапку.
+ * Размеры — по месту (пузырь, шапка, панель). Пересчёт, пока пузырь меряется (deps), — если пользователь ещё не прокрутил сам.
+ */
+function ScrollToCurrent({ y, pop, hud, deps }: { y: number; pop: RefObject<HTMLElement | null>; hud: RefObject<HTMLElement | null>; deps: unknown[] }) {
   const ref = useRef<HTMLSpanElement>(null);
+  const auto = useRef<number | null>(null);
   useLayoutEffect(() => {
-    if (done.current || !ref.current) return;
-    done.current = true;
-    const wrap = ref.current.nextElementSibling as HTMLElement | null;
+    const wrap = ref.current?.nextElementSibling as HTMLElement | null;
     if (!wrap) return;
-    const top = wrap.getBoundingClientRect().top + window.scrollY + y;
-    window.scrollTo(0, Math.max(0, top - Math.round(window.innerHeight * 0.32)));
-  });
+    if (auto.current !== null && Math.abs(window.scrollY - auto.current) > 2) return; // уже прокрутил сам
+    const sy = window.scrollY;
+    const nodeY = wrap.getBoundingClientRect().top + sy + y; // центр узла — в координатах страницы
+    const bar = document.querySelector(".tabbar")?.getBoundingClientRect().top ?? window.innerHeight;
+    const card = pop.current?.getBoundingClientRect();
+    const third = nodeY - Math.round(window.innerHeight * THIRD);
+    const above = card ? card.bottom + sy - (bar - BAR_GAP) : third;
+    const under = nodeY - NODE_R - ((hud.current?.getBoundingClientRect().bottom ?? 0) + 12);
+    window.scrollTo(0, Math.max(0, Math.min(Math.max(third, above), under)));
+    auto.current = window.scrollY;
+  }, deps);
   return <span ref={ref} hidden />;
 }
+
+/** Половина узла урока (кружок 88px). */
+const NODE_R = 44;
