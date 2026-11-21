@@ -174,7 +174,6 @@ export const setup = async (
     log.played.push(key);
     return route.fulfill({ body: silentWav(), contentType: "audio/wav" });
   });
-  await page.route("**/api/pron/warm", (route) => route.fulfill({ status: 204 }));
   // сервер оценки произношения: все слова хорошо (92%), а после setPron(page, …) — следующая запись по заказу
   await page.route(/\/api\/pron(\?.*)?$/, async (route) => {
     if (opts.pron === "down") return route.fulfill({ status: 503, json: { error: "оценка произношения отключена" } });

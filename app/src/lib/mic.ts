@@ -136,9 +136,6 @@ export const record = async (o: { silenceMs: number; maxMs: number; onLevel?: (l
   return { stop: finish, done };
 };
 
-/** Начало занятия с говорением: сервер заранее загружает модель оценки (она запускается по требованию). */
-export const warmPron = () => void fetch("/api/pron/warm", { method: "POST" }).catch(() => {});
-
 /** Оценка на сервере. null — сервер недоступен или оценка отключена. */
 export const assessPron = async (text: string, pcm: Uint8Array): Promise<PronResult | null> => {
   try {

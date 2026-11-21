@@ -23,7 +23,7 @@ import { buildTokens, checkTyped, gapSentence, longestRun, options } from "../co
 import type { AppState, Deck, SentenceRecord, SessionKind, Step } from "../core/types";
 import { checkerAvailable, checkSentence } from "../lib/checker";
 import { Check, Close, Cross } from "../lib/icons";
-import { closeMic, micSupported, openMic, warmPron } from "../lib/mic";
+import { closeMic, micSupported, openMic } from "../lib/mic";
 import { prefetch, say } from "../lib/speech";
 import { useLessonViewport } from "../lib/viewport";
 import { hasWordArt, WordArt } from "../lib/WordArt";
@@ -109,7 +109,6 @@ export function SessionScreen({ deck, kind, day, words, title, state, setState, 
     if (!micAsked.current && micSupported() && n.steps.slice(n.i).some(isSpeech)) {
       micAsked.current = true;
       void openMic();
-      warmPron();
     }
     if (isDone(n)) {
       const fin = finishSession(n, st, logDay);
