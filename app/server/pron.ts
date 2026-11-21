@@ -118,14 +118,32 @@ export const createPronEngine = (model: PronModel): PronEngine => {
   };
 };
 
-/** Модель в отдельном процессе (pron-worker.ts); упал — запускаем заново при следующем запросе. */
-export const processModel = (): PronModel => {
+/** Процесс с моделью выключается, если записей не было столько (мс): память нужна только во время занятий. */
+export const PRON_IDLE_MS = 10 * 60 * 1000;
+
+/**
+ * Модель в отдельном процессе (pron-worker.ts). Процесс запускается по требованию — первым запросом или `ready`
+ * (приложение «будит» его в начале занятия, POST /api/pron/warm) — и выключается после `idleMs` без записей:
+ * в покое сервер занимает столько же памяти, сколько без оценки. Упал (в том числе убит при нехватке памяти) —
+ * запускается заново при следующем запросе.
+ */
+export const processModel = ({ idleMs = PRON_IDLE_MS, script = new URL("./pron-worker.ts", import.meta.url) }: { idleMs?: number; script?: URL } = {}): PronModel => {
   let child: ChildProcess | null = null;
-  let ready!: Promise<void>;
+  let ready: Promise<void> = Promise.resolve();
   let nextId = 0;
+  let idle: ReturnType<typeof setTimeout> | null = null;
+  const touch = () => {
+    if (idle) clearTimeout(idle);
+    idle = setTimeout(() => {
+      if (pending.size) return touch();
+      child?.kill();
+      child = null;
+    }, idleMs);
+    idle.unref();
+  };
   const pending = new Map<number, { res: (v: never) => void; rej: (e: unknown) => void }>();
   const start = () => {
-    const c = fork(new URL("./pron-worker.ts", import.meta.url), [], { serialization: "advanced", stdio: ["ignore", "inherit", "inherit", "ipc"] });
+    const c = fork(script, [], { serialization: "advanced", stdio: ["ignore", "inherit", "inherit", "ipc"] });
     child = c;
     c.unref();
     c.channel?.unref();
@@ -149,14 +167,18 @@ export const processModel = (): PronModel => {
     });
     c.once("exit", (code) => {
       if (child === c) child = null;
+      if (code !== 0 && code !== null) console.error(`процесс оценки произношения завершился (${code})`);
       pending.forEach((p) => p.rej(new Error(`процесс оценки завершился (${code})`)));
       pending.clear();
     });
   };
-  start();
-  const call = async <T>(msg: { kind: "hear"; pcm: Float32Array } | { kind: "ipa"; text: string }) => {
+  const wake = () => {
     if (!child) start();
-    await ready;
+    touch();
+    return ready;
+  };
+  const call = async <T>(msg: { kind: "hear"; pcm: Float32Array } | { kind: "ipa"; text: string }) => {
+    await wake();
     return new Promise<T>((res, rej) => {
       const id = nextId++;
       pending.set(id, { res, rej });
@@ -167,7 +189,7 @@ export const processModel = (): PronModel => {
     hear: (pcm) => call<Unit[]>({ kind: "hear", pcm }),
     ipa: (text) => call<string[]>({ kind: "ipa", text }),
     get ready() {
-      return ready;
+      return wake();
     },
   };
 };

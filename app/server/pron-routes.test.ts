@@ -42,7 +42,7 @@ const start = async (eng: PronEngine | null, opts: { rateLimit?: number; maxBusy
       headers: { "content-type": "application/octet-stream" },
       body: method === "POST" ? new Uint8Array(Math.round(seconds * PRON_RATE) * 2) : undefined,
     });
-  return { send };
+  return { send, base };
 };
 
 describe("API оценки произношения", () => {
@@ -71,6 +71,23 @@ describe("API оценки произношения", () => {
     expect((await send("x ".repeat(200))).status).toBe(400);
     expect((await send("think", MAX_PRON_SECONDS + 1)).status).toBe(413);
     expect((await send("think", 1, "GET")).status).toBe(405);
+  });
+
+  it("«разбудить» модель в начале занятия — 204, модель грузится", async () => {
+    let woke = 0;
+    const e = createPronEngine({
+      get ready() {
+        woke++;
+        return Promise.resolve();
+      },
+      hear: async () => [],
+      ipa: async () => [],
+    });
+    const { base } = await start(e);
+    const r = await fetch(`${base}/api/pron/warm`, { method: "POST" });
+    expect(r.status).toBe(204);
+    expect(woke).toBe(1);
+    expect((await fetch(`${(await start(null)).base}/api/pron/warm`, { method: "POST" })).status).toBe(204);
   });
 
   it("оценка отключена — 503", async () => {

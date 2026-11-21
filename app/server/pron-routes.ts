@@ -2,6 +2,7 @@
  * Маршрут оценки произношения (вход уже проверен в index.ts):
  *   POST /api/pron?t=<текст>  тело — запись: PCM 16 бит little-endian, моно, 16 кГц (application/octet-stream)
  *        → PronResult (src/core/pron.ts): оценка 0–100, по словам — оценка и звуки, которые прозвучали не так.
+ *   POST /api/pron/warm — «разбудить» модель в начале занятия (её процесс запускается по требованию) → 204
  * Запись не сохраняется. Не больше rateLimit записей в час с одного адреса; одновременно — не больше maxBusy.
  */
 import type { IncomingMessage, ServerResponse } from "node:http";
@@ -18,6 +19,12 @@ export const createPronRoutes = (engine: PronEngine | null, opts: { rateLimit: n
 
   /** true — запрос обработан. */
   return async (req: IncomingMessage, res: ServerResponse, pathname: string): Promise<boolean> => {
+    if (pathname === "/api/pron/warm" && req.method === "POST") {
+      // начало занятия с говорением: модель грузится, пока ученик знакомится со словами
+      if (engine) engine.ready.catch(() => {});
+      res.writeHead(204, { "cache-control": "no-store" });
+      return res.end(), true;
+    }
     if (pathname !== "/api/pron") return false;
     if (req.method !== "POST") return json(res, 405, { error: "метод не поддерживается" }), true;
     if (!engine) return json(res, 503, { error: "оценка произношения отключена" }), true;

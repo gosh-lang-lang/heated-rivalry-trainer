@@ -10,7 +10,7 @@ services:
         APP_VERSION: ${APP_VERSION:-unknown}
     container_name: heated-rivalry
     restart: unless-stopped
-    mem_limit: ${APP_MEM_LIMIT:-1536m}
+    mem_limit: ${APP_MEM_LIMIT:-2304m}
     cpus: ${APP_CPUS:-1.5}
     environment:
       AUTH_ORIGIN: https://heated-rivalry-trainer.spill-the-tea.xyz

@@ -6,11 +6,18 @@
  * на 1,5 ядра контейнера (больше потоков только мешают друг другу).
  */
 import { AutoModelForCTC, Tensor } from "@huggingface/transformers";
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { phonemize } from "phonemizer";
 import { ctcUnits, PRON_MODEL } from "./pron.ts";
 
 const send = (m: unknown) => process.send!(m);
+
+// при нехватке памяти ядро убивает в контейнере первым этот процесс, а не сервер: сайт работает, оценка — «недоступна»
+try {
+  writeFileSync("/proc/self/oom_score_adj", "1000");
+} catch {
+  /* не Linux */
+}
 
 const vocab = JSON.parse(readFileSync(new URL("./pron-vocab.json", import.meta.url), "utf8")) as Record<string, number>;
 const units: string[] = [];
