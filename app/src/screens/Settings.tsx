@@ -293,7 +293,7 @@ function Account({ me, devices }: { me: Me | null; devices: ReturnType<typeof us
   );
 }
 
-export function NewPerDay({ state, setState }: { state: AppState; setState: SetState }) {
+function NewPerDay({ state, setState }: { state: AppState; setState: SetState }) {
   return (
     <section className="card">
       <h3>Новых слов за урок</h3>
@@ -322,7 +322,7 @@ const zoneLabel = (tz: string) => {
  * Берётся с устройства при первой синхронизации; уехал в другой пояс — перейти на пояс устройства можно явно,
  * не чаще раза в сутки (server/progress.ts setTz).
  */
-export function TimeZoneCard({ state, setState }: { state: AppState; setState: SetState }) {
+function TimeZoneCard({ state, setState }: { state: AppState; setState: SetState }) {
   const device = deviceTz();
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
@@ -356,7 +356,7 @@ export function TimeZoneCard({ state, setState }: { state: AppState; setState: S
  * Выбранный голос — первым, отдельно («Сейчас»), остальные — ниже по акцентам. Выбрал другой — он переезжает наверх,
  * страница прокручивается к нему.
  */
-export function VoicePicker({ value, onPick }: { value: string; onPick: (id: string) => void }) {
+function VoicePicker({ value, onPick }: { value: string; onPick: (id: string) => void }) {
   const { voices, server, fallback, playing } = useVoices();
   const curRef = useRef<HTMLDivElement>(null);
   const cur = voices.find((v) => v.id === value) ?? null;

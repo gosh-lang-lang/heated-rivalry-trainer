@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import type { View } from "../App";
 import { addDays, greeting, nowDate } from "../core/dates";
-import { hhmm, lessonStatus, resumeLabel, untilText, type LessonPart } from "../core/lesson";
+import { lessonStatus, resumeLabel, untilText, type LessonPart } from "../core/lesson";
 import { MAX_REVIEW, newToday } from "../core/plans";
 import { dayParts, dueList, groups, isHard, levelGroup, streak, unseen } from "../core/srs";
-import { plural } from "../core/text";
+import { hhmm, plural } from "../core/text";
 import type { AppState, Deck, SessionResult } from "../core/types";
 import { Check, Rink, StreakFlame } from "../lib/icons";
 import { AWAY_CITIES, CITIES_SVG } from "../lib/scenes";

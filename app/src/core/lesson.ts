@@ -1,4 +1,4 @@
-import { addDays, clockTz, dayIn, hourIn, nowDate, todayKey } from "./dates";
+import { addDays, clockTz, dayIn, dayOfIso, hourIn, nowDate, todayKey } from "./dates";
 import { eveningWords, newToday } from "./plans";
 import { CARRY_DAYS } from "./serverday";
 import { resumable, runPosition } from "./session";
@@ -90,11 +90,6 @@ export const part2Advice = (day: string, part1: SessionResult | null | undefined
   return { advice: "ready", after };
 };
 
-const sameDay = (iso: string | undefined, day: string) => {
-  const t = iso ? Date.parse(iso) : NaN;
-  return !Number.isNaN(t) && todayKey(new Date(t)) === day;
-};
-
 /**
  * Перенос части 2: последний урок до сегодня (часть 1 пройдена) был не раньше CARRY_DAYS дней назад,
  * его часть 2 не пройдена (или пройдена сегодня — карточка остаётся до конца дня), а часть 1 сегодня ещё не начата.
@@ -108,7 +103,7 @@ export const carriedDay = (days: AppState["days"], today: string): string | null
     .pop();
   if (!last || last < addDays(today, -CARRY_DAYS)) return null;
   const e = days[last].evening;
-  return !e || sameDay(e.at, today) ? last : null;
+  return !e || dayOfIso(e.at) === today ? last : null;
 };
 
 /** Что показать на главной: какие части, номера уроков, совет для части 2, перенос со вчера. */
@@ -161,8 +156,6 @@ export const lessonStatus = (state: AppState, deck: Deck, now: Date = nowDate())
   return { today, cards: [part1, part2], carry: null, focus: part1.can ? 1 : p2 ? 2 : null };
 };
 
-/** «18:30» — местное время. */
-export const hhmm = (d: Date): string => String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
 
 /** «через 1 ч 12 мин», «через 45 мин», «через 2 ч» — сколько осталось до `to` (минуты округляются вверх). */
 export const untilText = (now: Date, to: Date): string => {

@@ -79,9 +79,9 @@ export const dkey = (d: Date): string => dayIn(d.getTime(), zone);
 /** Сегодня — по часам сервера в поясе пользователя (или день момента `now`). */
 export const todayKey = (now: Date = nowDate()): string => dkey(now);
 
-/** День ISO-времени в поясе приложения; null — время не разобрать. */
-export const dayOfIso = (iso: string): string | null => {
-  const t = Date.parse(iso);
+/** День ISO-времени в поясе приложения; null — времени нет или его не разобрать. */
+export const dayOfIso = (iso: string | undefined): string | null => {
+  const t = iso ? Date.parse(iso) : NaN;
   return Number.isNaN(t) ? null : dayIn(t, zone);
 };
 
@@ -99,9 +99,6 @@ export const daysBetween = (a: string, b: string): number => {
   };
   return Math.round((ms(b) - ms(a)) / 864e5);
 };
-
-/** «2026-11-20» → «20.11.2026» */
-export const ruDate = (k: string): string => k.split("-").reverse().join(".");
 
 /**
  * Приветствие по часам устройства: утро 5–11, день 12–16, вечер 17–22, ночь 23–4.

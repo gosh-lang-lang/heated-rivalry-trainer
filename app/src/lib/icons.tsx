@@ -136,9 +136,6 @@ export const Flip = (p: P) => (
 export const Right = (p: P) => (
   <svg {...base} strokeWidth={2.6} {...p}><path d="M9 6l6 6-6 6" /></svg>
 );
-export const Search = (p: P) => (
-  <svg {...base} strokeWidth={2.4} {...p}><circle cx="11" cy="11" r="6.5" /><path d="m16 16 4.5 4.5" /></svg>
-);
 /** «Путь»: дорожка к флажку (как во вкладке) */
 export const Route = (p: P) => (
   <svg {...base} strokeWidth={2.2} {...p}><circle cx="6" cy="19" r="2.2" /><path d="M8.2 19H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h7" /><path d="M17 3v7" /><path d="M17 3.4h4l-1.3 1.8L21 7h-4" /></svg>

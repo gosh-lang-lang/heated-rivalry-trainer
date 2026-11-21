@@ -62,14 +62,14 @@ export type SettingsSection = "lessons" | "voice" | "look" | "account";
 export type SetState = (next: AppState) => void;
 
 /** Вкладка, к которой относится экран (подсвечена в навигации). */
-export const sectionOf = (v: View): Section =>
+const sectionOf = (v: View): Section =>
   v.name === "card" ? sectionOf(v.from) : v.name === "collection" || v.name === "settings" || v.name === "me" ? "me" : v.name === "path" || v.name === "words" ? v.name : "home";
 
 /**
  * Глубина экрана в истории браузера: вкладки, занятие и итог — 0; коллекция и настройки — 1 (подстраницы «Я»), страница урока в «Словах» на телефоне — 1;
  * раздел настроек на телефоне — 2 (на десктопе список и раздел рядом — 1); карточка — на 1 глубже экрана под ней.
  */
-export const depthOf = (v: View, wide: boolean): number =>
+const depthOf = (v: View, wide: boolean): number =>
   v.name === "card" ? depthOf(v.from, wide) + 1 : v.name === "collection" || (v.name === "words" && v.lesson !== undefined && !wide) ? 1 : v.name === "settings" ? (v.section && !wide ? 2 : 1) : 0;
 
 /** Запись в истории браузера: d — сколько записей приложения над базовой, v — экран. */
@@ -102,7 +102,7 @@ const reopened = (): boolean => {
 /** Экран, который восстановить при загрузке: после перезагрузки — тот же, что был; иначе — нет («Главная»). */
 const restoredView = (): View | null => (reopened() ? savedView(entry()?.v) : null);
 /** С какого экрана начать. */
-export const initialView = (): View => restoredView() ?? { name: "home" };
+const initialView = (): View => restoredView() ?? { name: "home" };
 
 /**
  * @param user — кто вошёл; null — неизвестно (без сети и без прошлого входа): только кэш, без сервера

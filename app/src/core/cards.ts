@@ -1,6 +1,7 @@
-import { dkey } from "./dates";
+import { dayOfIso } from "./dates";
 import { carriedDay, lessonNo } from "./lesson";
-import type { AppState, Deck, SessionResult, Word } from "./types";
+import { lessonWords } from "./plans";
+import type { AppState, Deck, SessionResult } from "./types";
 
 /*
  * Карточки-награды: одна за каждый пройденный урок (пройдены часть 1 и часть 2; перенесённая часть 2
@@ -89,16 +90,9 @@ export interface LessonCard extends CardSubject {
   words: string[];
 }
 
-/** Слова урока дня `day`: те, с которыми познакомились в этот день. */
-export const lessonWords = (deck: Deck, srs: AppState["srs"], day: string): Word[] => deck.words.filter((w) => srs[w.id]?.intro === day);
 
 /** Урок дня пройден целиком: обе части. */
 export const lessonComplete = (d: AppState["days"][string] | undefined): boolean => !!d?.morning && !!d?.evening;
-
-const dayOf = (iso: string, fallback: string) => {
-  const t = Date.parse(iso);
-  return Number.isNaN(t) ? fallback : dkey(new Date(t));
-};
 
 /**
  * Все полученные карточки по порядку. Пройденные уроки идут по дням урока: перенесённую часть 2 можно сделать,
@@ -126,7 +120,7 @@ export const earnedCards = (state: AppState, deck: Deck): LessonCard[] => {
       gold: isGold(no),
       day,
       lesson,
-      got: dayOf(p2.at, day),
+      got: dayOfIso(p2.at) ?? day,
       part1: p1,
       part2: p2,
       pct: total ? Math.round((score / total) * 100) : 100,

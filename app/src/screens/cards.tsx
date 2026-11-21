@@ -12,7 +12,7 @@ import { say, useSpeaking } from "../lib/speech";
  * и подхватываются сами (см. useCardImage), заглушка остаётся, пока файла нет.
  */
 
-export const CAT_COLOR: Record<CardCategory, string> = { Герой: "#d9233a", Команда: "#e08a00", Место: "#178a4c", Сцена: "#1f5fd1", Финал: "#b86e00" };
+const CAT_COLOR: Record<CardCategory, string> = { Герой: "#d9233a", Команда: "#e08a00", Место: "#178a4c", Сцена: "#1f5fd1", Финал: "#b86e00" };
 
 const pad = (n: number) => String(n).padStart(2, "0");
 /** «№ 04» — номер в сезоне (тонкий пробел). */
@@ -106,7 +106,7 @@ const ART: Record<string, (u: string) => string> = {
 };
 
 /** Адрес настоящей иллюстрации карточки: /cards/s1-04.webp. */
-export const cardImageUrl = (season: number, pos: number) => `/cards/s${season}-${pad(pos)}.webp`;
+const cardImageUrl = (season: number, pos: number) => `/cards/s${season}-${pad(pos)}.webp`;
 
 /** Есть ли файл — проверяем один раз на адрес за сеанс (нет файла — заглушка, без повторных запросов). */
 const probed = new Map<string, Promise<boolean>>();
@@ -126,7 +126,7 @@ const probe = (url: string) => {
 };
 
 /** Адрес иллюстрации, если файл есть и загрузился; иначе null (рисуем заглушку). */
-export function useCardImage(url: string): string | null {
+function useCardImage(url: string): string | null {
   const [ok, setOk] = useState(() => known.get(url) ?? false);
   useEffect(() => {
     let live = true;

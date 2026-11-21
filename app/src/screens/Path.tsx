@@ -1,10 +1,10 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
 import type { View } from "../App";
 import { SEASON, seasonView, type LessonCard, type SeasonView } from "../core/cards";
-import { hhmm, lessonStatus, resumeLabel, type LessonPart, type LessonStatus } from "../core/lesson";
+import { lessonStatus, resumeLabel, type LessonPart, type LessonStatus } from "../core/lesson";
 import { MAX_REVIEW, newToday } from "../core/plans";
 import { dayParts, streak, unseen } from "../core/srs";
-import { plural } from "../core/text";
+import { hhmm, plural } from "../core/text";
 import type { AppState, Deck, SessionResult } from "../core/types";
 import { Cards, Check, Lock, StreakFlame } from "../lib/icons";
 import { CardFront, CardLocked, cardNo, ruDay } from "./cards";

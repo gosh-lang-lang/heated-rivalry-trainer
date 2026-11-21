@@ -28,7 +28,6 @@ export const TTS_VOICES: TtsVoice[] = [
 ];
 
 export const ACCENT_LABEL: Record<Accent, string> = { us: "Американский акцент", gb: "Британский акцент" };
-export const voiceMeta = (v: TtsVoice) => `${v.accent === "us" ? "американский" : "британский"} · ${v.gender === "f" ? "женский" : "мужской"}`;
 
 export const DEFAULT_VOICE = "af_heart";
 /** Фраза для прослушивания голосов (сервер озвучивает её заранее всеми голосами). */

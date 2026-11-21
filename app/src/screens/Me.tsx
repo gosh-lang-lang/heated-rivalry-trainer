@@ -11,7 +11,7 @@ import { StatsContent } from "./Stats";
 import { AvatarPic, AvatarSheet, avatarName } from "./avatar";
 
 /** «Сезон 1 · следующая карточка — после части 2 урока 5». */
-export const nextCardNote = (sv: SeasonView) =>
+const nextCardNote = (sv: SeasonView) =>
   `Сезон ${sv.season} · следующая карточка — ${sv.todayDone ? `после урока ${sv.nextLesson}, завтра` : `после части 2 урока ${sv.nextLesson}`}`;
 
 /** Веер карточек сезона: последние полученные и следующая (пунктиром). */

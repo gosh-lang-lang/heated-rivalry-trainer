@@ -28,8 +28,6 @@ export interface Graded {
 export const startSession = (kind: SessionKind, steps: Step[], now = clockNow()): Session | null =>
   steps.length ? { kind, steps, i: 0, graded: 0, right: 0, revGraded: 0, revRight: 0, first: [], newIds: [], written: {}, t0: now } : null;
 
-export const currentStep = (s: Session): Step | undefined => s.steps[s.i];
-
 export const progress = (s: Session) => Math.min(s.i / s.steps.length, 1);
 
 /* ---------- незаконченная часть урока: сохранить, продолжить, начать заново ---------- */

@@ -1,6 +1,6 @@
-import { addDays, dkey } from "./dates";
+import { dayOfIso } from "./dates";
 import { SEASON, type LessonCard } from "./cards";
-import { streak } from "./srs";
+import { streak, streakRuns } from "./srs";
 import type { AppState } from "./types";
 
 /*
@@ -28,18 +28,9 @@ export const WORD_GOALS = [50, 100, 500] as const;
 /** «Уроки» — пройденные целиком (обе части), то есть полученные карточки. */
 export const LESSON_GOALS = [1, 10, 50] as const;
 
-const active = (d: AppState["days"][string] | undefined) => !!d && !!(d.morning || d.evening);
-
 /** День, когда серия дней подряд впервые достигла n; null — ещё не было. */
 export const streakReached = (days: AppState["days"], n: number): string | null => {
-  let run = 0,
-    prev = "";
-  for (const k of Object.keys(days).sort()) {
-    if (!active(days[k])) continue;
-    run = prev && addDays(prev, 1) === k ? run + 1 : 1;
-    prev = k;
-    if (run >= n) return k;
-  }
+  for (const [k, run] of streakRuns(days)) if (run >= n) return k;
   return null;
 };
 
@@ -50,17 +41,12 @@ const introDays = (srs: AppState["srs"]) =>
     .filter(Boolean)
     .sort();
 
-const sentDay = (at: string): string | null => {
-  const t = Date.parse(at);
-  return Number.isNaN(t) ? null : dkey(new Date(t));
-};
-
 /** Все 12 достижений в порядке экрана: серия, слова, уроки, особые. */
 export const achievements = (state: AppState, cards: LessonCard[], today: string): Achievement[] => {
   const sk = streak(state.days, today);
   const intro = introDays(state.srs);
   const firstSent = state.sent
-    .map((s) => sentDay(s.at))
+    .map((s) => dayOfIso(s.at))
     .filter((d): d is string => !!d)
     .sort()[0];
   const s1 = cards.filter((c) => c.season === 1);

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { hhmm } from "./text";
 import { addDays } from "./dates";
-import { carriedDay, hhmm, LATE_HOUR, lessonNo, lessonStatus, PART2_GAP_MIN, part2Advice, resumeLabel, untilText } from "./lesson";
+import { carriedDay, LATE_HOUR, lessonNo, lessonStatus, PART2_GAP_MIN, part2Advice, resumeLabel, untilText } from "./lesson";
 import { eveningPlan } from "./plans";
 import { deck, state, TODAY } from "./fixtures";
 import type { AppState, DayLog, SavedRun, SessionResult, Step, WordState } from "./types";

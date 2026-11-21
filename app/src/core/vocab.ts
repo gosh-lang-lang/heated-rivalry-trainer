@@ -1,6 +1,7 @@
 import { addDays } from "./dates";
 import { lessonNo } from "./lesson";
 import { HARD_WRONG } from "./srs";
+import { MONTHS_GEN } from "./text";
 import type { AppState, Deck, Word } from "./types";
 
 /**
@@ -46,13 +47,12 @@ export const hardWords = (state: AppState, deck: Deck): Word[] =>
     .filter((w) => (state.srs[w.id]?.wrong ?? 0) >= HARD_WRONG)
     .sort((a, b) => (state.srs[b.id]?.wrong ?? 0) - (state.srs[a.id]?.wrong ?? 0));
 
-const MONTHS = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
 const WD = ["вс", "пн", "вт", "ср", "чт", "пт", "сб"];
 
 /** «2026-11-24» → «24 ноября» (год — только если не текущий у `today`). */
 export const dayMonth = (k: string, today: string): string => {
   const [y, m, d] = k.split("-").map(Number);
-  return `${d} ${MONTHS[m - 1]}${String(y) === today.slice(0, 4) ? "" : ` ${y}`}`;
+  return `${d} ${MONTHS_GEN[m - 1]}${String(y) === today.slice(0, 4) ? "" : ` ${y}`}`;
 };
 
 /** «вт, 24 ноября» */

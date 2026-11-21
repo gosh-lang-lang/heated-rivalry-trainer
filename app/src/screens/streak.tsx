@@ -17,7 +17,7 @@ import { Sheet } from "../ui";
 const dayLabel = (k: string, o: Intl.DateTimeFormatOptions) => new Date(k + "T12:00:00").toLocaleDateString("ru-RU", o);
 
 /** Что сказать о сегодняшнем дне; parts — сколько частей урока пройдено сегодня. */
-export const streakNote = (sk: number, parts: 0 | 1 | 2, best: number): string => {
+const streakNote = (sk: number, parts: 0 | 1 | 2, best: number): string => {
   if (parts === 2) return `Урок закрыт — обе части пройдены. Завтра серия станет ${sk + 1}.`;
   if (parts === 1) return `Одна часть есть — день засчитан, серия ${sk}. Пройди вторую — урок закроется, и огонь загорится целиком.`;
   if (sk > 0) return `Сегодня урока ещё не было. Пройди часть 1 до полуночи — серия станет ${sk + 1}. Пропустишь день — начнётся заново.`;

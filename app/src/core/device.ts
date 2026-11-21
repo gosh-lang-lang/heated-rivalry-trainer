@@ -2,6 +2,7 @@
  * Устройства, на которых выполнен вход (настройки → «Вход»): понятное имя по User-Agent и время «когда был».
  * Чистые функции — их зовут и сервер (server/auth.ts, cli.ts), и интерфейс.
  */
+import { hhmm, MONTHS_GEN, plural } from "./text.ts";
 
 export type DeviceKind = "phone" | "tablet" | "computer";
 
@@ -58,14 +59,7 @@ export const describeDevice = (ua: string | null | undefined, hint?: Partial<Dev
 
 /* ---------- «когда был» ---------- */
 
-const plural = (n: number, one: string, few: string, many: string) => {
-  const m10 = n % 10,
-    m100 = n % 100;
-  return m10 === 1 && m100 !== 11 ? one : m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14) ? few : many;
-};
-const hhmm = (d: Date) => `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 const dayStart = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-const MONTHS = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
 
 /** Активность сервер отмечает не чаще раза в 5 минут — точнее «сейчас» сказать нельзя. */
 export const SEEN_PRECISION_MS = 5 * 60 * 1000;
@@ -84,5 +78,5 @@ export const seenAgo = (t: number, now: number): string => {
   if (days <= 0) return `сегодня в ${hhmm(d)}`;
   if (days === 1) return `вчера в ${hhmm(d)}`;
   if (days < 7) return `${days} ${plural(days, "день", "дня", "дней")} назад`;
-  return `${d.getDate()} ${MONTHS[d.getMonth()]}${d.getFullYear() === n.getFullYear() ? "" : ` ${d.getFullYear()}`}`;
+  return `${d.getDate()} ${MONTHS_GEN[d.getMonth()]}${d.getFullYear() === n.getFullYear() ? "" : ` ${d.getFullYear()}`}`;
 };

@@ -50,12 +50,12 @@ export function SpeakBtn({ text, size = "" }: { text: string; size?: "" | "s" | 
 }
 
 /** Ширина, с которой включается «настольная» раскладка (верхняя навигация, дашборд). Синхронно с styles.css. */
-export const WIDE_QUERY = "(min-width: 900px)";
+const WIDE_QUERY = "(min-width: 900px)";
 
 const matches = (q: string) => typeof window !== "undefined" && !!window.matchMedia?.(q).matches;
 
 /** true, пока медиазапрос выполняется. Нужен, чтобы не держать в DOM две одинаковые кнопки (телефон/десктоп). */
-export function useMedia(q: string) {
+function useMedia(q: string) {
   const [m, setM] = useState(() => matches(q));
   useEffect(() => {
     const mq = window.matchMedia?.(q);

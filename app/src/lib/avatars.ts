@@ -67,9 +67,6 @@ const JERSEY: Record<Kit, JerseyLook> = {
   blue: { bg: ["#e9eef6", "#b7c6da"], dot: "#12306b", body: "#1f5fd1", stripe: "#ffffff", stripe2: "#d3203b", num: "#ffffff", outline: "#12306b" },
 };
 
-/** Цвета свитера для кружка-образца в выборе (основной и полоса). */
-export const kitSwatch = (kit: Kit) => [JERSEY[kit].body, JERSEY[kit].stripe] as const;
-
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 
 /** Свитер анфас с номером (или буквой имени, если номера нет). */

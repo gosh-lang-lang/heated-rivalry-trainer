@@ -171,9 +171,12 @@ export const drillPlan = (deck: Deck, state: AppState, ids: readonly string[], t
   return number(st);
 };
 
+/** Слова урока дня `day`: те, с которыми познакомились в этот день (в порядке колоды). */
+export const lessonWords = (deck: Deck, srs: AppState["srs"], day: string): Word[] => deck.words.filter((w) => srs[w.id]?.intro === day);
+
 /** Слова для части 2 урока дня `day`: выученные в этот день, иначе 12 последних по дате знакомства. */
 export const eveningWords = (deck: Deck, srs: AppState["srs"], day: string): Word[] => {
-  const ws = deck.words.filter((w) => srs[w.id]?.intro === day);
+  const ws = lessonWords(deck, srs, day);
   if (ws.length) return ws;
   return deck.words
     .filter((w) => srs[w.id]?.intro)

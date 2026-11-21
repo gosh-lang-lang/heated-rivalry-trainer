@@ -1,5 +1,5 @@
 import type { Rng, Word } from "./types";
-import { shuffle } from "./rng";
+import { shuffle } from "./rng.ts";
 
 export const norm = (s: string): string =>
   String(s)
@@ -89,6 +89,12 @@ export const options = (w: Word, all: readonly Word[], rng: Rng, known?: Readonl
   take(rest);
   return shuffle([w, ...picked], rng).map((x) => x.id);
 };
+
+/** «18:30» — местное время. */
+export const hhmm = (d: Date): string => String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+
+/** Месяцы в родительном падеже: «24 ноября». */
+export const MONTHS_GEN = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"] as const;
 
 export const plural = (n: number, one: string, few: string, many: string): string => {
   n = Math.abs(n) % 100;
