@@ -1,0 +1,31 @@
+# Прод жив? Каждые 15 минут снаружи: /api/health и страница входа отвечают 200 по HTTPS.
+# Красный запуск — GitHub присылает письмо (Settings → Notifications → Actions: «Send notifications for failed workflows only»).
+# Расписание GitHub может сдвигаться на несколько минут; после 60 дней без коммитов в репозитории GitHub его приостанавливает.
+name: Прод жив
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: /api/health и /login
+        env:
+          SITE: https://heated-rivalry-trainer.spill-the-tea.xyz
+        run: |
+          fail=0
+          for path in /api/health /login; do
+            # три попытки: один сбой сети — ещё не падение
+            for try in 1 2 3; do
+              code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "$SITE$path" || true)
+              [ "$code" = 200 ] && break
+              sleep 20
+            done
+            echo "$path → $code"
+            [ "$code" = 200 ] || fail=1
+          done
+          exit $fail
