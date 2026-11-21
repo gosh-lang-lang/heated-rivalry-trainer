@@ -85,6 +85,7 @@ function spin(origin: O, steps = 12): ArtMotion {
 }
 
 const src = (b: number) => `stage-05/layers-b${b}`;
+const REDO = "stage-05/layers-redo1";
 
 const SCENES_05: Record<string, ArtSceneSpec> = {
   /* ── пачка 1 ── */
@@ -417,19 +418,8 @@ const SCENES_05: Record<string, ArtSceneSpec> = {
   },
 
 
-  /* Boston is our archrival.
-     Между ними сверкает молния; Жёлтый с ухмылкой проезжает мимо, Красный провожает его взглядом. */
-  archrival: {
-    src: src(4),
-    dur: 3200,
-    // художник ужал картинку по высоте (головы и тела приплюснуты) — растягиваем обратно
-    reshape: { "*": { sy: 1.15, at: [512, 568] } },
-    motion: {
-      lightning: { origin: [515, 415], keys: [k(0, { o: 0.5, s: 0.95 }), k(0.1, { o: 1, s: 1.15 }, "ease-out"), k(0.16, { o: 0.4, s: 1 }), k(0.2, { o: 1, s: 1.1 }), k(0.3, { o: 0.5, s: 0.95 }), k(1, { o: 0.5, s: 0.95 })] },
-      yellow: wave({ x: -14, y: -3 }, { origin: [755, 996] }),
-      red: wave({ r: -0.8, x: -3 }, { phase: 0.1, origin: [260, 973] }),
-    },
-  },
+  /* archrival снят: сплюснут, растяжение не спасло — перерисовка в stage-05/layers-redo2
+     (задание art-inbox/chatgpt-task-stage-05-redo2.md); пока у слова нет картинки. */
 
   /* I didn't go out. Instead, I read a book.
      За окном мигают огни вечеринки, а он листает книгу — страница переворачивается. */
@@ -537,20 +527,8 @@ const SCENES_05: Record<string, ArtSceneSpec> = {
     },
   },
 
-  /* He won the face-off.
-     Красный выигрывает вбрасывание — клюшкой отбрасывает шайбу к себе. */
-  "face-off": {
-    src: src(5),
-    dur: 2800,
-    focus: 0.5,
-    // художник ужал картинку по высоте в полосу 4:3 (лица шире, чем надо) — растягиваем обратно
-    reshape: { "*": { sy: 1.1, at: [512, 571] } },
-    motion: {
-      "red-stick": { origin: [200, 273], keys: [k(0), k(0.15, { r: -2.5, x: -8 }, "ease-out"), k(0.5), k(1)] },
-      puck: { keys: [k(0), k(0.12), k(0.4, { x: -170, y: 12 }, "ease-out"), k(0.62, { x: -190, y: 14, o: 0 }), k(0.85, { o: 0 }), k(1)] },
-      "yellow-stick": { origin: [1010, 493], keys: [k(0), k(0.16, { r: 2 }), k(0.5), k(1)] },
-    },
-  },
+  /* face-off снят: сплюснут, камера слишком близко (Красный разрезан краем, Жёлтого почти нет) — перерисовка
+     в stage-05/layers-redo2; пока у слова нет картинки. */
 
   /* ── пачка 6 ── */
 
@@ -567,13 +545,14 @@ const SCENES_05: Record<string, ArtSceneSpec> = {
   },
 
   /* She cheerfully said hello to everyone.
-     Она весело машет всем рукой, вокруг вспыхивают искорки. */
+     Она весело пружинит на ходу, смеётся, вокруг вспыхивают искорки.
+     Машущую руку (wave-arm) художник добавил третьей: обе свои руки у неё уже есть (одна опущена, другая у лямки) — снята. */
   cheerfully: {
     src: src(6),
     dur: 2800,
+    drop: ["wave-arm"],
     motion: {
       woman: wave({ y: -4, r: 0.6 }, { n: 2, origin: [485, 980] }),
-      "wave-arm": follow("woman", wave({ r: 12 }, { n: 2, origin: [575, 600] })),
       sparks: wave({ o: 0.6, s: 0.06 }, { n: 2, phase: 0.25, origin: [525, 376] }),
     },
   },
@@ -721,6 +700,8 @@ const SCENES_05: Record<string, ArtSceneSpec> = {
   "talk-shit": {
     src: src(7),
     dur: 3200,
+    // у облачка полупрозрачная прямоугольная подложка (бледный прямоугольник поверх трибуны) — срезаем
+    alphaFloor: { speech: 60 },
     motion: {
       speech: { origin: [580, 390], keys: [k(0, { o: 0.6, s: 0.9 }), k(0.1, { o: 1, s: 1.12, r: -4 }, "ease-out"), k(0.18, { s: 1, r: 3 }), k(0.26, { s: 1.08, r: -2 }), k(0.34, { s: 1, r: 0 }), k(0.6), k(0.75, { o: 0.6, s: 0.9 }), k(1, { o: 0.6, s: 0.9 })] },
       yellow: wave({ y: -4, r: 0.8 }, { n: 2, origin: [290, 1024] }),
@@ -750,6 +731,76 @@ const SCENES_05: Record<string, ArtSceneSpec> = {
       speech: wave({ sx: 0.04, sy: 0.08, r: 1 }, { n: 2, origin: [560, 450] }),
       woman: wave({ r: 0.8, y: -2 }, { n: 2, phase: 0.2, origin: [290, 1024] }),
       listener: wave({ r: -1.5 }, { origin: [825, 1024] }),
+    },
+  },
+
+  /* ── переделка (layers-redo1): сцены, отклонённые в пачках 1–7, нарисованы заново ── */
+
+  /* The team is a mix of young and old players.
+     Новичок и седой ветеран подаются друг к другу и стукаются кулаками — вспышка, новичок расплывается в улыбке.
+     В неподвижном кадре кулаки уже сомкнуты, поэтому в цикле оба сначала чуть отходят. */
+  mix: {
+    src: REDO,
+    dur: 3200,
+    focus: 0.5,
+    motion: {
+      rookie: { origin: [260, 979], keys: [k(0, { x: -14 }), k(0.12, { x: -14 }, "ease-in"), k(0.3), k(0.33, { x: -3 }, "ease-out"), k(0.37), k(0.72), k(0.92, { x: -14 }), k(1, { x: -14 })] },
+      veteran: { origin: [755, 979], keys: [k(0, { x: 14 }), k(0.12, { x: 14 }, "ease-in"), k(0.3), k(0.33, { x: 3 }, "ease-out"), k(0.37), k(0.72), k(0.92, { x: 14 }), k(1, { x: 14 })] },
+      bump: shown(0.3, 0.42, 0.03, [490, 385], 0.4),
+      "rookie-grin": follow("rookie", shown(0.36, 0.86, 0.05)),
+    },
+  },
+
+  /* That was a helluva game!
+     Парень в центре прыгает, растянув шарф над головой; болельщица кричит, руки вверх; старик хлопает; сыплется конфетти. */
+  helluva: {
+    src: REDO,
+    dur: 2800,
+    focus: 0.48,
+    motion: {
+      jumper: { origin: [510, 788], keys: [k(0), k(0.08, { y: 6, sy: 0.97 }, "ease-out"), k(0.28, { y: -34 }, "ease-in"), k(0.48), k(0.56, { y: 6, sy: 0.97 }, "ease-out"), k(0.76, { y: -34 }, "ease-in"), k(0.96), k(1)] },
+      "fan-left": wave({ r: 2, y: -4 }, { n: 2, phase: 0.25, origin: [205, 889] }),
+      "fan-right": wave({ y: -4, r: -0.8 }, { n: 4, origin: [830, 888] }),
+      confetti: { keys: [k(0, { y: -70, o: 0 }), k(0.1, { y: -58, o: 1, r: 0 }), k(0.5, { y: -20, r: 1.5 }), k(0.84, { y: 8, o: 1, r: 0 }), k(0.94, { y: 14, o: 0 }), k(1, { y: -70, o: 0 })] },
+    },
+  },
+
+  /* The fans love their team.
+     Болельщики у бортика приподнимают плакат-сердце — сердце светится; игроки на льду машут им клюшками. */
+  their: {
+    src: REDO,
+    dur: 3200,
+    focus: 0.55,
+    motion: {
+      fans: { origin: [240, 952], keys: [k(0), k(0.18, { y: -12 }, OUT), k(0.34, {}, IN), k(0.5), k(0.68, { y: -12 }, OUT), k(0.84, {}, IN), k(1)] },
+      "sign-glow": follow("fans", { origin: [235, 597], keys: [k(0, { o: 0 }), k(0.18, { o: 1, s: 1.06 }), k(0.4, { o: 0.15, s: 1 }), k(0.68, { o: 1, s: 1.06 }), k(0.9, { o: 0, s: 1 }), k(1, { o: 0 })] }),
+      team: wave({ r: 1.6, x: 3 }, { n: 2, phase: 0.1, origin: [770, 954] }),
+    },
+  },
+
+  /* For the fans, the rivalry became personified by two players.
+     Две половины трибуны по очереди вскидывают шарфы, и баннер их игрока вспыхивает ярче вслед за своей половиной. */
+  "become-personified": {
+    src: REDO,
+    dur: 3600,
+    motion: {
+      "red-fans": wave({ y: -8 }, { origin: [240, 875] }),
+      "yellow-fans": wave({ y: -8 }, { phase: 0.5, origin: [770, 875] }),
+      "red-banner": wave({ o: 0.25, s: -0.015 }, { phase: 0.5, origin: [265, 185] }),
+      "yellow-banner": wave({ o: 0.25, s: -0.015 }, { origin: [758, 185] }),
+    },
+  },
+
+  /* He bent down to tie his skates.
+     Жёлтый на скамейке наклоняется к коньку и дважды рывком затягивает шнурки, потом выпрямляется.
+     Корпус качается вокруг таза едва-едва: кисти на шнурках едут вместе с ним и не должны уйти с конька. */
+  "bend-bent": {
+    src: REDO,
+    dur: 3200,
+    focus: 0.55,
+    motion: {
+      "yellow-torso": { origin: [270, 560], keys: [k(0), k(0.18, { r: 1.2, y: 3 }, OUT), k(0.78, { r: 1.2, y: 3 }), k(0.95, {}, IN), k(1)] },
+      laces: follow("yellow-torso", { keys: [k(0), k(0.28), k(0.33, { y: -7 }, "ease-out"), k(0.4), k(0.5), k(0.55, { y: -7 }, "ease-out"), k(0.62), k(1)] }),
     },
   },
 };

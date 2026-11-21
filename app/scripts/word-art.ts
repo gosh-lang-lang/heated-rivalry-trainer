@@ -120,8 +120,8 @@ async function build(id: string): Promise<ArtGen[string]> {
 
   const drop = new Set(spec.drop ?? []);
   const fixes = new Set(Object.keys(spec.reshape ?? {}).filter((n) => n !== "*"));
-  // без снятых или поправленных слоёв full художника не годится — собираем из стека
-  const restack = !!(spec.drop || spec.reshape);
+  // без снятых, поправленных или очищенных слоёв full художника не годится — собираем из стека
+  const restack = !!(spec.drop || spec.reshape || spec.alphaFloor);
   const stack: { input: Buffer }[] = [];
   for (const l of src.layers) {
     const name = basename(l.file, ".png").replace(`word-${id}-`, "");
@@ -132,6 +132,12 @@ async function build(id: string): Promise<ArtGen[string]> {
     let canvas = await sharp(join(srcDir, l.file)).ensureAlpha().png().toBuffer();
     if (spec.reshape?.["*"]) canvas = await reshape(canvas, spec.reshape["*"]);
     if (spec.reshape?.[name]) (canvas = await reshape(canvas, spec.reshape[name])), fixes.delete(name);
+    const floor = spec.alphaFloor?.[name];
+    if (floor) {
+      const { data, info } = await sharp(canvas).raw().toBuffer({ resolveWithObject: true });
+      for (let i = 3; i < data.length; i += 4) if (data[i] < floor) data[i] = 0;
+      canvas = await sharp(data, { raw: { width: info.width, height: info.height, channels: 4 } }).png().toBuffer();
+    }
     if (restack && (l.opacity ?? 1) > 0) {
       if ((l.opacity ?? 1) < 1) throw new Error(`${id}/${name}: полупрозрачный слой — full из стека так не собрать`);
       stack.push({ input: canvas });

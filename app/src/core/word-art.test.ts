@@ -82,6 +82,13 @@ describe("checkArt: ведомые слои и полный оборот", () =>
     expect(checkArt(s({ "*": { sy: 1.1 }, nudge: { s: 0.8 } }), g, ["banter"])).toEqual([]);
     expect(checkArt(s({ cloud: { s: 0.8 } }), g, ["banter"])[0]).toMatch(/«cloud», а такого слоя нет/);
   });
+
+  it("порог прозрачности (alphaFloor) — для своего слоя и в пределах 1…254", () => {
+    const s = (alphaFloor: ArtSceneSpec["alphaFloor"]) => ({ banter: { src: "x", dur: 3000, alphaFloor, motion: { red: still } } });
+    expect(checkArt(s({ nudge: 60 }), g, ["banter"])).toEqual([]);
+    expect(checkArt(s({ cloud: 60 }), g, ["banter"])).toHaveLength(1);
+    expect(checkArt(s({ nudge: 0 }), g, ["banter"])).toHaveLength(1);
+  });
 });
 
 describe("кадр по содержимому", () => {

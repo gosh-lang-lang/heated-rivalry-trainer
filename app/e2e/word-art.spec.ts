@@ -1,12 +1,27 @@
 import { expect, test, type Page } from "@playwright/test";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { addDays, DECK, goTab, openHome, setup, state, TODAY, ws } from "./helpers";
 
 /** Иллюстрации к словам (lib/WordArt.tsx): сцена по примеру — слоями и в движении — на карточке нового слова. */
 
 const byId = (id: string) => DECK.words.find((w) => w.id === id)!;
 
-/** Первые 8 слов уже выучены — следующие новые: banter (есть сцена) … mix (сцену переделывают — пока без картинки). */
+/**
+ * Сейчас сцена есть у каждого слова колоды, но новые слова приходят без неё. Чтобы проверить слово без сцены, тест
+ * отдаёт приложению word-art.gen.json без этих слов (e2e идёт на vite dev — JSON приходит модулем).
+ */
+const GEN = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), "../src/core/word-art.gen.json"), "utf8")) as Record<string, unknown>;
+const withoutArt = (page: Page, ...ids: string[]) =>
+  page.route(/\/src\/core\/word-art\.gen\.json(\?.*)?$/, (route) => {
+    const gen = Object.fromEntries(Object.entries(GEN).filter(([id]) => !ids.includes(id)));
+    return route.fulfill({ contentType: "text/javascript", body: `export default ${JSON.stringify(gen)};` });
+  });
+
+/** Первые 8 слов уже выучены — следующие новые: banter (есть сцена) … mix (в тесте — без сцены). */
 const startLesson = async (page: Page) => {
+  await withoutArt(page, "mix");
   const srs = Object.fromEntries(DECK.words.slice(0, 8).map((w) => [w.id, ws({ intro: addDays(TODAY, -3), due: addDays(TODAY, 5), lvl: 3 })]));
   await setup(page, { state: state({ srs }) });
   await openHome(page);
@@ -72,7 +87,8 @@ test("«Уменьшить движение» — сцена неподвижн�
 });
 
 test("словарь: сцена — в раскрытой строке слова и в движении; закрытая строка и слово без сцены — без картинки", async ({ page }) => {
-  // урок 1 (вчера): praise и wink (есть сцены; у wink веко и искра едут вместе с головой) и mix (сцены пока нет)
+  // урок 1 (вчера): praise и wink (есть сцены; у wink веко и искра едут вместе с головой) и mix (в тесте — без сцены)
+  await withoutArt(page, "mix");
   const Y = addDays(TODAY, -1);
   const morning = { score: 30, total: 38, mins: 15, newN: 3, at: `${Y}T06:00:00.000Z` };
   await setup(page, { state: state({ days: { [Y]: { morning } }, srs: { praise: ws({ intro: Y, lvl: 2 }), wink: ws({ intro: Y, lvl: 2 }), mix: ws({ intro: Y, lvl: 2 }) } }) });

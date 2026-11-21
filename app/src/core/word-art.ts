@@ -68,6 +68,11 @@ export interface ArtSceneSpec {
    * (at по умолчанию — центр холста). full для кропа и неподвижной картинки собирается из поправленных слоёв.
    */
   reshape?: Record<string, { s?: number; sy?: number; at?: [number, number] }>;
+  /**
+   * у слоя полупрозрачная подложка (бледный прямоугольник вокруг рисунка): пиксели с непрозрачностью ниже порога
+   * (0…255) делаются прозрачными. full тоже собирается из очищенных слоёв.
+   */
+  alphaFloor?: Record<string, number>;
   /** движение слоёв по имени (word-<id>-<имя>.png); слои без записи стоят на месте */
   motion: Record<string, ArtMotion>;
 }
@@ -404,6 +409,7 @@ export function checkArt(specs: Record<string, ArtSceneSpec>, gen: ArtGen, wordI
     const names = new Set(g.layers.map((l) => l.name));
     for (const d of s.drop ?? []) if (names.has(d)) errs.push(`${id}: слой «${d}» снят (drop), а в сборке остался`);
     for (const r of Object.keys(s.reshape ?? {})) if (r !== "*" && !names.has(r)) errs.push(`${id}: поправка формы для слоя «${r}», а такого слоя нет`);
+    for (const [r, v] of Object.entries(s.alphaFloor ?? {})) if (!names.has(r) || !(v > 0 && v < 255)) errs.push(`${id}: порог прозрачности для слоя «${r}» — нет такого слоя или порог не 1…254`);
     for (const [name, m] of Object.entries(s.motion)) {
       if (!names.has(name)) errs.push(`${id}: движение для слоя «${name}», а такого слоя нет`);
       if (m.follow !== undefined && (!s.motion[m.follow] || s.motion[m.follow].follow !== undefined)) errs.push(`${id}/${name}: follow «${m.follow}» — у того слоя должно быть своё движение (без follow)`);
