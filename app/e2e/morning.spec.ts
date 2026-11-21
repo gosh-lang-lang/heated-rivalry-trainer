@@ -2,7 +2,8 @@ import { expect, test } from "@playwright/test";
 import { addDays, afterMorning, DECK, openHome, playSession, readState, setup, state, TODAY, ws } from "./helpers";
 
 test.describe("часть 1 урока — учим", () => {
-  test("первый день: 12 новых слов, 38 заданий, всё верно → 100%", async ({ page }) => {
+  test("первый день: 12 новых слов, 46 заданий, всё верно → 100%", async ({ page }) => {
+    test.slow(); // целый урок: 46 заданий, из них 8 — с записью голоса
     await setup(page);
     await openHome(page);
     await expect(page.getByText("12 новых · ~15 мин")).toBeVisible();
@@ -13,15 +14,15 @@ test.describe("часть 1 урока — учим", () => {
     expect(r.steps.filter((s) => s === "Новое слово")).toHaveLength(12);
 
     await expect(page.locator(".score")).toHaveText("100%");
-    await expect(page.getByText("38 из 38 с первой попытки")).toBeVisible();
+    await expect(page.getByText("46 из 46 с первой попытки")).toBeVisible();
     const st = await readState(page);
-    expect(st.days[TODAY].morning).toMatchObject({ score: 38, total: 38, newN: 12 });
+    expect(st.days[TODAY].morning).toMatchObject({ score: 46, total: 46, newN: 12 });
     // ходовые — повтор завтра, редкие — послезавтра
     for (const w of DECK.words.slice(0, 12))
       expect(st.srs[w.id]).toMatchObject({ lvl: 1, intro: TODAY, due: addDays(TODAY, w.rare ? 2 : 1) });
 
     await page.getByRole("button", { name: "На главную" }).click();
-    await expect(page.getByText("Готово · 38/38")).toBeVisible();
+    await expect(page.getByText("Готово · 46/46")).toBeVisible();
     await expect(page.locator(".chip")).toContainText("1 день");
   });
 
@@ -33,8 +34,8 @@ test.describe("часть 1 урока — учим", () => {
     expect(r.wrong).toEqual(["Выбери перевод"]);
     // повтор того же задания появился в конце
     expect(r.steps.filter((s) => s === "Выбери перевод")).toHaveLength(7);
-    await expect(page.getByText("18 из 19 с первой попытки")).toBeVisible();
-    await expect(page.locator(".score")).toHaveText("95%");
+    await expect(page.getByText("22 из 23 с первой попытки")).toBeVisible();
+    await expect(page.locator(".score")).toHaveText("96%");
   });
 
   test("неверный ответ: красная панель с правильным вариантом", async ({ page }) => {

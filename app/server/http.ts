@@ -22,6 +22,22 @@ export const readBody = (req: IncomingMessage, limit = 8 * 1024) =>
     req.on("error", reject);
   });
 
+/** Тело запроса как байты; больше `limit` — ошибка "too large". */
+export const readBytes = (req: IncomingMessage, limit: number) =>
+  new Promise<Uint8Array>((resolve, reject) => {
+    let size = 0;
+    const chunks: Buffer[] = [];
+    req.on("data", (c: Buffer) => {
+      size += c.length;
+      if (size > limit) {
+        reject(new Error("too large"));
+        req.resume();
+      } else chunks.push(c);
+    });
+    req.on("end", () => resolve(new Uint8Array(Buffer.concat(chunks))));
+    req.on("error", reject);
+  });
+
 export const sendFile = (req: IncomingMessage, res: ServerResponse, path: string, type: string, cache: string) => {
   const st = statSync(path);
   const etag = `"${st.size.toString(16)}-${st.mtimeMs.toString(16)}"`;

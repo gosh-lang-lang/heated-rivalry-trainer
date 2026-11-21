@@ -5,13 +5,14 @@
  *   GET  /api/tts/<key>.mp3                            — файл из кэша (неизменяемый)
  *   GET  /api/tts/voices                               — голоса и голос по умолчанию
  *   GET  /api/state  /  PUT /api/state { state }       — прогресс пользователя (см. progress.ts)
+ *   POST /api/pron?t=<текст>  (запись PCM 16 кГц)        — оценка произношения (см. pron-routes.ts)
  *   GET  /api/health                                   — публично, только { ok }
  * В production (NODE_ENV=production) ещё и раздаёт собранное приложение из dist/:
  * /login (+ /auth/*, иконки) — публично, остальное — после входа.
  *
  * Переменные: PORT (8787), AUTH_ORIGIN (https://домен), AUTH_DB (server/cache/auth.db),
  * TTS_CACHE_DIR (server/cache/tts), TTS_DTYPE (fp32 | q8), TTS_WARM=0 — не прогревать колоду,
- * TTS_DISABLED=1 — без озвучки (тесты входа), AUTH_DEV_BYPASS=1 — без passkey: сервер сам заводит сессию
+ * TTS_DISABLED=1 — без озвучки (тесты входа), PRON_DISABLED=1 — без оценки произношения, AUTH_DEV_BYPASS=1 — без passkey: сервер сам заводит сессию
  * пользователю dev (только не в production; для локальной сборки и проверки с телефона по Wi-Fi).
  */
 import { existsSync, readFileSync, statSync } from "node:fs";
@@ -27,6 +28,8 @@ import { cleanPath, isPublicAsset } from "./paths.ts";
 import { openProgress, parseStateBody, STATE_MAX_BYTES } from "./progress.ts";
 import { authConfigFromEnv, createAuth } from "./auth.ts";
 import { createEngine, type TtsEngine } from "./tts.ts";
+import { createPronEngine, processModel } from "./pron.ts";
+import { createPronRoutes } from "./pron-routes.ts";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const PORT = Number(process.env.PORT ?? 8787);
@@ -35,6 +38,11 @@ const TTS_ON = process.env.TTS_DISABLED !== "1";
 const engine: TtsEngine | null = TTS_ON
   ? createEngine(process.env.TTS_CACHE_DIR ?? join(ROOT, "server/cache/tts"), process.env.TTS_DTYPE === "q8" ? "q8" : "fp32")
   : null;
+// оценка произношения — своя модель в отдельном процессе (pron-worker.ts)
+const pron = createPronRoutes(process.env.PRON_DISABLED === "1" ? null : createPronEngine(processModel()), {
+  rateLimit: Number(process.env.PRON_RATE_LIMIT ?? 600),
+  maxBusy: Number(process.env.PRON_MAX_BUSY ?? 4),
+});
 const DEV_BYPASS = !PROD && process.env.AUTH_DEV_BYPASS === "1";
 
 const MIME: Record<string, string> = {
@@ -107,6 +115,7 @@ const server = createServer(async (req, res) => {
     }
 
     if (await tts(req, res, url.pathname)) return;
+    if (await pron(req, res, url.pathname)) return;
 
     if (url.pathname.startsWith("/api/")) return json(res, 404, { error: "нет такого метода" });
 
@@ -129,7 +138,7 @@ const server = createServer(async (req, res) => {
 
 server.listen(PORT, () =>
   console.log(
-    `сервер: http://localhost:${PORT}${PROD ? "" : " (только /api — приложение через vite)"} · вход: ${authCfg.origin}${DEV_BYPASS ? " (ОТКЛЮЧЁН — AUTH_DEV_BYPASS)" : ""}${TTS_ON ? "" : " · озвучка отключена"}`,
+    `сервер: http://localhost:${PORT}${PROD ? "" : " (только /api — приложение через vite)"} · вход: ${authCfg.origin}${DEV_BYPASS ? " (ОТКЛЮЧЁН — AUTH_DEV_BYPASS)" : ""}${TTS_ON ? "" : " · озвучка отключена"}${process.env.PRON_DISABLED === "1" ? " · оценка произношения отключена" : ""}`,
   ),
 );
 setInterval(() => store.cleanup(), 60 * 60 * 1000).unref();

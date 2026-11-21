@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildTokens, checkTyped, gapSentence, norm, plural, speakScore } from "./text";
+import { buildTokens, checkTyped, gapSentence, norm, plural } from "./text";
 
 describe("сравнение ответов", () => {
   it("нормализация: регистр, апострофы, пунктуация", () => {
@@ -25,12 +25,6 @@ describe("задания", () => {
   });
   it("токены сборки без финальной точки", () => {
     expect(buildTokens("He winked at me and smiled.")).toEqual(["He", "winked", "at", "me", "and", "smiled"]);
-  });
-  it("говорение: порог 80% слов", () => {
-    expect(speakScore("He bent down to tie his skates.", "he bent down to tie his skates").ok).toBe(true);
-    const r = speakScore("He bent down to tie his skates.", "he bent down");
-    expect(r.ok).toBe(false);
-    expect(r.miss).toEqual(["to", "tie", "his", "skates"]);
   });
   it("склонение", () => {
     expect([1, 2, 5, 11, 21, 22, 25].map((n) => plural(n, "день", "дня", "дней"))).toEqual([

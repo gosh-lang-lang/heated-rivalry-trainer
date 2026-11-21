@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useSyncExternalStore } from "react";
 import { DEFAULT_VOICE, isTtsVoice, TTS_VOICES, ttsCacheSource, type TtsVoice } from "../core/tts";
 import { rankVoices } from "../core/voices";
 import { goLogin } from "./auth";
@@ -237,75 +237,4 @@ export const useVoices = (): VoicesView => {
     () => version,
   );
   return { voices: TTS_VOICES, current: ttsVoice, server, fallback: sysVoice?.name ?? null, playing };
-};
-
-/* ---------- распознавание речи: SpeechRecognition, где он есть ---------- */
-
-interface RecognitionResultEvent {
-  resultIndex: number;
-  results: ArrayLike<{ isFinal: boolean; 0: { transcript: string } }>;
-}
-interface Recognition {
-  lang: string;
-  continuous: boolean;
-  interimResults: boolean;
-  onresult: ((e: RecognitionResultEvent) => void) | null;
-  onend: (() => void) | null;
-  onerror: ((e: { error: string }) => void) | null;
-  start(): void;
-  stop(): void;
-}
-type RecognitionCtor = new () => Recognition;
-
-const Ctor: RecognitionCtor | undefined =
-  typeof window === "undefined"
-    ? undefined
-    : ((window as unknown as { SpeechRecognition?: RecognitionCtor; webkitSpeechRecognition?: RecognitionCtor }).SpeechRecognition ??
-      (window as unknown as { webkitSpeechRecognition?: RecognitionCtor }).webkitSpeechRecognition);
-
-export const dictationSupported = !!Ctor;
-
-/** Микрофон: onFinal получает распознанные куски, listening — идёт ли запись. */
-export const useDictation = (onFinal: (text: string) => void) => {
-  const [listening, setListening] = useState(false);
-  const [error, setError] = useState("");
-  const rec = useRef<Recognition | null>(null);
-  const cb = useRef(onFinal);
-  cb.current = onFinal;
-
-  const stop = useCallback(() => {
-    try {
-      rec.current?.stop();
-    } catch {
-      /* уже остановлен */
-    }
-  }, []);
-
-  const start = useCallback(() => {
-    if (!Ctor) return;
-    setError("");
-    const r = new Ctor();
-    r.lang = "en-GB";
-    r.continuous = true;
-    r.interimResults = false;
-    r.onresult = (e) => {
-      for (let i = e.resultIndex; i < e.results.length; i++) if (e.results[i].isFinal) cb.current(e.results[i][0].transcript);
-    };
-    r.onend = () => setListening(false);
-    r.onerror = (e) => {
-      setListening(false);
-      if (e.error === "not-allowed" || e.error === "service-not-allowed") setError("Нет доступа к микрофону — разреши его в настройках браузера.");
-    };
-    rec.current = r;
-    try {
-      r.start();
-      setListening(true);
-    } catch {
-      setListening(false);
-    }
-  }, []);
-
-  useEffect(() => stop, [stop]);
-
-  return { supported: dictationSupported, listening, error, start, stop };
 };

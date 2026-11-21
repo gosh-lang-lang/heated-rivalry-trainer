@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { DECK, openHome, setup, state } from "./helpers";
+import { DECK, openHome, say, setPron, setup, state } from "./helpers";
 
 /**
  * Раскладка занятия: панель «Проверить» не прыгает после ответа, а на «Впиши пропущенное» с клавиатурой
@@ -75,6 +75,16 @@ const toTyping = async (page: Page, typed = 0, onStep?: (kind: string, ok: boole
       onStep?.("Впиши пропущенное", ok);
       await page.locator("#next").click();
       continue;
+    } else if (lbl === "Скажи слово") {
+      // говорение: панель и карточка слова на месте и после оценки (верно — зелёная, неверно — красная с «Ещё раз»)
+      const before = await layout(page, ".say-card");
+      setPron(page, ok ? "good" : "bad");
+      await say(page);
+      await expect(page.locator(ok ? ".foot.good" : ".foot.badf")).toBeVisible();
+      expect(await layout(page, ".say-card"), `скажи слово (${ok ? "верно" : "неверно"}): панель и задание на месте`).toEqual(before);
+      onStep?.(lbl, ok);
+      await page.locator("#next").click();
+      continue;
     } else throw new Error(`неожиданный шаг до «Впиши»: «${lbl}»`);
 
     const before = await layout(page, ".opts");
@@ -93,7 +103,7 @@ test.describe("занятие: раскладка", () => {
     const seen = new Set<string>();
     await toTyping(page, 2, (kind, ok) => void seen.add(`${kind.replace(/^Повторение · /, "")}:${ok}`));
     expect([...seen]).toEqual(
-      expect.arrayContaining(["Выбери перевод:true", "Выбери перевод:false", "Найди пары:true", "Впиши пропущенное:true", "Впиши пропущенное:false"]),
+      expect.arrayContaining(["Выбери перевод:true", "Выбери перевод:false", "Найди пары:true", "Скажи слово:true", "Скажи слово:false", "Впиши пропущенное:true", "Впиши пропущенное:false"]),
     );
     expect([...seen].some((s) => s.startsWith("Что ты слышишь?"))).toBe(true);
   });

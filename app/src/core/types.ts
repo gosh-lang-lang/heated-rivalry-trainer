@@ -141,7 +141,7 @@ interface StepBase {
 }
 
 export type Step =
-  | (StepBase & { t: "section"; pic: string; title: string; sub: string })
+  | (StepBase & { t: "section"; pic: string; title: string; sub: string; speech?: boolean })
   | (StepBase & { t: "intro"; w: string })
   | (StepBase & { t: "pick" | "listen"; w: string; rev?: boolean })
   | (StepBase & { t: "type"; w: string; hint: boolean; rev?: boolean; eve?: boolean })
@@ -149,6 +149,8 @@ export type Step =
   | (StepBase & { t: "build"; en: string; ru: string; w?: string })
   | (StepBase & { t: "write"; ws: string[]; n: number })
   | (StepBase & { t: "speak"; n: number; w: string })
+  /** скажи вслух слово (или, с ex, его пример) — оценка произношения; уровень слова не меняется */
+  | (StepBase & { t: "say"; w: string; ex?: boolean })
   | (StepBase & { t: "reread"; pages: string[] });
 
 export type StepType = Step["t"];

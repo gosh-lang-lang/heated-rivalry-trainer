@@ -6,6 +6,7 @@ import { drillPlan, eveningPlan, morningPlan } from "../core/plans";
 import { shuffle } from "../core/rng";
 import {
   advance,
+  isSpeech,
   bumpWrong,
   finishSession,
   gradeCurrent,
@@ -13,18 +14,21 @@ import {
   isDone,
   markSeen,
   progress,
+  skipSpeech,
   startSession,
   type Finished,
   type Session,
 } from "../core/session";
-import { buildTokens, checkTyped, gapSentence, options, speakScore } from "../core/text";
+import { buildTokens, checkTyped, gapSentence, options } from "../core/text";
 import type { AppState, Deck, SentenceRecord, SessionKind, Step } from "../core/types";
 import { checkerAvailable, checkSentence } from "../lib/checker";
-import { Check, Close, Cross, Mic } from "../lib/icons";
-import { prefetch, say, useDictation } from "../lib/speech";
+import { Check, Close, Cross } from "../lib/icons";
+import { closeMic, micSupported, openMic } from "../lib/mic";
+import { prefetch, say } from "../lib/speech";
 import { useLessonViewport } from "../lib/viewport";
 import { hasWordArt, WordArt } from "../lib/WordArt";
 import { SpeakBtn } from "../ui";
+import { SayTask } from "./SayTask";
 
 interface Props {
   deck: Deck;
@@ -47,6 +51,10 @@ interface Api {
   grade: (ok: boolean, wordId: string | null) => void;
   seen: () => void;
   next: () => void;
+  /** говорение: оценка (null — без оценки) и сразу дальше */
+  finish: (ok: boolean | null) => void;
+  /** «Не могу сейчас говорить»: все задания с говорением до конца занятия — прочь */
+  skipSpeech: () => void;
   wrongPair: (ids: string[]) => void;
   reread: () => void;
   addSentence: (rec: SentenceRecord, n: number, graded: boolean) => void;
@@ -77,20 +85,41 @@ export function SessionScreen({ deck, kind, day, words, title, state, setState, 
       if (r.sess !== sess) setSess(r.sess);
     }
     if (step.t === "intro" || step.t === "pick" || step.t === "listen") say(deck.byId[step.w].en);
+    if (step.t === "say") say(step.ex ? deck.byId[step.w].example : deck.byId[step.w].en); // сначала образец
     const nx = sess.steps[sess.i + 1];
-    if (nx && "w" in nx && nx.w) prefetch(deck.byId[nx.w].en);
+    if (nx && "w" in nx && nx.w) prefetch(nx.t === "say" && nx.ex ? deck.byId[nx.w].example : deck.byId[nx.w].en);
     if (w0 && (step.t === "intro" || step.t === "type")) prefetch(w0.example);
   }, [sess?.i]);
 
   useEffect(() => {
     if (!sess) onQuit();
   }, [sess, onQuit]);
+  // микрофон — один на занятие: открываем при первом нажатии (если есть говорение), закрываем на выходе
+  const micAsked = useRef(false);
+  useEffect(() => closeMic, []);
   if (!sess) return null;
 
   const step = sess.steps[sess.i];
   const t = todayKey();
   /** куда записать итог и «перечитал»: часть 2, перенесённая со вчера, — в день урока */
   const logDay = kind === "evening" && day ? day : t;
+
+  /** Перейти к сессии `n`: кончилась — итог, иначе следующий шаг. Первое нажатие в занятии с говорением спрашивает микрофон. */
+  const land = (n: Session, st: AppState) => {
+    if (!micAsked.current && micSupported() && n.steps.slice(n.i).some(isSpeech)) {
+      micAsked.current = true;
+      void openMic();
+    }
+    if (isDone(n)) {
+      const fin = finishSession(n, st, logDay);
+      setState(fin.state);
+      onFinish(fin);
+      return;
+    }
+    if (st !== state) setState(st);
+    setSess(n);
+    window.scrollTo(0, 0);
+  };
 
   const api: Api = {
     deck,
@@ -101,17 +130,12 @@ export function SessionScreen({ deck, kind, day, words, title, state, setState, 
       if (r.state !== state) setState(r.state);
     },
     seen: () => setSess(markSeen(sess)),
-    next: () => {
-      const n = advance(sess);
-      if (isDone(n)) {
-        const fin = finishSession(n, state, logDay);
-        setState(fin.state);
-        onFinish(fin);
-        return;
-      }
-      setSess(n);
-      window.scrollTo(0, 0);
+    next: () => land(advance(sess), state),
+    finish: (ok) => {
+      const r = ok === null ? { sess: markSeen(sess), state } : gradeCurrent(sess, state, ok, null, t);
+      land(advance(r.sess), r.state);
     },
+    skipSpeech: () => land(skipSpeech(sess), state),
     wrongPair: (ids) => setState(bumpWrong(state, ids)),
     reread: () => {
       const n = advance(sess);
@@ -179,8 +203,6 @@ function StepView({ step, api }: { step: Step; api: Api }) {
   const alive = useRef(true);
   useEffect(() => () => void (alive.current = false), []);
 
-  const dict = useDictation((text) => setTyped((v) => (v + " " + text).trim()));
-
   const speakText = () => {
     if (step.t !== "speak") return { en: "", ru: "" };
     const wr = api.sess.written[step.n];
@@ -218,16 +240,6 @@ function StepView({ step, api }: { step: Step; api: Api }) {
         body: <><span className="c">{step.en}</span>{!ok && <><br /><span className="c sm">Твой вариант: {got}</span></>}</>,
       });
       say(step.en);
-    } else if (step.t === "speak") {
-      dict.stop();
-      const r = speakScore(speakText().en, typed);
-      const p = Math.round(r.ratio * 100);
-      api.grade(r.ok, null);
-      setFb({
-        ok: r.ok,
-        title: r.ok ? `Отлично! ${p}% слов` : `${p}% слов — попробуй ещё завтра`,
-        body: r.miss.length ? <span className="c sm">Не расслышал: {r.miss.join(", ")}</span> : undefined,
-      });
     } else if (step.t === "write") {
       const text = typed.trim();
       const ws = step.ws.map((id) => deck.byId[id]);
@@ -304,6 +316,13 @@ function StepView({ step, api }: { step: Step; api: Api }) {
     document.addEventListener("keydown", h);
     return () => document.removeEventListener("keydown", h);
   }, []);
+
+  /* ----- говорение — своё задание (SayTask.tsx) ----- */
+  if (step.t === "say" || step.t === "speak") {
+    const tx = step.t === "speak" ? speakText() : step.ex ? { en: w!.example, ru: w!.exampleRu } : { en: w!.en, ru: w!.ru };
+    const label = step.t === "speak" ? "Скажи вслух" : step.ex ? "Скажи фразу" : "Скажи слово";
+    return <SayTask label={label} en={tx.en} ru={tx.ru} word={step.t === "say" && !step.ex} done={api.finish} pass={() => api.finish(null)} skipAll={api.skipSpeech} />;
+  }
 
   /* ----- тело задания ----- */
   const tile = (id: string) => (!checked || !w ? "" : id === w.id ? " good" : id === sel ? " badt" : "");
@@ -450,34 +469,6 @@ function StepView({ step, api }: { step: Step; api: Api }) {
       );
       break;
     }
-    case "speak": {
-      const tx = speakText();
-      body = (
-        <>
-          <div className="lbl">Скажи вслух</div>
-          <p className="sub">Послушай, потом произнеси фразу целиком</p>
-          <div className="card" style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-            <SpeakBtn text={tx.en} />
-            <div><div className="sent" style={{ fontSize: 20 }}>{tx.en}</div><div className="mute sm">{tx.ru}</div></div>
-          </div>
-          {dict.supported && (
-            <button className="btn ghost wide" style={{ marginTop: 16 }} disabled={checked} onClick={() => (dict.listening ? dict.stop() : dict.start())}>
-              <Mic style={{ width: 22, height: 22, verticalAlign: -5, marginRight: 8 }} />
-              {dict.listening ? "Слушаю… нажми, чтобы закончить" : "Нажми и говори"}
-            </button>
-          )}
-          {dict.error && <p className="mute sm">{dict.error}</p>}
-          <textarea
-            className="inp"
-            placeholder={dict.supported ? "Здесь появится то, что ты сказал" : "Нажми на поле, затем на микрофон на клавиатуре и произнеси фразу"}
-            value={typed}
-            disabled={checked}
-            onChange={(e) => setTyped(e.target.value)}
-          />
-        </>
-      );
-      break;
-    }
     case "reread":
       body = (
         <div className="sect">
@@ -500,14 +491,11 @@ function StepView({ step, api }: { step: Step; api: Api }) {
           ? { t: "Правильно так:", b: `${step.en}\nТвой вариант: ${step.en}` }
           : step.t === "pairs"
             ? { t: "Все пары верно!", b: "Ошибок по ходу: 0" }
-            : step.t === "speak"
-              ? { t: "100% слов — попробуй ещё завтра", b: "Не расслышал: …" }
-              : { t: "Почти — вот как лучше:", b: "…\n…" };
+            : { t: "Почти — вот как лучше:", b: "…\n…" };
   // до проверки в строке отзыва — то, что помогает сделать задание
   const pre: ReactNode =
     step.t === "type" ? <button className="link" onClick={dontKnow}>Не помню</button>
     : step.t === "write" ? <button className="link" onClick={api.next}>Пропустить</button>
-    : step.t === "speak" ? <button className="link" onClick={api.next}>Не могу сейчас говорить</button>
     : step.t === "pairs" ? <span className="mute sm">Нажми слово слева, потом его перевод справа</span>
     : step.t === "listen" ? <span className="mute sm">Нажми на динамик, чтобы послушать ещё раз</span>
     : step.t === "pick" ? <span className="mute sm">Нажми на динамик, чтобы услышать слово</span>

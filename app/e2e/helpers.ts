@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
 import { mergeStates, parseState } from "../src/core/state.ts";
 import { ttsCacheSource } from "../src/core/tts.ts";
+import { textWords, type PronResult } from "../src/core/pron.ts";
 
 /** Ключ файла озвучки — как server/tts.ts cacheKey. */
 export const ttsKey = (text: string, voice: string) => createHash("sha1").update(ttsCacheSource(text, voice)).digest("hex").slice(0, 20);
@@ -61,6 +62,8 @@ export interface TtsLog {
   played: string[];
   /** мок сервера прогресса: что на нём лежит и сколько раз сохраняли */
   server: { state: { upd: number } | null; puts: number };
+  /** записи, отправленные на оценку произношения: текст и размер (байт PCM) */
+  pron: { text: string; bytes: number }[];
 }
 
 /**
@@ -79,6 +82,10 @@ export const setup = async (
     now?: Date;
     /** фразы, уже озвученные на сервере (прогрев): [текст, голос] */
     ready?: [string, string][];
+    /** микрофон: ok — подделка (тон, пока идёт запись), denied — запрет, none — нет микрофона */
+    mic?: "ok" | "denied" | "none";
+    /** сервер оценки произношения: down — недоступен */
+    pron?: "ok" | "down";
   } = {},
 ): Promise<TtsLog> => {
   await page.clock.setFixedTime(opts.now ?? NOW);
@@ -101,6 +108,28 @@ export const setup = async (
     },
     { state: opts.state ?? null, voice: opts.voice ?? null },
   );
+  // микрофон-подделка: тон 300 Гц, пока его не заглушат (window.__micQuiet) — как будто человек говорит
+  await page.addInitScript((mic) => {
+    const w = window as unknown as { __micCalls: number; __micQuiet: (q: boolean) => void };
+    w.__micCalls = 0;
+    // через defineProperty на прототипе: в WebKit простое присваивание navigator.mediaDevices.getUserMedia не действует
+    Object.defineProperty(MediaDevices.prototype, "getUserMedia", { configurable: true, writable: true, value: async () => {
+      w.__micCalls++;
+      if (mic === "denied") throw new DOMException("запрещено", "NotAllowedError");
+      if (mic === "none") throw new DOMException("нет микрофона", "NotFoundError");
+      const ac = new AudioContext();
+      const osc = ac.createOscillator();
+      const gain = ac.createGain();
+      const dest = ac.createMediaStreamDestination();
+      osc.frequency.value = 300;
+      gain.gain.value = 0.3;
+      osc.connect(gain).connect(dest);
+      osc.start();
+      await ac.resume();
+      w.__micQuiet = (q) => gain.gain.setValueAtTime(q ? 0 : 0.3, ac.currentTime);
+      return dest.stream;
+    } });
+  }, opts.mic ?? "ok");
 
   // вход выполнен (настоящий вход проверяет e2e/auth.spec.ts на продакшен-сервере)
   await page.route("**/api/auth/me", (route) => route.fulfill({ json: { user: { name: "evgeny", displayName: "Евгений" }, passkeys: 1 } }));
@@ -108,7 +137,7 @@ export const setup = async (
   await page.route("**/api/auth/device", (route) => route.fulfill({ json: { ok: true } }));
   await page.route("**/api/auth/sessions", (route) => route.fulfill({ json: MOCK_DEVICES }));
 
-  const log: TtsLog = { requests: [], played: [], server: { state: (opts.remote as { upd: number }) ?? null, puts: 0 } };
+  const log: TtsLog = { requests: [], played: [], server: { state: (opts.remote as { upd: number }) ?? null, puts: 0 }, pron: [] };
   // сервер прогресса — как server/progress.ts: сливает присланное с тем, что лежит (core/state.ts mergeStates)
   await page.route("**/api/state", async (route) => {
     if (opts.sync === "down") return route.abort("connectionrefused");
@@ -145,7 +174,39 @@ export const setup = async (
     log.played.push(key);
     return route.fulfill({ body: silentWav(), contentType: "audio/wav" });
   });
+  // сервер оценки произношения: все слова хорошо (92%), а после setPron(page, …) — следующая запись по заказу
+  await page.route(/\/api\/pron(\?.*)?$/, async (route) => {
+    if (opts.pron === "down") return route.fulfill({ status: 503, json: { error: "оценка произношения отключена" } });
+    const text = new URL(route.request().url()).searchParams.get("t") ?? "";
+    const bytes = route.request().postDataBuffer()?.length ?? 0;
+    const p = pronPlan.get(page) ?? [];
+    const make = p.shift() ?? "good";
+    log.pron.push({ text, bytes });
+    await route.fulfill({ json: pronResult(text, make) });
+  });
   return log;
+};
+
+/** Что «услышит» сервер оценки в следующих записях этой страницы. */
+const pronPlan = new WeakMap<Page, PronMake[]>();
+export type PronMake = "good" | "bad" | "silent";
+export const setPron = (page: Page, ...next: PronMake[]) => pronPlan.set(page, [...(pronPlan.get(page) ?? []), ...next]);
+
+/** Ответ сервера оценки: good — 92% и все слова зелёные; bad — 40%, первое длинное слово красное (θ → s); silent — тишина. */
+export const pronResult = (text: string, make: PronMake): PronResult => {
+  const ws = textWords(text);
+  if (make === "silent") return { score: 0, ok: false, silent: true, words: ws.map((w) => ({ w, score: 0, mark: "weak", ipa: "", issues: [] })) };
+  const badAt = make === "bad" ? Math.max(0, ws.findIndex((w) => w.length > 3)) : -1;
+  return {
+    score: make === "bad" ? 40 : 92,
+    ok: make !== "bad",
+    silent: false,
+    words: ws.map((w, i) =>
+      i === badAt
+        ? { w, score: 30, mark: "weak", ipa: "θɪŋk", issues: [{ exp: "θ", got: "s" }] }
+        : { w, score: 92, mark: "good", ipa: "", issues: [] },
+    ),
+  };
 };
 
 /** 0,05 с тишины — валидный аудиофайл для мока. */
@@ -289,9 +350,11 @@ export const playSession = async (page: Page, o: PlayOptions = {}): Promise<Play
       for (const t of toks) await page.locator(".pool .wt:not(.used)").getByText(t, { exact: true }).first().click();
     } else if (lbl === "Напиши своё предложение") {
       await page.locator("textarea.inp").fill(o.sentence ?? "I praise my team every day.");
-    } else if (lbl === "Скажи вслух") {
-      const phrase = (await page.locator(".card .sent").first().textContent())!.trim();
-      await page.locator("textarea.inp").fill(wrongNow() ? "hello" : phrase);
+    } else if (lbl === "Скажи слово" || lbl === "Скажи фразу" || lbl === "Скажи вслух") {
+      if (wrongNow()) setPron(page, "bad"); // одна неудачная попытка — и «Дальше»: в счёт идёт ошибка
+      await say(page);
+      await next.click();
+      continue;
     } else {
       throw new Error(`неизвестный шаг: «${lbl}»`);
     }
@@ -300,6 +363,15 @@ export const playSession = async (page: Page, o: PlayOptions = {}): Promise<Play
     await next.click();
   }
   throw new Error("занятие не закончилось: " + report.steps.slice(-5).join(" → "));
+};
+
+/** Записать фразу в задании «Скажи»: нажать на микрофон (или «Ещё раз»), «сказать» и закончить «Готово». */
+export const say = async (page: Page, start: "#rec" | "#again" = "#rec") => {
+  await page.locator(start).click();
+  await expect(page.locator("#rec")).toHaveAttribute("data-phase", "rec");
+  await page.waitForTimeout(250);
+  await page.locator("#chk").click(); // «Готово»
+  await expect(page.locator("#next, #rec[data-phase=silent]").first()).toBeVisible();
 };
 
 /** Открыть главную и дождаться отрисовки. */

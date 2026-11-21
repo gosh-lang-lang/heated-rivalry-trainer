@@ -44,7 +44,7 @@ export const test = base.extend<{ auth: AuthEnv }>({
     const dir = mkdtempSync(join(tmpdir(), "hr-auth-e2e-"));
     const port = await freePort();
     const origin = `http://localhost:${port}`;
-    const env = { ...process.env, NODE_ENV: "production", PORT: String(port), AUTH_ORIGIN: origin, AUTH_DB: join(dir, "auth.db"), TTS_DISABLED: "1" };
+    const env = { ...process.env, NODE_ENV: "production", PORT: String(port), AUTH_ORIGIN: origin, AUTH_DB: join(dir, "auth.db"), TTS_DISABLED: "1", PRON_DISABLED: "1" };
     let out = "";
     const proc = spawn("node", ["--disable-warning=ExperimentalWarning", "server/index.ts"], { env, stdio: ["ignore", "pipe", "pipe"] });
     proc.stdout!.on("data", (d) => (out += d));

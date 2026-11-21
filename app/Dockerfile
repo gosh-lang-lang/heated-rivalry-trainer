@@ -22,6 +22,8 @@ COPY app/package.json app/package-lock.json ./
 RUN npm ci --omit=dev --no-audit --no-fund && npm cache clean --force
 # Модель Kokoro — в образ: контейнер работает без доступа в интернет и не качает её при каждом запуске
 RUN node --input-type=module -e "import { KokoroTTS } from 'kokoro-js'; await KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX', { dtype: 'fp32', device: 'cpu' }); console.log('model ok')"
+# Модель оценки произношения (wav2vec2, фонемы espeak, int8 ~320 МБ) — тоже в образ
+RUN node --input-type=module -e "import { AutoModelForCTC } from '@huggingface/transformers'; await AutoModelForCTC.from_pretrained('onnx-community/wav2vec2-lv-60-espeak-cv-ft-ONNX', { dtype: 'q8', device: 'cpu' }); console.log('pron model ok')"
 RUN mkdir -p /data/tts /data/auth && chown node:node /data/tts /data/auth
 COPY words.json /srv/words.json
 COPY --from=build /srv/app/dist ./dist

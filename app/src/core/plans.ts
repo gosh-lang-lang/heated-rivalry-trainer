@@ -79,16 +79,19 @@ export const newToday = (deck: Deck, state: AppState, today: string): NewToday =
 
 /**
  * Лестница для блока новых слов:
- * intro ×N → pick ×N → pairs → listen ×⌈N/2⌉ → type с подсказкой ×N → build ×3.
+ * intro ×N → pick ×N → pairs → listen ×⌈N/2⌉ → say ×⌊N/2⌋ (остальные слова; хотя бы одно) →
+ * type с подсказкой ×N → build ×3 → say пример ×1.
+ * Говорение — сразу после «Что ты слышишь?»: звучание слова ещё в ушах.
  */
 export const blockSteps = (block: Word[], known: Word[], deck: Deck, rng: Rng): Draft[] => {
   const st: Draft[] = [];
   block.forEach((w) => st.push({ t: "intro", w: w.id }));
   shuffle(block, rng).forEach((w) => st.push({ t: "pick", w: w.id }));
   if (block.length >= 3) st.push({ t: "pairs", ws: block.map((w) => w.id) });
-  shuffle(block, rng)
-    .slice(0, Math.ceil(block.length / 2))
-    .forEach((w) => st.push({ t: "listen", w: w.id }));
+  const heard = shuffle(block, rng).slice(0, Math.ceil(block.length / 2));
+  heard.forEach((w) => st.push({ t: "listen", w: w.id }));
+  const said = block.filter((w) => !heard.includes(w));
+  (said.length ? said : heard.slice(0, 1)).forEach((w) => st.push({ t: "say", w: w.id }));
   shuffle(block, rng).forEach((w) => st.push({ t: "type", w: w.id, hint: true }));
 
   // фразы из банка: все слова уже известны, хотя бы одно — из этого блока
@@ -102,6 +105,10 @@ export const blockSteps = (block: Word[], known: Word[], deck: Deck, rng: Rng): 
   shuffle(block.filter(canBuild), rng)
     .slice(0, 3 - bank.length)
     .forEach((w) => st.push({ t: "build", en: w.example, ru: w.exampleRu, w: w.id }));
+  // пример — короткий и не тот, что только что собирали (без случайности: план остаётся прежним при том же rng)
+  const built = new Set(st.flatMap((s) => (s.t === "build" && s.w ? [s.w] : [])));
+  const ex = block.find((w) => canBuild(w) && !built.has(w.id)) ?? block.find(canBuild) ?? block[0];
+  st.push({ t: "say", w: ex.id, ex: true });
   return st;
 };
 
@@ -245,7 +252,7 @@ export const eveningPlan = (deck: Deck, state: AppState, today: string, rng: Rng
     writes.forEach((g, n) => st.push({ t: "write", ws: g, n }));
   }
 
-  st.push({ t: "section", pic: "🎙️", title: "Скажи вслух", sub: "Послушай и повтори фразу" });
+  st.push({ t: "section", pic: "🎙️", title: "Скажи вслух", sub: "Послушай и повтори фразу — я оценю произношение", speech: true });
   const sw = (n: number) => writes[n]?.[0] ?? (ws[n] ?? ws[0]).id;
   st.push({ t: "speak", n: 0, w: sw(0) }, { t: "speak", n: 1, w: sw(1) });
 
