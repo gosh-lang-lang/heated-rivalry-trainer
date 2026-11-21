@@ -1,4 +1,5 @@
 import { isAvatar, savedNumber } from "./avatar.ts";
+import { isTimeZone } from "./dates.ts";
 import { DEFAULT_VOICE, isTtsVoice } from "./tts.ts";
 import type { AppState, DayLog, Look, SavedRun, SentenceRecord, SessionResult, Settings, SettingsAt, Step, ThemePref, WordState } from "./types";
 
@@ -19,6 +20,8 @@ export const emptyState = (): AppState => ({
   sent: [],
   run: null,
   runAt: 0,
+  tz: "",
+  tzAt: 0,
 });
 /** Все личные настройки: каждая сливается отдельно (mergeStates). Новая настройка — поле в Settings и здесь. */
 const SETTING_KEYS = ["newPerDay", "voice", "look", "theme", "avatar", "avatarNum"] as const satisfies readonly (keyof Settings)[];
@@ -84,7 +87,7 @@ export const parseState = (raw: unknown): AppState => {
     if (c) srs[id] = c;
   }
   const days: AppState["days"] = {};
-  if (isObj(v.days)) for (const [k, d] of Object.entries(v.days)) if (DATE.test(k) && isObj(d)) days[k] = d as AppState["days"][string];
+  if (isObj(v.days)) for (const [k, d] of Object.entries(v.days)) if (DATE.test(k) && isObj(d)) days[k] = cleanDay(d);
   const settings = isObj(v.settings) ? v.settings : {};
   const at = isObj(v.settingsAt) ? v.settingsAt : {};
   const sent: SentenceRecord[] = Array.isArray(v.sent)
@@ -107,7 +110,28 @@ export const parseState = (raw: unknown): AppState => {
     sent,
     run: cleanRun(v.run),
     runAt: Math.max(0, num(v.runAt)),
+    tz: isTimeZone(v.tz) ? v.tz : "",
+    tzAt: isTimeZone(v.tz) ? Math.max(0, num(v.tzAt)) : 0,
   };
+};
+
+/** Итог занятия как есть, только метка сервера srv — число или её нет. */
+const cleanResult = (v: unknown): SessionResult | undefined => {
+  if (!isObj(v)) return undefined;
+  const r = { ...v } as unknown as SessionResult;
+  if (r.srv !== undefined && !(typeof r.srv === "number" && Number.isFinite(r.srv) && r.srv >= 0)) delete r.srv;
+  return r;
+};
+const cleanDay = (v: Record<string, unknown>): DayLog => {
+  const d = { ...v } as DayLog;
+  for (const k of ["morning", "evening"] as const) {
+    const r = cleanResult(v[k]);
+    if (r) d[k] = r;
+    else delete d[k];
+  }
+  if (Array.isArray(v.extra)) d.extra = v.extra.map(cleanResult).filter((r): r is SessionResult => !!r);
+  else delete d.extra;
+  return d;
 };
 
 /**
@@ -116,6 +140,9 @@ export const parseState = (raw: unknown): AppState => {
  *  - слова — по одному: побеждает версия, где на слово отвечали больше раз (каждый ответ увеличивает
  *    right или wrong — счётчик не зависит от часов устройств); поровну — знакомое слово, затем более новая копия;
  *  - дни — по полям: утро и вечер — более позднее занятие, дополнительные — все, «перечитал» — если хоть где-то;
+ *    занятие, которое сервер переложил в другой день (подтверждённое, srv), остаётся только там: неподтверждённый
+ *    двойник под старым днём отбрасывается; в одном дне подтверждённое побеждает неподтверждённое (core/serverday.ts);
+ *  - часовой пояс (tz) — из копии, где его позже поставил сервер (tzAt);
  *  - свои предложения — все с обоих устройств; одно и то же — проверенная версия, а не ждущая проверки;
  *  - личные настройки — по пунктам: пункт, изменённый позже (settingsAt), побеждает;
  *  - незаконченная часть урока (run) — из копии, где она менялась позже (runAt): и сохранённая, и «закончена» (null);
@@ -143,10 +170,9 @@ export const mergeStates = (a: AppState, b: AppState): AppState => {
   const srs: AppState["srs"] = { ...older.srs };
   for (const [id, w] of Object.entries(newer.srs)) srs[id] = srs[id] ? pickWord(w, srs[id]) : w;
 
-  const days: AppState["days"] = { ...older.days };
-  for (const [d, log] of Object.entries(newer.days)) days[d] = days[d] ? mergeDay(log, days[d]) : log;
-
+  const days = mergeDays(newer.days, older.days);
   const run = older.runAt > newer.runAt ? older : newer;
+  const zone = older.tzAt > newer.tzAt ? older : newer;
 
   return {
     upd: newer.upd,
@@ -158,6 +184,8 @@ export const mergeStates = (a: AppState, b: AppState): AppState => {
     sent: mergeSent(newer.sent, older.sent),
     run: run.run,
     runAt: run.runAt,
+    tz: zone.tz,
+    tzAt: zone.tzAt,
   };
 };
 
@@ -166,20 +194,64 @@ const answers = (w: WordState) => w.right + w.wrong;
 const pickWord = (n: WordState, o: WordState): WordState =>
   answers(n) !== answers(o) ? (answers(n) > answers(o) ? n : o) : !!n.intro !== !!o.intro ? (n.intro ? n : o) : n;
 
-const laterResult = (n?: SessionResult, o?: SessionResult) => (!n ? o : !o ? n : o.at > n.at ? o : n);
-const mergeDay = (n: DayLog, o: DayLog): DayLog => {
-  const d: DayLog = { ...o, ...n };
-  const morning = laterResult(n.morning, o.morning),
-    evening = laterResult(n.evening, o.evening);
-  if (morning) d.morning = morning;
-  if (evening) d.evening = evening;
-  if (n.extra || o.extra) {
-    const byAt = new Map<string, SessionResult>();
-    for (const r of [...(o.extra ?? []), ...(n.extra ?? [])]) byAt.set(r.at, r);
-    d.extra = [...byAt.values()].sort((x, y) => (x.at < y.at ? -1 : x.at > y.at ? 1 : 0));
+type Kind = "morning" | "evening" | "extra";
+/** «Имя» итога: вид занятия и время по часам устройства — одно и то же на всех устройствах и под любым днём. */
+export const resultId = (kind: Kind, r: SessionResult) => `${kind}|${r.at}`;
+const stamped = (r: SessionResult) => r.srv !== undefined;
+
+/**
+ * Какой из двух итогов в одном месте дня (часть 1 или 2) остаётся: подтверждённый сервером — раньше неподтверждённого
+ * (сервер уже видел и неподтверждённый — устройство отправляет своё до того, как забрать чужое, lib/sync.ts);
+ * оба подтверждены — позже по времени сервера; оба нет — позже по `at`. true — побеждает a.
+ */
+export const betterResult = (a: SessionResult, b: SessionResult): boolean => {
+  if (stamped(a) !== stamped(b)) return stamped(a);
+  if (stamped(a) && a.srv !== b.srv) return a.srv! > b.srv!;
+  return a.at > b.at;
+};
+
+/** Все итоги дней: [день, вид, итог]. */
+export const eachResult = (days: AppState["days"]): [string, Kind, SessionResult][] => {
+  const out: [string, Kind, SessionResult][] = [];
+  for (const [k, d] of Object.entries(days)) {
+    if (d.morning) out.push([k, "morning", d.morning]);
+    if (d.evening) out.push([k, "evening", d.evening]);
+    for (const r of d.extra ?? []) out.push([k, "extra", r]);
   }
-  if (n.reread || o.reread) d.reread = true;
-  return d;
+  return out;
+};
+
+/** Положить итог в день: дополнительные — все (по времени), часть 1 и 2 — побеждает betterResult; равные — положенный позже. */
+export const putResult = (days: AppState["days"], day: string, kind: Kind, r: SessionResult) => {
+  const d = (days[day] ??= {});
+  if (kind === "extra") {
+    const byAt = new Map((d.extra ?? []).map((x) => [x.at, x]));
+    const prev = byAt.get(r.at);
+    if (!prev || !betterResult(prev, r)) byAt.set(r.at, r);
+    d.extra = [...byAt.values()].sort((x, y) => (x.at < y.at ? -1 : x.at > y.at ? 1 : 0));
+  } else if (!d[kind] || !betterResult(d[kind]!, r)) d[kind] = r;
+};
+
+const emptyDay = (d: DayLog) => !d.morning && !d.evening && !d.extra?.length && !d.reread && Object.keys(d).every((k) => ["morning", "evening", "extra", "reread"].includes(k));
+
+/**
+ * Дни двух копий (n — из более новой). Итог, который сервер переложил в другой день, у устройства лежит ещё и под
+ * старым днём неподтверждённым — такой двойник (то же «имя», без srv, а где-то есть с srv) отбрасывается: занятие
+ * остаётся там, куда его положил сервер. Остальные итоги раскладываются по дням (putResult; при равенстве —
+ * из более новой копии), «перечитал» — если хоть где-то. Опустевший день (занятие уехало в другой) пропадает.
+ */
+const mergeDays = (n: AppState["days"], o: AppState["days"]): AppState["days"] => {
+  const all = [...eachResult(o), ...eachResult(n)];
+  const confirmed = new Set(all.filter(([, , r]) => stamped(r)).map(([, kind, r]) => resultId(kind, r)));
+  const days: AppState["days"] = {};
+  for (const k of new Set([...Object.keys(o), ...Object.keys(n)])) {
+    const { morning: _m, evening: _e, extra: _x, ...rest } = { ...o[k], ...n[k] };
+    days[k] = rest;
+    if (o[k]?.reread || n[k]?.reread) days[k].reread = true;
+  }
+  for (const [k, kind, r] of all) if (stamped(r) || !confirmed.has(resultId(kind, r))) putResult(days, k, kind, r);
+  for (const k of Object.keys(days)) if (emptyDay(days[k])) delete days[k];
+  return days;
 };
 
 const sentKey = (s: SentenceRecord) => `${s.at}\u0000${s.text}`;

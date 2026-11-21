@@ -1,3 +1,4 @@
+import { clockNow, nowDate } from "./dates";
 import { applyGrade, introduce } from "./srs";
 import type { AppState, SavedRun, SentenceRecord, SessionKind, SessionResult, Step } from "./types";
 
@@ -24,7 +25,7 @@ export interface Graded {
   state: AppState;
 }
 
-export const startSession = (kind: SessionKind, steps: Step[], now = Date.now()): Session | null =>
+export const startSession = (kind: SessionKind, steps: Step[], now = clockNow()): Session | null =>
   steps.length ? { kind, steps, i: 0, graded: 0, right: 0, revGraded: 0, revRight: 0, first: [], newIds: [], written: {}, t0: now } : null;
 
 export const currentStep = (s: Session): Step | undefined => s.steps[s.i];
@@ -180,8 +181,12 @@ export interface Finished {
   day: string;
 }
 
-/** Итог занятия → state.days[today]. Для части 2, перенесённой со вчера, `today` — день урока. */
-export const finishSession = (sess: Session, state: AppState, today: string, now = new Date()): Finished => {
+/**
+ * Итог занятия → state.days[today]. Для части 2, перенесённой со вчера, `today` — день урока.
+ * День здесь предварительный: сервер проверит его по своим часам и, если надо, переложит (core/serverday.ts).
+ * `now` — часы устройства, поправленные на сервер.
+ */
+export const finishSession = (sess: Session, state: AppState, today: string, now = nowDate()): Finished => {
   const kind = sess.kind;
   const result: SessionResult = {
     score: sess.right,

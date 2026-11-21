@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { changeSetting, mergeStates, parseState, sameState } from "./core/state";
+import { setClock } from "./core/dates";
 import type { Finished } from "./core/session";
 import type { AppState, SessionKind } from "./core/types";
 import { DECK } from "./data";
@@ -124,7 +125,12 @@ export default function App({ user, name = null }: { user: string | null; name?:
     },
     [user],
   );
-  const schedulePush = useServerSync(!!user, current, adopt, inSession);
+  // «сегодня» — в поясе пользователя с сервера (пока его нет — в поясе устройства), core/dates.ts
+  setClock({ tz: state.tz });
+  // поправка на часы сервера изменилась — перерисовать: «сегодня» могло смениться
+  const [, setClockTick] = useState(0);
+  const onClock = useCallback(() => setClockTick((n) => n + 1), []);
+  const schedulePush = useServerSync(!!user, current, adopt, inSession, onClock);
 
   /** Любое изменение прогресса: метка времени для слияния, кэш, отправка на сервер. */
   const setState: SetState = useCallback(

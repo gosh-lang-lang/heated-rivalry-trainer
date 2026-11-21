@@ -1,6 +1,8 @@
 import { Fragment, useRef, useState, type ComponentType, type SVGProps } from "react";
 import type { SetState, SettingsSection, View } from "../App";
-import { NEW_PER_DAY_OPTIONS } from "../core/state";
+import { mergeStates, NEW_PER_DAY_OPTIONS } from "../core/state";
+import { clockOffset, deviceTz } from "../core/dates";
+import { changeTimeZone } from "../lib/sync";
 import type { AppState, ThemePref } from "../core/types";
 import { ACCENT_LABEL, VOICE_SAMPLE } from "../core/tts";
 import { Back, Book, Check, Chevron, Key, Laptop, Palette, Phone, Play, Speaker, Tablet } from "../lib/icons";
@@ -61,7 +63,10 @@ export function Settings({
 
   const body = (id: SettingsSection) =>
     id === "lessons" ? (
-      <NewPerDay state={state} setState={setState} />
+      <>
+        <NewPerDay state={state} setState={setState} />
+        <TimeZoneCard state={state} setState={setState} />
+      </>
     ) : id === "voice" ? (
       <VoicePicker value={voice} onPick={(v) => setState(changeSetting(state, "voice", v))} />
     ) : id === "look" ? (
@@ -298,6 +303,50 @@ export function NewPerDay({ state, setState }: { state: AppState; setState: SetS
         ))}
       </div>
       <p className="mute sm" style={{ margin: "10px 0 0" }}>Новую партию слов из книги присылай в чат фотографией — я добавлю её сюда.</p>
+    </section>
+  );
+}
+
+/** «Europe/Moscow · GMT+3» */
+const zoneLabel = (tz: string) => {
+  try {
+    const off = new Intl.DateTimeFormat("en-US", { timeZone: tz, timeZoneName: "shortOffset" }).formatToParts(Date.now()).find((p) => p.type === "timeZoneName")?.value;
+    return off ? `${tz} · ${off}` : tz;
+  } catch {
+    return tz;
+  }
+};
+
+/**
+ * Часовой пояс уроков: по нему сервер решает, в какой день засчитана часть урока (серия, неделя, повторения).
+ * Берётся с устройства при первой синхронизации; уехал в другой пояс — перейти на пояс устройства можно явно,
+ * не чаще раза в сутки (server/progress.ts setTz).
+ */
+export function TimeZoneCard({ state, setState }: { state: AppState; setState: SetState }) {
+  const device = deviceTz();
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+  const change = async () => {
+    setBusy(true);
+    setMsg("");
+    const r = await changeTimeZone(device);
+    setBusy(false);
+    if (!r) return setMsg("Не получилось — проверь интернет и попробуй ещё раз.");
+    if ("state" in r) return setState(mergeStates(state, r.state));
+    const when = r.next && new Date(r.next - clockOffset()).toLocaleString("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
+    setMsg(when ? `Пояс можно менять раз в сутки — следующая смена после ${when}.` : r.error);
+  };
+  return (
+    <section className="card" aria-label="Часовой пояс уроков">
+      <h3>Часовой пояс уроков</h3>
+      <p style={{ margin: "4px 0 0" }}>{zoneLabel(state.tz || device)}</p>
+      <p className="mute sm" style={{ margin: "6px 0 0" }}>По нему считаются дни: серия, неделя и даты повторения. Менять — не чаще раза в сутки.</p>
+      {state.tz && state.tz !== device && (
+        <button className="btn ghost wide" style={{ marginTop: 10 }} disabled={busy} onClick={() => void change()}>
+          {busy ? <span className="spin" /> : `Перейти на пояс устройства: ${zoneLabel(device)}`}
+        </button>
+      )}
+      {msg && <p className="mute sm" role="status" style={{ margin: "8px 0 0" }}>{msg}</p>}
     </section>
   );
 }

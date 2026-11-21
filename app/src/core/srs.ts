@@ -1,4 +1,4 @@
-import { addDays } from "./dates";
+import { addDays } from "./dates.ts";
 import type { AppState, DayLog, Word, WordState } from "./types";
 
 /** Интервалы по уровню, дни: ходовые слова. */

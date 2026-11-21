@@ -1,5 +1,6 @@
-import { addDays, todayKey } from "./dates";
+import { addDays, clockTz, dayIn, hourIn, nowDate, todayKey } from "./dates";
 import { eveningWords, newToday } from "./plans";
+import { CARRY_DAYS } from "./serverday";
 import { resumable, runPosition } from "./session";
 import type { AppState, Deck, SessionResult } from "./types";
 
@@ -13,8 +14,8 @@ import type { AppState, Deck, SessionResult } from "./types";
 export const PART2_GAP_MIN = 90;
 /** С этого часа (местное время) часть 2 лучше отложить на завтра. */
 export const LATE_HOUR = 22;
-/** Часть 2 переносится на следующий день — если урок был не раньше стольких дней назад. */
-export const CARRY_DAYS = 2;
+/** Часть 2 переносится на следующий день — если урок был не раньше стольких дней назад (сервер проверяет то же). */
+export { CARRY_DAYS };
 
 /**
  * Совет для части 2:
@@ -62,12 +63,6 @@ export interface LessonStatus {
 export const lessonNo = (days: AppState["days"], day: string): number =>
   Object.keys(days).filter((k) => k < day && days[k]?.morning).length + 1;
 
-/** Местное время `hour`:00 дня `day`. */
-const atHour = (day: string, hour: number) => {
-  const [y, m, d] = day.split("-").map(Number);
-  return new Date(y, m - 1, d, hour);
-};
-
 /** Когда лучше начинать часть 2: конец части 1 + PART2_GAP_MIN; null — время конца неизвестно. */
 export const part2After = (part1?: SessionResult | null): Date | null => {
   const t = part1 ? Date.parse(part1.at) : NaN;
@@ -84,9 +79,13 @@ export const part2After = (part1?: SessionResult | null): Date | null => {
 export const part2Advice = (day: string, part1: SessionResult | null | undefined, now: Date): { advice: Advice; after: Date | null } => {
   const today = todayKey(now);
   const after = part2After(part1);
-  const late = atHour(today, LATE_HOUR);
-  if (now >= late) return { advice: "late", after };
-  if (after && day === today && after > late) return { advice: "late", after };
+  // LATE_HOUR сегодняшнего дня или позже — в поясе уроков
+  const late = (d: Date) => {
+    const k = dayIn(d.getTime(), clockTz());
+    return k > today || (k === today && hourIn(d.getTime(), clockTz()) >= LATE_HOUR);
+  };
+  if (late(now)) return { advice: "late", after };
+  if (after && day === today && late(after)) return { advice: "late", after };
   if (after && now < after) return { advice: "wait", after };
   return { advice: "ready", after };
 };
@@ -113,7 +112,7 @@ export const carriedDay = (days: AppState["days"], today: string): string | null
 };
 
 /** Что показать на главной: какие части, номера уроков, совет для части 2, перенос со вчера. */
-export const lessonStatus = (state: AppState, deck: Deck, now: Date = new Date()): LessonStatus => {
+export const lessonStatus = (state: AppState, deck: Deck, now: Date = nowDate()): LessonStatus => {
   const today = todayKey(now);
   const { days } = state;
   const carry = carriedDay(days, today);

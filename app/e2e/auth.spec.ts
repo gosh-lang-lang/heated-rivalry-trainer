@@ -1,6 +1,6 @@
 import type { Browser, Page } from "@playwright/test";
 import { expect, test } from "./auth-fixture";
-import { DECK, openSettingsSection, type SettingsSectionTitle } from "./helpers";
+import { DECK, openSettingsSection, playSession, type SettingsSectionTitle } from "./helpers";
 
 /**
  * Вход по passkey на продакшен-сервере (npm run e2e -- --project=auth).
@@ -277,6 +277,43 @@ test("прогресс с двух устройств складывается, 
     await expect(page.locator(".legend")).toContainText("Учу4");
   }
   for (const p of [laptop, phone]) await p.context().close();
+});
+
+/** День момента ms в Москве (пояс браузера в тестах — playwright.config.ts timezoneId). */
+const mskDay = (ms: number) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Moscow", year: "numeric", month: "2-digit", day: "2-digit" }).format(ms);
+type Days = Record<string, { morning?: { at: string; srv?: number }; evening?: unknown }>;
+
+test("часы браузера переведены на 3 дня вперёд — урок засчитан в день сервера", async ({ browser, auth }) => {
+  test.slow(); // часть 1 урока целиком
+  const { cli, origin } = auth;
+  cli("user:add", "evgeny", "Евгений");
+  const SHIFT = 3 * 864e5;
+  const phone = await newDevice(browser, origin, cli("enroll", "evgeny").trim().split("\n").pop()!, (p) => p.clock.install({ time: Date.now() + SHIFT }));
+  const t0 = Date.now();
+  expect(mskDay(await phone.evaluate(() => Date.now()))).toBe(mskDay(t0 + SHIFT)); // браузер живёт в «через 3 дня»
+
+  await phone.getByRole("button", { name: "Начать часть 1" }).click();
+  await playSession(phone);
+  await expect(phone.locator(".result")).toBeVisible();
+
+  // на сервере — сегодняшний день сервера, а не день часов браузера; метка srv — по часам сервера
+  const serverDays = async () => ((await (await phone.request.get("/api/state")).json()) as { state: { days: Days; tz: string } | null }).state ?? { days: {}, tz: "" };
+  const today = [mskDay(t0), mskDay(Date.now())]; // на случай теста ровно в полночь
+  await expect.poll(async () => Object.keys((await serverDays()).days)).toHaveLength(1);
+  const s = await serverDays();
+  const [day] = Object.keys(s.days);
+  expect(today).toContain(day);
+  expect(day).not.toBe(mskDay(t0 + SHIFT));
+  expect(s.tz).toBe("Europe/Moscow"); // пояс взят с устройства при первой синхронизации
+  expect(s.days[day].morning!.srv).toBeGreaterThanOrEqual(t0);
+  expect(s.days[day].morning!.srv).toBeLessThanOrEqual(Date.now());
+
+  // и устройство считает «сегодня» по серверу: в кэше — тот же день, на главной часть 1 пройдена, серия — 1 день
+  await expect.poll(async () => Object.keys((await phone.evaluate(() => JSON.parse(localStorage.getItem("hr2_state:evgeny")!))).days as Days)).toEqual([day]);
+  await phone.goto("/");
+  await expect(phone.getByRole("button", { name: /^1 день подряд/ })).toBeVisible();
+  await expect(phone.getByRole("button", { name: "Начать часть 1" })).toHaveCount(0);
+  await phone.context().close();
 });
 
 const UA_MAC = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";

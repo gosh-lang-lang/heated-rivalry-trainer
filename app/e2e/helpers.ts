@@ -4,6 +4,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
 import { mergeStates, parseState } from "../src/core/state.ts";
+import { confirmLegacy } from "../src/core/serverday.ts";
 import { ttsCacheSource } from "../src/core/tts.ts";
 
 /** Ключ файла озвучки — как server/tts.ts cacheKey. */
@@ -110,7 +111,14 @@ export const setup = async (
   await page.route("**/api/auth/sessions", (route) => route.fulfill({ json: MOCK_DEVICES }));
 
   const log: TtsLog = { requests: [], played: [], server: { state: (opts.remote as { upd: number }) ?? null, puts: 0 } };
-  // сервер прогресса — как server/progress.ts: сливает присланное с тем, что лежит (core/state.ts mergeStates)
+  // сервер прогресса — как server/progress.ts: сливает присланное с тем, что лежит (core/state.ts mergeStates),
+  // отдаёт итоги подтверждёнными (confirmLegacy) и с поясом (у пользователя он уже есть — Москва). Дни частей урока
+  // не перекладывает и часов сервера (now) не шлёт: это проверяет настоящий сервер в auth.spec.ts
+  const reply = (s: unknown) => {
+    if (!s) return null;
+    const p = confirmLegacy(parseState(s));
+    return p.tz ? p : { ...p, tz: "Europe/Moscow", tzAt: 1 };
+  };
   await page.route("**/api/state", async (route) => {
     if (opts.sync === "down") return route.abort("connectionrefused");
     const srv = log.server;
@@ -119,7 +127,7 @@ export const setup = async (
       srv.puts++;
       srv.state = srv.state ? mergeStates(parseState(srv.state), parseState(state)) : parseState(state);
     }
-    await route.fulfill({ json: { state: srv.state } });
+    await route.fulfill({ json: { state: reply(srv.state) } });
   });
 
   // сервер озвучки — как server/tts.ts: файл с ключом sha1(ttsCacheSource) есть только у уже озвученных фраз

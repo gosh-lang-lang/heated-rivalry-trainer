@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { View } from "../App";
-import { addDays, greeting } from "../core/dates";
+import { addDays, greeting, nowDate } from "../core/dates";
 import { hhmm, lessonStatus, resumeLabel, untilText, type LessonPart } from "../core/lesson";
 import { MAX_REVIEW, newToday } from "../core/plans";
 import { dueList, groups, isHard, levelGroup, streak, unseen } from "../core/srs";
@@ -24,24 +24,27 @@ interface Props {
 
 const WD = ["вс", "пн", "вт", "ср", "чт", "пт", "сб"];
 
-/** Текущее время, раз в минуту (на границе минуты) и при возвращении в приложение — для отсчёта до части 2. */
+/**
+ * Текущее время по часам сервера (core/dates.ts nowDate): перерисовка раз в минуту (на границе минуты) и при возвращении
+ * в приложение — для отсчёта до части 2. Считается при каждой отрисовке: пришла поправка на сервер — «сегодня» верное сразу.
+ */
 export function useNow(): Date {
-  const [now, setNow] = useState(() => new Date());
+  const [, setNow] = useState(0);
   useEffect(() => {
     let id = 0;
     const tick = () => {
-      setNow(new Date());
+      setNow((n) => n + 1);
       id = window.setTimeout(tick, 60_000 - (Date.now() % 60_000));
     };
     id = window.setTimeout(tick, 60_000 - (Date.now() % 60_000));
-    const onShow = () => document.visibilityState === "visible" && setNow(new Date());
+    const onShow = () => document.visibilityState === "visible" && setNow((n) => n + 1);
     document.addEventListener("visibilitychange", onShow);
     return () => {
       clearTimeout(id);
       document.removeEventListener("visibilitychange", onShow);
     };
   }, []);
-  return now;
+  return nowDate();
 }
 
 /** Подпись начатой и не законченной части. */
