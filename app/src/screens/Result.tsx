@@ -109,6 +109,7 @@ function Reward({ card, fin, state, deck, go }: { card: LessonCard; fin: Finishe
           </div>
         </div>
         <p className="rw-new"><span><Cards aria-hidden="true" /> Новая карточка · {cardNo(card.pos)} из {SEASON}</span></p>
+        {card.final && <p className="rw-final">🏆 Финал сезона {card.season} · дополнительная награда</p>}
         <div className="stats3">
           <div><b>{p}%</b>верно</div>
           <div><b>{card.words.length}</b>{plural(card.words.length, "новое слово", "новых слова", "новых слов")}</div>

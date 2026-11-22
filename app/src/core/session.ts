@@ -1,3 +1,4 @@
+import { lessonNo } from "./curriculum";
 import { clockNow, nowDate } from "./dates";
 import { applyGrade, introduce } from "./srs";
 import type { AppState, SavedRun, SessionKind, SessionResult, Step } from "./types";
@@ -204,6 +205,7 @@ export const finishSession = (sess: Session, state: AppState, today: string, now
   const d = { ...(state.days[today] ?? {}) };
   if (kind === "extra") d.extra = [...(d.extra ?? []), result];
   else d[kind] = result;
+  if (kind === "evening" && d.morning) result.cardSubject = state.days[today]?.evening?.cardSubject ?? lessonNo(state.days, today);
   return { state: { ...state, days: { ...state.days, [today]: d } }, result, prev, kind, day: today };
 };
 

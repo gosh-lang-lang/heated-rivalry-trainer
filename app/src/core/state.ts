@@ -93,6 +93,16 @@ export const parseState = (raw: unknown): AppState => {
   }
   const days: AppState["days"] = {};
   if (isObj(v.days)) for (const [k, d] of Object.entries(v.days)) if (DATE.test(k) && isObj(d)) days[k] = cleanDay(d);
+  // Заморозить прежние сюжеты: раньше карточка зависела от числа завершённых уроков,
+  // которое при пропущенной части 2 отличается от сквозного номера урока.
+  let reward = 0;
+  for (const day of Object.keys(days).sort()) {
+    const d = days[day];
+    if (d.morning && d.evening) {
+      reward++;
+      d.evening = { ...d.evening, cardSubject: d.evening.cardSubject ?? reward };
+    }
+  }
   const settings = isObj(v.settings) ? v.settings : {};
   const at = isObj(v.settingsAt) ? v.settingsAt : {};
   return {
@@ -121,6 +131,7 @@ const cleanResult = (v: unknown): SessionResult | undefined => {
   if (!isObj(v)) return undefined;
   const r = { ...v } as unknown as SessionResult;
   if (r.srv !== undefined && !(typeof r.srv === "number" && Number.isFinite(r.srv) && r.srv >= 0)) delete r.srv;
+  if (!Number.isSafeInteger(r.cardSubject) || r.cardSubject! < 1) delete r.cardSubject;
   return r;
 };
 const cleanDay = (v: Record<string, unknown>): DayLog => {

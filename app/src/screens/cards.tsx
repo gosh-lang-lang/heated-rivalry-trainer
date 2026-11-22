@@ -163,7 +163,7 @@ export function CardFront({ card, size, className = "" }: { card: LessonCard } &
     <div className={`tc${card.gold ? " gold" : ""} ${className}`} style={sized(size, { "--cat": CAT_COLOR[card.cat] } as CSSProperties)} data-card={card.no}>
       <div className="tc-in">
         <div className="tc-top"><span className="tc-no">{cardNo(card.pos)}</span><span className="tc-cat">{card.cat}</span></div>
-        <div className="tc-art"><CardArt art={card.art} season={card.season} pos={card.pos} /></div>
+        <div className="tc-art"><CardArt art={card.art} season={card.artSeason} pos={card.artPos} /></div>
         <div className="tc-plate"><i className="tc-stripe" /><b>{card.name}</b><small>{card.line}</small></div>
         <div className="tc-foot"><span>Сезон {card.season}</span><span>Урок {card.lesson}</span></div>
       </div>

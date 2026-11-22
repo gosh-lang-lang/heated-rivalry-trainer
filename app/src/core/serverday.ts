@@ -1,4 +1,5 @@
 // с расширением .ts: модуль запускает и сервер (node без сборки)
+import { CARRY_DAYS } from "./curriculum.ts";
 import { addDays, dayIn, daysBetween } from "./dates.ts";
 import { interval } from "./srs.ts";
 import { eachResult, emptyState, mergeStates, putResult, resultId } from "./state.ts";
@@ -19,7 +20,7 @@ import type { AppState, SessionResult } from "./types";
  */
 
 /** Часть 2 переносится на следующий день — если урок был не раньше стольких дней назад (core/lesson.ts carriedDay). */
-export const CARRY_DAYS = 2;
+export { CARRY_DAYS } from "./curriculum.ts";
 
 /** Насколько старый `at` сервер принимает: занимались без сети и отправили позже. */
 export const OFFLINE_MS = 48 * 3600_000;

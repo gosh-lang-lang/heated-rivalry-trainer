@@ -49,6 +49,7 @@ const face = (a: Achievement): [ReactNode, string, boolean] => {
     case "season-1":
       return ["🏆", "сезон 1", true];
   }
+  if (a.id.startsWith("season-")) return ["🏆", `сезон ${a.id.slice(7)}`, true];
   const label = a.group === "streak" ? "дней подряд" : a.group === "words" ? "слов" : a.goal === 1 ? "первый урок" : "уроков";
   return [a.goal, label, false];
 };

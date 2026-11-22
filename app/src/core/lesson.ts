@@ -1,6 +1,7 @@
-import { addDays, clockTz, dayIn, dayOfIso, hourIn, nowDate, todayKey } from "./dates";
+import { clockTz, dayIn, hourIn, nowDate, todayKey } from "./dates";
 import { eveningWords, newToday } from "./plans";
-import { CARRY_DAYS } from "./serverday";
+import { carriedDay, lessonNo } from "./curriculum";
+export { CARRY_DAYS, carriedDay, lessonNo } from "./curriculum";
 import { resumable, runPosition } from "./session";
 import type { AppState, Deck, SessionResult } from "./types";
 
@@ -14,8 +15,6 @@ import type { AppState, Deck, SessionResult } from "./types";
 export const PART2_GAP_MIN = 90;
 /** С этого часа (местное время) часть 2 лучше отложить на завтра. */
 export const LATE_HOUR = 22;
-/** Часть 2 переносится на следующий день — если урок был не раньше стольких дней назад (сервер проверяет то же). */
-export { CARRY_DAYS };
 
 /**
  * Совет для части 2:
@@ -59,10 +58,6 @@ export interface LessonStatus {
   focus: 1 | 2 | null;
 }
 
-/** Номер урока дня `day`: сколько дней до него пройдена часть 1, плюс один. Пройденный урок сохраняет номер. */
-export const lessonNo = (days: AppState["days"], day: string): number =>
-  Object.keys(days).filter((k) => k < day && days[k]?.morning).length + 1;
-
 /** Когда лучше начинать часть 2: конец части 1 + PART2_GAP_MIN; null — время конца неизвестно. */
 export const part2After = (part1?: SessionResult | null): Date | null => {
   const t = part1 ? Date.parse(part1.at) : NaN;
@@ -88,22 +83,6 @@ export const part2Advice = (day: string, part1: SessionResult | null | undefined
   if (after && day === today && late(after)) return { advice: "late", after };
   if (after && now < after) return { advice: "wait", after };
   return { advice: "ready", after };
-};
-
-/**
- * Перенос части 2: последний урок до сегодня (часть 1 пройдена) был не раньше CARRY_DAYS дней назад,
- * его часть 2 не пройдена (или пройдена сегодня — карточка остаётся до конца дня), а часть 1 сегодня ещё не начата.
- * Более старые непройденные части 2 пропадают; часть 1 сегодня — новый урок, и перенос заканчивается.
- */
-export const carriedDay = (days: AppState["days"], today: string): string | null => {
-  if (days[today]?.morning) return null;
-  const last = Object.keys(days)
-    .filter((k) => k < today && days[k]?.morning)
-    .sort()
-    .pop();
-  if (!last || last < addDays(today, -CARRY_DAYS)) return null;
-  const e = days[last].evening;
-  return !e || dayOfIso(e.at) === today ? last : null;
 };
 
 /** Что показать на главной: какие части, номера уроков, совет для части 2, перенос со вчера. */

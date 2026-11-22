@@ -15,12 +15,13 @@ describe("словарь по урокам", () => {
     const g = wordLessons(s, deck);
     expect(g.map((x) => [x.no, x.day, x.words.length])).toEqual([
       [3, D(0), 2],
+      [2, D(-1), 0],
       [1, D(-2), 3],
       [null, null, deck.words.length - 5],
     ]);
-    expect(g[1].words.map((w) => w.id)).toEqual(deck.words.slice(0, 3).map((w) => w.id));
-    expect(g.map(groupKey)).toEqual([3, 1, "ahead"]);
-    expect(g.map(groupTitle)).toEqual(["Урок 3", "Урок 1", "Впереди"]);
+    expect(g[2].words.map((w) => w.id)).toEqual(deck.words.slice(0, 3).map((w) => w.id));
+    expect(g.map(groupKey)).toEqual([3, 2, 1, "ahead"]);
+    expect(g.map(groupTitle)).toEqual(["Урок 3", "Урок 2", "Урок 1", "Впереди"]);
   });
 
   it("все слова начаты — группы «Впереди» нет; ничего не начато — только она", () => {

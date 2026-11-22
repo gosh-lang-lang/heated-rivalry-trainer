@@ -32,8 +32,8 @@ const pagesOf = (state: AppState, deck: Deck, today: string): { lessons: Page[];
   const lesson = (g: LessonGroup): Page => ({
     key: groupKey(g),
     title: groupTitle(g),
-    sub: `${weekdayDay(g.day!, today)} · ${nWords(g.words.length)}`,
-    rowSub: `${dayMonth(g.day!, today)} · знакомо ${knownCount(g.words, state.srs)} из ${g.words.length}`,
+    sub: `${weekdayDay(g.day!, today)} · ${g.words.length ? nWords(g.words.length) : "Только повторение"}`,
+    rowSub: `${dayMonth(g.day!, today)} · ${g.words.length ? `знакомо ${knownCount(g.words, state.srs)} из ${g.words.length}` : "Только повторение"}`,
     words: g.words,
     today: g.day === today,
   });
@@ -171,7 +171,7 @@ export function Words({ deck, state, go, wide, lesson }: { deck: Deck; state: Ap
 
   /** «Пройти все слова»: урок и «Трудные» (у «Впереди» слова ещё не начаты — их вводит урок). */
   const drill = (p: Page) =>
-    p.key !== "ahead" && (
+    p.key !== "ahead" && p.words.length > 0 && (
       <button
         className="btn wide drill"
         onClick={() => go({ name: "session", kind: "drill", words: p.words.map((w) => w.id), title: p.title, from: "words", lesson: p.key })}
