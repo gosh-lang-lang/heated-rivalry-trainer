@@ -1,28 +1,4 @@
-# Heated Rivalry — тренажёр слов
+@AGENTS.md
 
-Описание проекта, модель данных, план и как устроено сейчас — **[PROJECT_BRIEF.md](PROJECT_BRIEF.md)**;
-история изменений и решения пользователя — [docs/CHANGELOG.md](docs/CHANGELOG.md).
-Сервер и выкатка — [deploy/README.md](deploy/README.md). Наблюдения из использования — [FEEDBACK.md](FEEDBACK.md).
-
-## Правила работы
-- **Документация — часть задачи.** Изменилось поведение, модель данных, решение пользователя или устройство
-  деплоя — в том же коммите: запись с датой сверху в docs/CHANGELOG.md (что и почему); если меняется то, как система
-  устроена, — поправить описание в PROJECT_BRIEF.md (без истории); если касается сервера — deploy/README.md.
-- **Тесты — часть задачи.** Новая логика в `app/src/core` или `app/server` — unit-тест рядом (`*.test.ts`);
-  новый сценарий в интерфейсе — e2e в `app/e2e`. Перед коммитом: `npm --prefix app run typecheck && npm --prefix app test && npm --prefix app run e2e`.
-  Покрытие unit-тестами: `npx --prefix app vitest run --coverage` (cli.ts, поток Kokoro, auth.ts и index.ts там 0% —
-  их проверяют подпроцессы и e2e `auth.spec.ts`, которые счётчик не видит).
-  Что где проверяется — PROJECT_BRIEF.md, раздел 6, «Тесты».
-- **На прод — только `deploy/deploy.sh`.** Он выкатывает ровно `origin/main`: проверяет typecheck/unit/e2e на чистой копии
-  этого коммита (git worktree), собирает из неё образ **на маке**, делает бэкап и отправляет на сервер только образ
-  (`docker save | ssh docker load`) и файлы для работы — без исходников; на сервере ничего не собирается.
-  Незакоммиченное в папке (в том числе правки параллельных сессий) на прод не попадает; незапушенные коммиты в main — отказ.
-  Руками не выкатывать. Версии локально / GitHub / прод: `deploy/deploy.sh status`. На каждый push в main GitHub
-  сам прогоняет проверки (`.github/workflows/ci.yml`).
-- **В папке могут параллельно работать другие сессии.** Коммить только свои файлы (`git add <файлы>`, не `git add -A`),
-  чужие незакоммиченные правки не трогать и не откатывать.
-- Коммиты — на русском, по одному на законченное изменение; push в `origin main` перед выкаткой.
-
-## Запуск локально
-`npm --prefix app run server` (API и озвучка, :8787) и `npm --prefix app run dev` (Vite, :5173, проксирует /api).
-Без passkey локально: `AUTH_DEV_BYPASS=1 npm --prefix app run server` — вход как пользователь `dev` (в production не работает).
+Claude-specific: everything shared lives in AGENTS.md; keep this file short.
+Do not run `git commit` or `git push` unless the orchestrator or owner asked.
