@@ -2,13 +2,14 @@
  * Скрипты деплоя (deploy/*.sh) — без сервера: ssh, npm и curl подменены записывающими заглушками.
  *   deploy.sh — выкатывает ровно origin/main (проверяет его чистую копию, на маке собирает образ, на сервер —
  *               только образ и deploy/, без исходников), ничего с красными тестами или сломанной сборкой.
+ *   deploy.sh edge — только регистрация сайта в vps-edge: без npm, сборки, бэкапа, образа и compose up.
  *   backup.sh — проверяет копию до ротации, хранит KEEP последних дней.
  */
 import { execFileSync, spawnSync } from "node:child_process";
 import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { STATE_MAX_BYTES } from "./progress.ts";
 
@@ -34,11 +35,19 @@ const fakeBin = (root: string) => {
   script(join(bin, "npm"), `echo "npm $*" >> "${log}"; [[ -n "\${FAKE_NPM_FAIL:-}" && "$*" == *"$FAKE_NPM_FAIL"* ]] && exit 1; exit 0`);
   script(
     join(bin, "ssh"),
-    `if [[ "$*" == *"docker inspect"* ]]; then echo "\${FAKE_PROD_REV:-unknown} healthy"; exit 0; fi
-if [[ "\${@: -1}" == *"tar -x"* ]]; then cat > "${root}/shipped.tar"; else cat > /dev/null; fi
-echo "ssh $(echo "\${@: -1}" | tr '\\n' ' ')" >> "${log}"`,
+    `last="\${@: -1}"
+if [[ "$last" == *"edge=ready"* ]]; then echo "ssh edge-ready" >> "${log}"; [[ "\${FAKE_EDGE_READY:-1}" == 0 ]] && echo edge=not-ready || echo edge=ready; exit 0; fi
+if [[ "$last" == *"StartedAt"* ]]; then n=$(cat "${root}/started.n" 2>/dev/null || echo 0); echo $((n+1)) > "${root}/started.n"; echo "started-\${FAKE_STARTED_CHANGES:+$n}"; exit 0; fi
+if [[ "$*" == *"docker inspect"* ]]; then echo "\${FAKE_PROD_REV:-unknown} healthy"; exit 0; fi
+if [[ "$last" == *"list-unit-files"* ]]; then echo "ssh $last" >> "${log}"; echo "\${FAKE_EDGE_UNITS:-0}"; exit 0; fi
+if [[ "$last" == *"edge register"* ]]; then
+  cat > "${root}/edge.tar"; echo "ssh $last" >> "${log}"
+  rc="\${FAKE_EDGE_RC:-0}"; [[ "$rc" == 0 ]] && echo "edge register heated-rivalry: \${FAKE_EDGE_STATUS:-OK}" || echo "edge register heated-rivalry: FAILED"; exit "$rc"
+fi
+if [[ "$last" == *"tar -x"* ]]; then cat > "${root}/shipped.tar"; else cat > /dev/null; fi
+echo "ssh $(echo "$last" | tr '\\n' ' ')" >> "${log}"`,
   );
-  script(join(bin, "curl"), `if [[ "$*" == *api/health* ]]; then echo 200; else echo 302; fi`);
+  script(join(bin, "curl"), `if [[ "$*" == *api/health* || "$*" == */login* ]]; then echo 200; else echo 302; fi`);
   // docker на маке: сборка (FAKE_DOCKER_FAIL=build — падает), save — байты образа; zstd — как есть
   script(
     join(bin, "docker"),
@@ -60,7 +69,10 @@ describe("deploy.sh", () => {
     git("checkout", "-q", "-B", "main");
     mkdirSync(join(root, "work/deploy"));
     copyFileSync(join(DEPLOY, "deploy.sh"), join(root, "work/deploy/deploy.sh"));
-    for (const f of ["compose.yaml", "edge-connect.sh", "caddy-site.conf", "caddy-install.sh", "caddy-reload.sh", "server-backup.sh"]) writeFileSync(join(root, "work/deploy", f), "#\n");
+    for (const f of ["compose.yaml", "server-backup.sh", "edge/tenant.conf", "edge/site.caddy"]) {
+      mkdirSync(dirname(join(root, "work/deploy", f)), { recursive: true });
+      writeFileSync(join(root, "work/deploy", f), "#\n");
+    }
     mkdirSync(join(root, "work/app"));
     writeFileSync(join(root, "work/app/secret-source.ts"), "исходник — на сервер не уходит");
     const f = fakeBin(root);
@@ -77,6 +89,8 @@ describe("deploy.sh", () => {
     };
     return { root, git, run, calls: f.calls };
   };
+
+  const edgeTar = (root: string) => execFileSync("tar", ["-tf", join(root, "edge.tar")], { encoding: "utf8" }).trim().split("\n").filter((n) => !n.endsWith("/")).sort();
 
   const shipped = (root: string) => execFileSync("tar", ["-tf", join(root, "shipped.tar")], { encoding: "utf8" }).trim().split("\n").sort();
 
@@ -104,6 +118,11 @@ describe("deploy.sh", () => {
     const at = (p: string) => lines.findIndex((l) => l.startsWith(p));
     expect(at("docker buildx")).toBeLessThan(at("backup"));
     expect(at("backup")).toBeLessThan(at("ssh"));
+    // сайт регистрируется в vps-edge после бэкапа, таймер снимается до подмены deploy/ и загрузки образа
+    const order = ["backup", "ssh /opt/vps-edge/bin/edge register heated-rivalry", "ssh systemctl disable --now heated-rivalry-edge.timer", "ssh set -e; D=/opt/heated-rivalry", "ssh zstd -d"].map(at);
+    expect(order.every((i) => i >= 0)).toBe(true);
+    expect([...order].sort((a, b) => a - b)).toEqual(order);
+    expect(edgeTar(root)).toEqual(["deploy/edge/site.caddy", "deploy/edge/tenant.conf"]);
     // на сервер: deploy/ (без исходников), образ через docker load, запуск без сборки
     expect(lines.some((l) => l.startsWith("ssh ") && l.includes("docker load"))).toBe(true);
     expect(lines.some((l) => l.startsWith(`docker save heated-rivalry:${rev}`))).toBe(true);
@@ -111,7 +130,8 @@ describe("deploy.sh", () => {
     expect(up).toContain(`TAG=${rev} docker compose up -d --no-build`);
     expect(lines.some((l) => l.startsWith("ssh ") && /docker (compose )?build|--build\b/.test(l))).toBe(false); // на сервере не собираем
     // на сервер — только файлы для работы: ни исходников app/, ни скриптов выкатки и бэкапа
-    expect(shipped(root)).toEqual(["deploy/", ...["caddy-install.sh", "caddy-reload.sh", "caddy-site.conf", "compose.yaml", "edge-connect.sh", "server-backup.sh"].map((f) => `deploy/${f}`)]);
+    expect(shipped(root)).toEqual(["deploy/", "deploy/compose.yaml", "deploy/server-backup.sh"]);
+    expect(calls()).not.toContain("heated-rivalry-backup");
     expect(git("worktree", "list").split("\n")).toHaveLength(1); // временная копия убрана
   });
 
@@ -174,6 +194,107 @@ describe("deploy.sh", () => {
     expect(r.out).toContain("на проде 0000000");
   });
 
+  it("edge не готов или отказал — выкатка не идёт дальше: ни регистрации, ни подмены, ни образа", () => {
+    const a = repo();
+    const r = a.run({ FAKE_EDGE_READY: "0", FAKE_PROD_REV: a.git("rev-parse", "HEAD") });
+    expect(r.code).toBe(1);
+    expect(a.calls()).not.toContain("edge register");
+    expect(a.calls()).not.toContain("tar -x");
+    expect(a.calls()).not.toContain("docker load");
+    const b = repo();
+    const r5 = b.run({ FAKE_EDGE_RC: "5", FAKE_PROD_REV: b.git("rev-parse", "HEAD") });
+    expect(r5.code).toBe(1);
+    expect(r5.out).toContain("edge откатил");
+    expect(b.calls()).not.toContain("systemctl");
+    expect(b.calls()).not.toContain("tar -x");
+    expect(b.calls()).not.toContain("docker load");
+  });
+
+  describe("edge", () => {
+    it("только регистрация: без npm, сборки, бэкапа, образа и compose up; порядок register → снятие таймера → подмена deploy/", () => {
+      const { root, git, run, calls } = repo();
+      const rev = git("rev-parse", "HEAD");
+      const r = run({ FAKE_PROD_REV: rev }, "edge");
+      expect(r.code, r.out).toBe(0);
+      expect(r.out).toContain(`✓ edge: heated-rivalry зарегистрирован в vps-edge (${rev.slice(0, 7)})`);
+      const c = calls();
+      for (const no of ["npm", "docker buildx", "docker save", "docker load", "backup", "compose up"]) expect(c).not.toContain(no);
+      const lines = c.trim().split("\n");
+      const at = (p: string) => lines.findIndex((l) => l.startsWith(p));
+      const order = ["ssh edge-ready", "ssh /opt/vps-edge/bin/edge register heated-rivalry", "ssh systemctl disable --now heated-rivalry-edge.timer", "ssh set -e; D=/opt/heated-rivalry", "ssh systemctl list-unit-files"].map(at);
+      expect(order.every((i) => i >= 0)).toBe(true);
+      expect([...order].sort((a, b) => a - b)).toEqual(order);
+      expect(edgeTar(root)).toEqual(["deploy/edge/site.caddy", "deploy/edge/tenant.conf"]);
+      expect(shipped(root)).toEqual(["deploy/", "deploy/compose.yaml", "deploy/server-backup.sh"]);
+      expect(c).not.toContain("heated-rivalry-backup");
+    });
+
+    it("edge=not-ready — отказ: ни регистрации, ни подмены", () => {
+      const { run, calls } = repo();
+      const r = run({ FAKE_EDGE_READY: "0" }, "edge");
+      expect(r.code).toBe(1);
+      expect(calls()).not.toContain("edge register");
+      expect(calls()).not.toContain("tar -x");
+    });
+
+    it("edge register завершился кодом 5 — отказ: таймер не снят, deploy/ не подменён", () => {
+      const { run, calls } = repo();
+      const r = run({ FAKE_EDGE_RC: "5" }, "edge");
+      expect(r.code).toBe(1);
+      expect(calls()).not.toContain("systemctl");
+      expect(calls()).not.toContain("tar -x");
+    });
+
+    it("edge exit 9 — выход с кодом 9, таймер не снят, deploy/ не подменён", () => {
+      const { run, calls } = repo();
+      const r = run({ FAKE_EDGE_RC: "9" }, "edge");
+      expect(r.code).toBe(9);
+      expect(r.out).toContain("КРИТИЧНО");
+      expect(calls()).not.toContain("systemctl");
+      expect(calls()).not.toContain("tar -x");
+    });
+
+    it("OFFLINE при коде 0 — отказ", () => {
+      const { run, calls } = repo();
+      const r = run({ FAKE_EDGE_STATUS: "OFFLINE" }, "edge");
+      expect(r.code).toBe(1);
+      expect(calls()).not.toContain("systemctl");
+    });
+
+    it("потеря ssh (255) — СОСТОЯНИЕ НЕИЗВЕСТНО", () => {
+      const { run, calls } = repo();
+      const r = run({ FAKE_EDGE_RC: "255" }, "edge");
+      expect(r.code).toBe(1);
+      expect(r.out).toContain("СОСТОЯНИЕ НЕИЗВЕСТНО");
+      expect(calls()).not.toContain("tar -x");
+    });
+
+    it("контейнер приложения перезапускался — ошибка", () => {
+      const { run } = repo();
+      const r = run({ FAKE_STARTED_CHANGES: "1" }, "edge");
+      expect(r.code).toBe(1);
+      expect(r.out).toContain("перезапускался");
+    });
+
+    it("остались юниты heated-rivalry-edge* — ошибка", () => {
+      const { run } = repo();
+      const r = run({ FAKE_EDGE_UNITS: "2" }, "edge");
+      expect(r.code).toBe(1);
+      expect(r.out).toContain("остались юниты");
+    });
+
+    it("незапушенный коммит — отказ до любого ssh", () => {
+      const { root, git, run, calls } = repo();
+      writeFileSync(join(root, "work/new.txt"), "x");
+      git("add", "-A");
+      git("commit", "-qm", "local only");
+      const r = run({}, "edge");
+      expect(r.code).toBe(1);
+      expect(r.out).toContain("незапушенных коммитов");
+      expect(calls()).toBe("");
+    });
+  });
+
   it("status сравнивает локальную версию, GitHub и прод", () => {
     const { root, git, run } = repo();
     const rev = git("rev-parse", "HEAD");
@@ -233,12 +354,22 @@ describe("backup.sh", () => {
   });
 });
 
-describe("caddy-site.conf", () => {
+describe("deploy/edge", () => {
   it("Caddy пропускает прогресс того размера, что принимает сервер (иначе синхронизация молча встанет)", () => {
-    const m = readFileSync(join(DEPLOY, "caddy-site.conf"), "utf8").match(/max_size\s+(\d+)(KB|MB)/);
+    const m = readFileSync(join(DEPLOY, "edge/site.caddy"), "utf8").match(/max_size\s+(\d+)(KB|MB)/);
     expect(m).not.toBeNull();
     const bytes = Number(m![1]) * (m![2] === "MB" ? 1024 * 1024 : 1024);
     expect(bytes).toBeGreaterThanOrEqual(STATE_MAX_BYTES);
+  });
+
+  it("проверки здоровья в tenant.conf — ровно две, как в миграционном bundle vps-edge", () => {
+    const health = readFileSync(join(DEPLOY, "edge/tenant.conf"), "utf8")
+      .split("\n")
+      .filter((l) => l.startsWith("health="));
+    expect(health).toEqual([
+      "health=https://heated-rivalry-trainer.spill-the-tea.xyz/api/health 200",
+      "health=https://heated-rivalry-trainer.spill-the-tea.xyz/login 200",
+    ]);
   });
 });
 

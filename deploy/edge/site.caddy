@@ -1,10 +1,4 @@
-# >>> heated-rivalry site block (managed from /opt/heated-rivalry; delete this block to roll back) >>>
 heated-rivalry-trainer.spill-the-tea.xyz {
-	tls {
-		issuer acme {
-			disable_tlsalpn_challenge
-		}
-	}
 	header {
 		-Server
 		-Via
@@ -20,8 +14,7 @@ heated-rivalry-trainer.spill-the-tea.xyz {
 	}
 
 	# Вход — в приложении (passkey): без сессии сервер отдаёт только страницу входа, API — 401.
-	# Закрыть сайт целиком: заменить две строки ниже на `respond 500`, затем caddy-reload.sh
+	# Закрыть сайт целиком (аварийно): на сервере /opt/vps-edge/bin/edge unregister heated-rivalry; вернуть — deploy/deploy.sh edge
 	encode zstd gzip
 	reverse_proxy heated-rivalry:8787
 }
-# <<< heated-rivalry site block <<<

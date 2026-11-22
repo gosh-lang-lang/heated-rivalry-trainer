@@ -19,7 +19,7 @@ services:
     networks: [edge]
 
 networks:
-  # Внутренняя сеть без выхода наружу: в ней только приложение и общий Caddy (подключается bin/edge-connect.sh)
+  # Внутренняя сеть без выхода наружу: в ней только приложение и общий Caddy vps-edge (vps-edge сам подключает свой контейнер к этой сети)
   edge:
     name: heated_rivalry_edge
     internal: true
