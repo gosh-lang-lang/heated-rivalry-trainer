@@ -1,18 +1,17 @@
 # Деплой на VPS
 
-Сервер: Docker, общий Caddy проекта spillthetea (`spillthetea-caddy-1`, порты 80/443, Let's Encrypt HTTP-01).
+Сервер: Docker, общий edge vps-edge (контейнер `vps-edge-caddy`, порты 80/443, Let's Encrypt HTTP-01).
 Проект живёт в `/opt/heated-rivalry`. **Исходников и сборки на сервере нет:** образ собирается на маке (`deploy/deploy.sh`)
 и приходит готовым (`docker save | zstd | ssh docker load`). На сервере только то, что нужно для работы:
 - образы `heated-rivalry:<коммит>` — текущий (он же `:latest`) и один предыдущий, для отката;
-- `/opt/heated-rivalry/deploy/` — `compose.yaml`, `edge-connect.sh`, `caddy-site.conf`, `caddy-install.sh`, `caddy-reload.sh`,
-  `server-backup.sh` (список — `RUNTIME` в `deploy.sh`); юниты systemd — в `/etc/systemd/system/heated-rivalry-*`;
+- `/opt/heated-rivalry/deploy/` — `compose.yaml`, `server-backup.sh` (список — `RUNTIME` в `deploy.sh`); юниты systemd — в `/etc/systemd/system/heated-rivalry-*`;
 - `/opt/heated-rivalry/backups/` — ежедневные копии базы на сервере (см. «Бэкапы»);
 - тома `heated_rivalry_auth` (база) и `heated_rivalry_tts` (кэш озвучки).
 
 - Контейнер `heated-rivalry` (порт 8787 только внутри сети `heated_rivalry_edge`, сеть `internal` — без интернета).
 - Модель Kokoro зашита в образ, кэш озвучки — том `heated_rivalry_tts`.
-- Caddy подключается к сети таймером `heated-rivalry-edge.timer` (файлы spillthetea/motivator не меняются).
-- Сайт — помеченный блок в `/opt/spillthetea/caddy/Caddyfile` (текст — `deploy/caddy-site.conf`).
+- Caddy подключается к сети сам vps-edge (таймера у проекта нет).
+- Сайт регистрируется в vps-edge из `deploy/edge/` (`tenant.conf` и `site.caddy`): `/opt/vps-edge/bin/edge register heated-rivalry`.
 - **Вход только по passkey.** Регистрации нет: пользователей и одноразовые ссылки привязки создаёт команда на сервере.
   База — том `heated_rivalry_auth` (`/data/auth/auth.db`): пользователи, passkey, сессии **и прогресс** (таблица `progress`).
   Прогресс живёт на сервере, браузер держит только кэш — **этот том терять нельзя**, см. «Бэкапы».
@@ -95,18 +94,16 @@ ssh root@195.133.197.130 'docker image ls heated-rivalry'     # текущий �
 ssh root@195.133.197.130 'cd /opt/heated-rivalry/deploy && TAG=<предыдущий коммит> docker compose up -d --no-build --pull never'
 ```
 
-## Подключить домен
-После DNS-записи `A heated-rivalry-trainer → 195.133.197.130`: `/opt/heated-rivalry/deploy/caddy-install.sh`
-(сам проверит, что DNS уже указывает на сервер; если нет — ничего не меняет). Откат: `caddy-install.sh --remove`.
-
-## Изменился `deploy/caddy-site.conf`
-`deploy.sh` Caddy не трогает. После выкатки — `/opt/heated-rivalry/deploy/caddy-install.sh` (заменит помеченный блок
-и перезагрузит Caddy; при ошибке вернёт прежний). Предел тела запроса (`max_size`) — не ниже `STATE_MAX_BYTES`
+## Подключить домен / изменился `deploy/edge/`
+Домен: после DNS-записи `A heated-rivalry-trainer → 195.133.197.130` — то же, что при изменении `deploy/edge/`
+(vps-edge сам проверит, что DNS уже указывает на сервер; если нет — ничего не меняет). Откат: `ssh root@195.133.197.130 /opt/vps-edge/bin/edge unregister heated-rivalry`.
+После push — `deploy/deploy.sh edge` (без перезапуска приложения): vps-edge проверит файлы, перезагрузит Caddy и при ошибке
+вернёт прежнюю регистрацию. Обычная выкатка `deploy.sh` регистрирует то же самое. Предел тела запроса (`max_size`) — не ниже `STATE_MAX_BYTES`
 сервера (2 МБ), иначе синхронизация прогресса молча встанет, когда он перерастёт предел.
 
 ## Закрыть сайт целиком (аварийно)
-В блоке heated-rivalry в Caddyfile заменить `encode`/`reverse_proxy` на `respond 500`, затем `caddy-reload.sh`.
+`ssh root@195.133.197.130 /opt/vps-edge/bin/edge unregister heated-rivalry`; вернуть — `deploy/deploy.sh edge`.
 
 ## Откатить
-`caddy-install.sh --remove`; `systemctl disable --now heated-rivalry-edge.timer`;
+`ssh root@195.133.197.130 /opt/vps-edge/bin/edge unregister heated-rivalry`;
 `docker compose -f /opt/heated-rivalry/deploy/compose.yaml down`; `systemctl disable --now heated-rivalry-backup.timer` (том с кэшем озвучки — `docker volume rm heated_rivalry_tts`).

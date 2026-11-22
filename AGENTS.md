@@ -58,8 +58,7 @@ Cross-project owner rules (the host is shared):
   (tests deploy.sh/backup scripts with stubbed ssh/npm). `app/e2e/` Playwright. `app/public/words/<word>/*.webp` word art.
   `app/scripts/word-art.ts` art generation. `app/login.html`, `app/art.html`, `app/index.html` entry pages.
 - `app/Dockerfile` — multi-stage, built from the repo root (`-f app/Dockerfile .`); bakes the Kokoro model into the image.
-- `deploy/` — `deploy.sh`, `compose.yaml`, edge files (`caddy-site.conf`, `caddy-install.sh`, `caddy-reload.sh`,
-  `edge-connect.sh`, `heated-rivalry-edge.{service,timer}`), backups (`backup.sh`, `backup-install.sh`, `server-backup.sh`,
+- `deploy/` — `deploy.sh`, `compose.yaml`, the vps-edge bundle `edge/` (`tenant.conf`, `site.caddy`), backups (`backup.sh`, `backup-install.sh`, `server-backup.sh`,
   `heated-rivalry-backup.{service,timer}`), `README.md`.
 - `design/` — mockups and the ChatGPT brief (reference only). `docs/` — CHANGELOG.md. `words.json` — the single source of words.
 - `.claude/launch.json` — dev server configs (`app` :5173, `server` :8787).
@@ -99,8 +98,7 @@ Server env: `PORT` (8787), `AUTH_DB`, `AUTH_ORIGIN`, `AUTH_DEV_BYPASS`, `DEFAULT
   `docker buildx build --platform linux/amd64` on the Mac (colima) tagged `heated-rivalry:<commit>` with
   `org.opencontainers.image.revision`, `deploy/backup.sh`, ship `RUNTIME` files and the image, `docker compose up -d --no-build
   --pull never`, wait for healthy, check `/api/health`=200 and `/`=302 (to `/login`), keep current + one previous image.
-- `RUNTIME` (the only deploy files that reach the server, in `deploy.sh`): `compose.yaml edge-connect.sh caddy-site.conf
-  caddy-install.sh caddy-reload.sh server-backup.sh`. Adding a file to `deploy/` that the server needs means extending `RUNTIME`.
+- `RUNTIME` (the only deploy files that reach the server, in `deploy.sh`): `compose.yaml server-backup.sh`. Adding a file to `deploy/` that the server needs means extending `RUNTIME`.
 - Server: root@195.133.197.130 (shared VPS, Ubuntu 24.04, 3 vCPU, ~3.8 GiB RAM; check `df -h /` before big steps), project in
   `/opt/heated-rivalry`, container `heated-rivalry`, mem 1536m / 1.5 CPU, network `heated_rivalry_edge` (internal), volumes
   `heated_rivalry_auth` (SQLite: users, passkeys, sessions, progress) and `heated_rivalry_tts` (voice cache).
@@ -117,21 +115,19 @@ Server env: `PORT` (8787), `AUTH_DB`, `AUTH_ORIGIN`, `AUTH_DEV_BYPASS`, `DEFAULT
   (only our own `heated-rivalry:*` tags, by name); never run a global `docker system prune`. Other tenants: spillthetea,
   motivator, vps-health, vps-mail, vps-edge.
 
-## Edge (as of 2026-11-22, until the vps-edge cutover)
-- Caddy is the container `spillthetea-caddy-1` from the spillthetea project (80/443, Let's Encrypt HTTP-01, TLS-ALPN disabled).
-  `deploy.sh` does not touch Caddy. `deploy/caddy-install.sh` appends/replaces the marked block from `deploy/caddy-site.conf`
-  (`# >>> heated-rivalry site block ... <<<`) in `/opt/spillthetea/caddy/Caddyfile` (single-file bind), after checking that DNS
-  already points at the server, backs up to `Caddyfile.bak.heated-rivalry`, reloads, reverts on error. `--remove` rolls back.
-  `caddy-reload.sh` just reloads. Run `caddy-install.sh` on the server after changing `caddy-site.conf`.
-- `heated-rivalry-edge.timer` (every 60 s) runs `edge-connect.sh`, which attaches `spillthetea-caddy-1` to `heated_rivalry_edge`
-  if the connection was lost (Caddy recreation drops it). `request_body max_size` (3MB) must stay >= server `STATE_MAX_BYTES` (2 MB);
-  a test in `deploy-scripts.test.ts` checks it.
-- **Planned:** move Caddy into the vps-edge project (repo flattened-duck/vps-edge, local ~/dev/vps-edge, server /opt/vps-edge).
-  This repo becomes a tenant: `site.caddy` + `tenant.conf` registered via `/opt/vps-edge/bin/edge register heated-rivalry`
-  (validate, graceful reload, health compare, auto-revert), a `deploy.sh edge` subcommand, the edge timer retired and
-  `caddy-*`/`edge-connect.sh` removed. Specification: `~/dev/vps-edge/docs/stages/stage2-4-tenants-contract.md`, stage 4
-  (section 5). Not applied yet; the 80/443 cutover needs an explicit owner yes. Edge-only commits may go straight to main
-  (reviewed first, applied on the VPS at once). Do not hand-edit the edge files beyond that contract.
+## Edge (vps-edge tenant; applied on the VPS only at Phase C3 of the vps-edge cutover)
+- Caddy is the shared `vps-edge-caddy` (repo flattened-duck/vps-edge, local ~/dev/vps-edge, server /opt/vps-edge). This repo is a
+  tenant: `deploy/edge/{tenant.conf,site.caddy}` are registered with `/opt/vps-edge/bin/edge register heated-rivalry` over ssh
+  (validate, graceful reload, health compare, auto-revert); vps-edge attaches its container to `heated_rivalry_edge` itself.
+  Never write under `/opt/vps-edge` from here. Until the 80/443 cutover is done, prod still runs on the spillthetea Caddy
+  `spillthetea-caddy-1`; the cutover needs an explicit owner yes.
+- `deploy.sh` registers with the edge after the backup and before the RUNTIME swap (`edge_ready`, `edge_register`), then retires
+  the old `heated-rivalry-edge.{timer,service}` on the server (`retire_edge_timer`, idempotent). `deploy.sh edge` does only that
+  for origin/main: no npm, build, backup, image or `compose up`; the app container is not restarted. Edge exit 9 makes deploy.sh exit 9.
+- `request_body max_size` (3MB) in `deploy/edge/site.caddy` must stay >= server `STATE_MAX_BYTES` (2 MB); a test in
+  `deploy-scripts.test.ts` checks it, and checks the two `health=` lines of `tenant.conf`.
+- Specification: `~/dev/vps-edge/docs/stages/stage2-4-tenants-contract.md`, stage 4 (section 5). Edge-only commits may go straight
+  to main (reviewed first, applied on the VPS at once). Do not hand-edit the edge files beyond that contract.
 
 ## Gotchas
 - Docs in this repo are Russian; match their style when the rules above require a docs update, but never rewrite them wholesale.
