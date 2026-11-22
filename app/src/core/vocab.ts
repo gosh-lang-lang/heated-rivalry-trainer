@@ -1,5 +1,5 @@
 import { addDays } from "./dates";
-import { lessonNo } from "./lesson";
+import { lessonHistory, lessonIdentity, lessonNo } from "./curriculum";
 import { HARD_WRONG } from "./srs";
 import { MONTHS_GEN } from "./text";
 import type { AppState, Deck, Word } from "./types";
@@ -15,6 +15,8 @@ export interface LessonGroup {
   /** день урока YYYY-MM-DD; null — «Впереди» */
   day: string | null;
   words: Word[];
+  season: number | null;
+  pos: number | null;
 }
 
 export const wordLessons = (state: AppState, deck: Deck): LessonGroup[] => {
@@ -25,10 +27,12 @@ export const wordLessons = (state: AppState, deck: Deck): LessonGroup[] => {
     if (!d) ahead.push(w);
     else byDay.set(d, [...(byDay.get(d) ?? []), w]);
   }
+  // Уроки только с повторениями тоже имеют запись; незаконченный первый урок пока виден по intro.
+  for (const l of lessonHistory(state, deck, "")) if (!byDay.has(l.day)) byDay.set(l.day, []);
   const groups: LessonGroup[] = [...byDay.entries()]
     .sort(([a], [b]) => (a < b ? 1 : -1))
-    .map(([day, words]) => ({ no: lessonNo(state.days, day), day, words }));
-  if (ahead.length) groups.push({ no: null, day: null, words: ahead });
+    .map(([day, words]) => ({ ...lessonIdentity(lessonNo(state.days, day)), day, words }));
+  if (ahead.length) groups.push({ no: null, day: null, words: ahead, season: null, pos: null });
   return groups;
 };
 

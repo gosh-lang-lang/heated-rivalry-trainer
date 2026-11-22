@@ -49,7 +49,7 @@ export const reviewAccuracy = (state: AppState, today: string, days = ACC_DAYS) 
 export interface NewToday {
   /** сколько новых слов дать в части 1 */
   n: number;
-  /** почему меньше или больше настройки — для главной; пусто, если по настройке */
+  /** почему меньше настройки — для главной; пусто, если по настройке */
   why: string;
   /** повторений на сегодня */
   due: number;
@@ -58,7 +58,7 @@ export interface NewToday {
 /**
  * Сколько новых слов сегодня. Учитель решает сам:
  * - очередь повторений больше QUEUE_STOP — новых нет; больше QUEUE_SLOW — не больше одного блока;
- * - точность на повторениях за неделю ниже 80% — один блок; выше 95% — на блок больше настройки.
+ * - точность на повторениях за неделю ниже 80% — один блок; настройка всегда остаётся верхней границей.
  */
 export const newToday = (deck: Deck, state: AppState, today: string): NewToday => {
   const due = dueList(deck.words, state.srs, today).length;
@@ -70,7 +70,6 @@ export const newToday = (deck: Deck, state: AppState, today: string): NewToday =
   if (acc.pct !== null && acc.total >= ACC_MIN) {
     const p = Math.round(acc.pct * 100);
     if (acc.pct < ACC_LOW && set > BLOCK) [n, why] = [BLOCK, `на повторениях ${p}% верно — сбавим темп`];
-    else if (acc.pct >= ACC_HIGH && set < MAX_NEW) [n, why] = [set + BLOCK, `на повторениях ${p}% верно — можно больше`];
   }
   if (due > QUEUE_STOP) [n, why] = [0, `сначала разберём повторения`];
   else if (due > QUEUE_SLOW && n > BLOCK) [n, why] = [BLOCK, `много повторений — сегодня только ${BLOCK} новых`];

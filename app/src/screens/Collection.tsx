@@ -1,5 +1,6 @@
 import type { View } from "../App";
 import { SEASON, seasonView } from "../core/cards";
+import { seasonRange } from "../core/curriculum";
 import { todayKey } from "../core/dates";
 import type { AppState, Deck } from "../core/types";
 import { Back, Lock } from "../lib/icons";
@@ -47,7 +48,7 @@ export function Collection({ deck, state, go, season }: { deck: Deck; state: App
           <p>
             {current
               ? `Следующая — ${cardNo(sv.next)}, ${sv.todayDone ? `после урока ${sv.nextLesson} (завтра)` : `после части 2 урока ${sv.nextLesson}`}. На обороте каждой — слова её урока.`
-              : `Сезон ${shown} собран целиком. На обороте каждой карточки — слова её урока.`}
+              : `Сезон ${shown} · получено ${got.length} из ${SEASON} карточек. На обороте каждой — слова её урока.`}
           </p>
         </section>
         <ol className="cgrid" aria-label={`Сезон ${shown}`}>
@@ -66,7 +67,7 @@ export function Collection({ deck, state, go, season }: { deck: Deck; state: App
               );
             const gold = pos === SEASON;
             const next = current && pos === sv.next;
-            const lesson = sv.nextLesson + (pos - sv.next);
+            const lesson = seasonRange(shown).start + pos - 1;
             return (
               <li key={pos} className={next ? "nx" : "lk"} aria-label={`${cardNo(pos)}: ${next ? "следующая" : "закрыта"}`}>
                 <CardLocked pos={pos} gold={gold} next={next} />

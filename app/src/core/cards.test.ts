@@ -66,9 +66,9 @@ describe("карточки-награды", () => {
     expect(cards[9]).toMatchObject({ no: 10, season: 1, pos: 10, gold: true, name: "Финал сезона", cat: "Финал" });
     expect(cards[10]).toMatchObject({ no: 11, season: 2, pos: 1, gold: false });
     expect(cards.filter((c) => c.gold)).toHaveLength(1);
-    expect(currentSeason(cards)).toBe(2);
-    expect(currentSeason(cards.slice(0, 9))).toBe(1);
-    expect(currentSeason(cards.slice(0, 10))).toBe(2);
+    expect(currentSeason(days, D(12))).toBe(2);
+    expect(currentSeason(Object.fromEntries(Object.entries(days).slice(0, 9)), D(9))).toBe(1);
+    expect(currentSeason(Object.fromEntries(Object.entries(days).slice(0, 10)), D(10))).toBe(2);
   });
 
   it("номера: сезон, место в сезоне, золото", () => {
@@ -81,7 +81,7 @@ describe("карточки-награды", () => {
     expect(SEASON1).toHaveLength(SEASON);
     expect(SEASON1.slice(0, 4).map((c) => c.name)).toEqual(["Шейн Холландер", "Илья Розанов", "Раздевалка", "«Вояжёры»"]);
     expect(cardSubject(10)).toMatchObject({ cat: "Финал", name: "Финал сезона", art: "cup" });
-    expect(cardSubject(12)).toMatchObject({ name: "Сезон 2 · №02" });
+    expect(cardSubject(12)).toMatchObject({ name: "Сезон 2 · карточка №02" });
     expect(cardSubject(20)).toMatchObject({ cat: "Финал", name: "Финал сезона 2" });
     expect(cardSubject(37).cat).not.toBe("Финал");
   });

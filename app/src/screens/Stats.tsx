@@ -29,7 +29,7 @@ export function StatsContent({ deck, state }: { deck: Deck; state: AppState }) {
       : acc.pct! < ACC_LOW
         ? "Слишком быстро — новых слов будет меньше"
         : acc.pct! >= ACC_HIGH
-          ? "Слишком легко — новых слов будет больше"
+          ? "Высокая точность — темп в пределах настройки"
           : "В цели 80–95% — темп как в настройке";
   const sk = streak(state.days, t);
 

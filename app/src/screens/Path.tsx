@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
 import type { View } from "../App";
 import { SEASON, seasonView, type LessonCard, type SeasonView } from "../core/cards";
+import type { LessonRecord } from "../core/curriculum";
 import { lessonStatus, resumeLabel, type LessonPart, type LessonStatus } from "../core/lesson";
 import { MAX_REVIEW, newToday } from "../core/plans";
 import { dayParts, streak, unseen } from "../core/srs";
@@ -176,6 +177,15 @@ function DoneBody({ card, go }: { card: LessonCard; go: (v: View) => void }) {
   );
 }
 
+/** Пропущенная часть 2 остаётся доступной для просмотра вместе с результатом части 1. */
+function MissedBody({ lesson, go }: { lesson: LessonRecord; go: (v: View) => void }) {
+  return <>
+    <div className="lp-head"><div><b>Урок {lesson.no}</b><span>{dayLine(lesson.day)}</span></div></div>
+    <p>Часть 1: {doneLine(lesson.part1)}. Часть 2 пропущена. Карточка не получена.</p>
+    <button className="btn ghost wide" onClick={() => go({ name: "words", lesson: lesson.no })}>Слова урока</button>
+  </>;
+}
+
 /** Ширина элемента (следит за изменением). */
 function useWidth<T extends HTMLElement>(init: number): [RefObject<T | null>, number] {
   const ref = useRef<T>(null);
@@ -256,34 +266,30 @@ function Marks({
   const { W, P } = geo;
   const cur = sv.next;
   const out: ReactNode[] = [];
-  const lessonAt = (pos: number) => sv.got.find((c) => c.pos === pos)?.lesson ?? sv.nextLesson + (pos - cur);
+  const lessonAt = (pos: number) => sv.progress.start + pos - 1;
 
   for (let n = 1; n <= SEASON; n++) {
     const [x, y] = P(n);
-    const st = n < cur ? "done" : n === cur ? "cur" : "lock";
+    const record = sv.progress.lessons[n - 1].record;
+    const st = n === cur ? "cur" : record?.complete ? "done" : n < cur ? "missed" : "lock";
     const gold = n === SEASON;
     const label =
-      st === "done" ? `Урок ${lessonAt(n)} · пройден` : st === "cur" ? `Урок ${lessonAt(n)} · ${sv.todayDone ? "завтра" : "сейчас"}` : `Урок ${lessonAt(n)} · закрыт`;
+      st === "done" ? `Урок ${lessonAt(n)} · пройден` : st === "missed" ? `Урок ${lessonAt(n)} · часть 2 пропущена` : st === "cur" ? `Урок ${lessonAt(n)} · ${sv.todayDone ? "завтра" : "сейчас"}` : `Урок ${lessonAt(n)} · закрыт`;
     out.push(
       <button
         key={`n${n}`}
         className={`node ${st === "lock" && gold ? "final" : st}${gold ? " gold" : ""}${sel === n ? " sel" : ""}`}
         style={{ left: x, top: y }}
         aria-label={label}
-        aria-expanded={st === "done" ? sel === n : undefined}
+        aria-expanded={st === "done" || st === "missed" ? sel === n : undefined}
         disabled={st === "lock"}
         data-pos={n}
-        onClick={() => st === "done" && onNode(n)}
+        onClick={() => (st === "done" || st === "missed") && onNode(n)}
       >
-        {st === "lock" && gold ? (
-          <span className="cup" aria-hidden="true">🏆</span>
-        ) : (
-          <>
-            <b>{n}</b>
-            {st === "done" && <i className="ok"><Check /></i>}
-            {st === "lock" && <i className="lk"><Lock /></i>}
-          </>
-        )}
+        <b>{lessonAt(n)}</b>
+        {gold && <span className="node-cup" aria-hidden="true">🏆</span>}
+        {st === "done" && <i className="ok"><Check /></i>}
+        {st === "lock" && <i className="lk"><Lock /></i>}
       </button>,
     );
     if (gold) out.push(<span key="fin" className="nlabel gold" style={{ left: x, top: y + 48 }}>Финал сезона</span>);
@@ -441,6 +447,8 @@ export function PathScreen({ deck, state, go, wide }: { deck: Deck; state: AppSt
   const [streakOpen, setStreakOpen] = useState(false);
   const streakSheet = streakOpen && <StreakSheet days={state.days} today={ls.today} go={go} part2={part2View} onClose={() => setStreakOpen(false)} />;
   const selCard = sel ? (sv.got.find((c) => c.pos === sel) ?? null) : null;
+  const selLesson = sel ? sv.progress.lessons[sel - 1].record : null;
+  const selectedBody = selCard ? <DoneBody card={selCard} go={go} /> : selLesson ? <MissedBody lesson={selLesson} go={go} /> : null;
   const [wrapRef, W0] = useWidth<HTMLDivElement>(wide ? 1152 : 390);
   const [popRef, popH] = useHeight<HTMLElement>(300, [wide]);
   const screen = useScreen();
@@ -467,13 +475,13 @@ export function PathScreen({ deck, state, go, wide }: { deck: Deck; state: AppSt
       {streakSheet}
     </>
   );
-  const meta = `Сезон ${sv.season} · урок ${sv.next} из ${SEASON}`;
+  const meta = `Сезон ${sv.season} · урок ${sv.nextLesson} из ${sv.progress.end}`;
 
   if (wide) {
     const W = Math.max(860, W0);
     const step = (W - 256) / 9;
     const geo: Geo = { W, H: 440, P: (n) => [128 + (n - 1) * step, YP_H[n - 1]] };
-    const [sx, sy] = selCard ? geo.P(sel!) : [0, 0];
+    const [sx, sy] = selLesson ? geo.P(sel!) : [0, 0];
     return (
       <div className="path-desk">
         <div className="dhead">
@@ -484,9 +492,9 @@ export function PathScreen({ deck, state, go, wide }: { deck: Deck; state: AppSt
         <div className="drink" ref={wrapRef} onClick={(e) => e.target === e.currentTarget && setSel(null)}>
           <RinkSvg geo={geo} cur={sv.next} season={sv.season} vertical={false} />
           <Marks geo={geo} sv={sv} sel={sel} onNode={toggle} go={go} vertical={false} />
-          {selCard && (
-            <section ref={selRef} className="card lesson-pop done-pop dpop" style={{ left: Math.min(Math.max(sx - 150, 8), W - 308), top: sy + 50, "--ax": `${sx - Math.min(Math.max(sx - 150, 8), W - 308) - 11}px` } as CSSProperties} aria-label={`Урок ${selCard.lesson}`}>
-              <DoneBody card={selCard} go={go} />
+          {selLesson && (
+            <section ref={selRef} className="card lesson-pop done-pop dpop" style={{ left: Math.min(Math.max(sx - 150, 8), W - 308), top: sy + 50, "--ax": `${sx - Math.min(Math.max(sx - 150, 8), W - 308) - 11}px` } as CSSProperties} aria-label={`Урок ${selLesson.no}`}>
+              {selectedBody}
             </section>
           )}
         </div>
@@ -530,7 +538,7 @@ export function PathScreen({ deck, state, go, wide }: { deck: Deck; state: AppSt
   const H = ys[1] + BOTTOM;
   const geo: Geo = { W, H, P: (n) => [W * XS_V[n - 1], ys[n]] };
   const [cx, cy] = geo.P(sv.next);
-  const [sx, sy] = selCard ? geo.P(sel!) : [0, 0];
+  const [sx, sy] = selLesson ? geo.P(sel!) : [0, 0];
   const first = sv.got[0]?.day ?? (sv.todayDone ? null : sv.day);
   // «Старт» — над нижней линией ворот (RinkSvg: H − 92), но не под пузырём, когда текущий урок — первый
   const startTop = Math.max(H - 92 - 44, sv.next === 1 ? cy + 62 + popH + 12 : 0);
@@ -548,9 +556,9 @@ export function PathScreen({ deck, state, go, wide }: { deck: Deck; state: AppSt
         <section ref={popRef} className="card lesson-pop" style={{ top: cy + 62, "--ax": `${cx - 16 - 11}px` } as CSSProperties} aria-label="Текущий урок">
           <CurrentBody cur={cur} go={go} />
         </section>
-        {selCard && (
-          <section ref={selRef} className="card lesson-pop done-pop" style={{ top: sy + 52, "--ax": `${sx - 16 - 11}px` } as CSSProperties} aria-label={`Урок ${selCard.lesson}`}>
-            <DoneBody card={selCard} go={go} />
+        {selLesson && (
+          <section ref={selRef} className="card lesson-pop done-pop" style={{ top: sy + 52, "--ax": `${sx - 16 - 11}px` } as CSSProperties} aria-label={`Урок ${selLesson.no}`}>
+            {selectedBody}
           </section>
         )}
         <div className="start-tag" style={{ top: startTop }}>{first ? `Старт · ${ruDay(first)}` : "Старт"}</div>

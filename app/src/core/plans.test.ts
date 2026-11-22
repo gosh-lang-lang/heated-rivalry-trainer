@@ -194,11 +194,11 @@ describe("темп новых слов", () => {
     expect(st.filter((s) => "rev" in s && s.rev).length).toBe(MAX_REVIEW);
   });
 
-  it("точность на повторениях: ниже 80% — один блок, выше 95% — на блок больше", () => {
+  it("точность на повторениях: ниже 80% — один блок, выше 95% — в пределах выбранного темпа", () => {
     const low = state({ days: { [TODAY]: day(15, 25) } });
     expect(reviewAccuracy(low, TODAY)).toMatchObject({ right: 15, total: 25 });
     expect(newToday(deck, low, TODAY).n).toBe(6);
-    expect(newToday(deck, state({ days: { "2026-11-19": day(24, 25) } }), TODAY).n).toBe(18);
+    expect(newToday(deck, state({ days: { "2026-11-19": day(24, 25) } }), TODAY).n).toBe(12);
     expect(newToday(deck, state({ days: { "2026-11-19": day(22, 25) } }), TODAY).n).toBe(12);
     // мало данных или старше недели — не учитываем
     expect(newToday(deck, state({ days: { "2026-11-19": day(5, 10) } }), TODAY).n).toBe(12);
