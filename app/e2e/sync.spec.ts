@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { afterMorning, NOW, openHome, openSettingsSection, readState, setup } from "./helpers";
+import { afterMorning, DECK, NOW, openHome, openSettingsSection, readState, setup } from "./helpers";
 
 /**
  * Прогресс живёт на сервере, браузер — только кэш (src/lib/sync.ts).
@@ -76,7 +76,7 @@ test("прогресс сброшен на сервере (progress:reset) — �
   const remote = { ...afterMorning(0), srs: {}, days: {}, upd: 10, reset: 10, settings: { newPerDay: 12, voice: "bf_emma" }, settingsAt: { voice: 3 } };
   const log = await setup(page, { state: { ...afterMorning(6), upd: 99 }, remote });
   await openHome(page);
-  await expect(page.locator(".legend")).toContainText("Новые62");
+  await expect(page.locator(".legend")).toContainText(`Новые${DECK.words.length}`);
   await expect(page.getByRole("button", { name: "0 дней подряд — подробнее о серии" })).toBeVisible();
   await expect.poll(async () => Object.keys((await readState(page)).srs).length).toBe(0);
   expect((await readState(page)).settings.voice).toBe("bf_emma");

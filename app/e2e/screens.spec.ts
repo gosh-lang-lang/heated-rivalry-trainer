@@ -2,13 +2,13 @@ import { expect, test } from "@playwright/test";
 import { afterMorning, DECK, goTab, MOCK_DEVICES, tabButton, openHome, openSettings, openSettingsSection, setup, state, TODAY, ws, type SettingsSectionTitle } from "./helpers";
 
 test.describe("главная", () => {
-  test("новый пользователь: приветствие, 62 новых слова, серия 0", async ({ page }) => {
+  test("новый пользователь: приветствие, все слова колоды — новые, серия 0", async ({ page }) => {
     await setup(page);
     await openHome(page);
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Доброе утро, Евгений");
     await expect(page.locator(".chip")).toContainText("0 дней");
-    await expect(page.locator(".legend")).toContainText("Новые62");
-    await expect(page.getByText("всего слов: 62")).toBeVisible();
+    await expect(page.locator(".legend")).toContainText(`Новые${DECK.words.length}`);
+    await expect(page.getByText(`всего слов: ${DECK.words.length}`)).toBeVisible();
   });
 
   for (const [time, text] of [

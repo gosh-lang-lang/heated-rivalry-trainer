@@ -10,6 +10,7 @@
  * art-inbox в git не попадает; результат — в git. Запускать из папки app.
  */
 import sharp from "sharp";
+import sources04 from "../src/core/word-art-04.sources.json" with { type: "json" };
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
@@ -104,6 +105,22 @@ async function reshape(png: Buffer, fix: { s?: number; sy?: number; at?: [number
 }
 
 async function build(id: string): Promise<ArtGen[string]> {
+  const flat = (sources04 as Record<string, { file: string; crop: number[] }>)[id];
+  if (flat && SCENES[id].src === flat.file) {
+    // Одобренная плоская сцена: один неподвижный фон, без имитации подвижных слоёв.
+    const file = join(INBOX, flat.file);
+    const meta = await sharp(file).metadata();
+    if (meta.width !== ART_CANVAS || meta.height !== ART_CANVAS) throw new Error(`${id}: ожидается 1024×1024`);
+    const dir = join(OUT, id);
+    mkdirSync(dir, { recursive: true });
+    const [left, top, width, height] = flat.crop;
+    const bg = await webp(sharp(file).resize(ART_EXPORT, ART_EXPORT).removeAlpha());
+    const list = await webp(sharp(file).extract({ left, top, width, height }).resize(ART_LIST, ART_LIST).removeAlpha(), 80);
+    const still = await webp(sharp(file).resize(ART_STILL, ART_STILL).removeAlpha());
+    for (const [name, buf] of [["bg", bg], ["list", list], ["still", still]] as const) writeFileSync(join(dir, `${name}.webp`), buf);
+    console.log(`${id}: статичная сцена, ${(bg.length / 1024).toFixed(1)} КБ`);
+    return { v: createHash("sha1").update(bg).update(list).update(still).digest("hex").slice(0, 8), bg: "#12306b", layers: [{ name: "bg", box: [0, 0, ART_CANVAS, ART_CANVAS] }] };
+  }
   const spec = SCENES[id];
   const srcDir = join(INBOX, spec.src);
   const src = (JSON.parse(readFileSync(join(srcDir, "layers.json"), "utf8")) as { scenes: Record<string, SourceScene> }).scenes[id];

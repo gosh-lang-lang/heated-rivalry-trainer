@@ -29,11 +29,11 @@ test.describe("слова по урокам", () => {
     await openHome(page);
     await goTab(page, "Слова");
     await expect(page.getByRole("heading", { level: 1, name: "Слова" })).toBeVisible();
-    await expect(page.locator(".whd-sub").first()).toHaveText("62 слова · знакомо 4");
+    await expect(page.locator(".whd-sub").first()).toHaveText(new RegExp(`^${DECK.words.length} слов\\S* · знакомо 4$`));
     await expect(page.getByRole("group", { name: "Уроки" }).locator(".s-t")).toHaveText(["Урок 2сегодня", "Урок 1"]);
     await expect(lessonRow(page, "Урок 2")).toContainText("20 ноября · знакомо 1 из 2");
     await expect(lessonRow(page, "Урок 1")).toContainText("19 ноября · знакомо 3 из 3");
-    await expect(lessonRow(page, "Впереди")).toContainText("придут в следующих уроках57");
+    await expect(lessonRow(page, "Впереди")).toContainText(`придут в следующих уроках${DECK.words.length - 5}`);
     await expect(lessonRow(page, "Трудные")).toContainText("4+ ошибок1");
   });
 
@@ -88,7 +88,7 @@ test.describe("слова по урокам", () => {
     await page.goBack();
     await expect(page.getByRole("heading", { level: 1, name: "Слова" })).toBeVisible();
     await lessonRow(page, "Впереди").click();
-    await expect(list(page, "Впереди").locator(".wrow")).toHaveCount(57);
+    await expect(list(page, "Впереди").locator(".wrow")).toHaveCount(DECK.words.length - 5);
     await page.getByRole("button", { name: "Назад: Слова" }).click();
     await expect(page.getByRole("heading", { level: 1, name: "Слова" })).toBeVisible();
   });

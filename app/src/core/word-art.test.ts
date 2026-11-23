@@ -3,6 +3,8 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import words from "../../../words.json";
 import gen from "./word-art.gen.json";
+import { ANIMATED_04 } from "./word-art-04-animated";
+import approvedSources from "./word-art-04.sources.json";
 import { ART_CANVAS, SCENES, artFrame, artUrl, boxStyle, checkArt, listCrop, toKeyframes, type ArtGen, type ArtSceneSpec } from "./word-art";
 
 const GEN = gen as unknown as ArtGen;
@@ -10,6 +12,16 @@ const IDS = words.words.map((w) => w.id);
 const PUBLIC = join(__dirname, "../../public");
 
 describe("сцены к словам: данные", () => {
+  it("новая партия: неподвижный фон и минимум две независимо движущиеся части", () => {
+    expect(Object.keys(ANIMATED_04).sort()).toEqual(Object.keys(approvedSources).sort());
+    for (const [id, spec] of Object.entries(ANIMATED_04)) {
+      expect(spec.motion.bg, `${id}: нельзя подменять действие движением камеры`).toBeUndefined();
+      expect(Object.keys(spec.motion).length, id).toBeGreaterThanOrEqual(2);
+      expect(GEN[id].layers.length, id).toBeGreaterThanOrEqual(3);
+      const bytes = GEN[id].layers.reduce((sum, layer) => sum + statSync(join(PUBLIC, "words", id, `${layer.name}.webp`)).size, 0);
+      expect(bytes, `${id}: новая сцена должна помещаться в 60 КБ`).toBeLessThanOrEqual(60 * 1024);
+    }
+  });
   it("описание, собранные слои и слова согласованы", () => {
     expect(checkArt(SCENES, GEN, IDS)).toEqual([]);
   });

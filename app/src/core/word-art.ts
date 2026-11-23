@@ -8,6 +8,8 @@
  * Новое слово: сцена в art-inbox → запись в SCENES → `node scripts/word-art.ts <id>`. Экраны не трогаем.
  */
 
+import sources04 from "./word-art-04.sources.json" with { type: "json" };
+import { ANIMATED_04 } from "./word-art-04-animated.ts";
 import { STAGE_05 } from "./word-art-05.ts";
 
 /** Координаты — в пикселях исходного холста сцены (1024×1024, начало сверху слева). */
@@ -368,7 +370,14 @@ const STAGE_03: Record<string, ArtSceneSpec> = {
   },
 };
 
-export const SCENES: Record<string, ArtSceneSpec> = { ...STAGE_03, ...STAGE_05 };
+/** Плоские сцены остаются неподвижными до замены настоящими слоями. */
+export const SCENES: Record<string, ArtSceneSpec> = {
+  ...STAGE_03, ...STAGE_05,
+  ...Object.fromEntries(Object.entries(sources04).map(([id, source]) => [id, {
+    src: source.file, dur: 4000, motion: {},
+  }])),
+  ...ANIMATED_04,
+};
 
 const pct = (n: number) => `${+n.toFixed(3)}%`;
 

@@ -1,0 +1,272 @@
+{
+  "giant": {
+    "file": "partia-04-heroes-v2/layers-b1/giant/word-giant-full-1024.png",
+    "crop": [
+      64,
+      128,
+      896,
+      896
+    ],
+    "status": "static-approved"
+  },
+  "defenseman": {
+    "file": "partia-04-heroes-v2/revisions-v3/defenseman/word-defenseman-full.png",
+    "crop": [
+      40,
+      104,
+      920,
+      920
+    ],
+    "status": "static-approved"
+  },
+  "hurl": {
+    "file": "partia-04-heroes-v2/layers-b1/hurl/word-hurl-full-1024.png",
+    "crop": [
+      20,
+      100,
+      900,
+      900
+    ],
+    "status": "static-approved"
+  },
+  "stick": {
+    "file": "partia-04-heroes-v2/layers-b1/stick/word-stick-full-1024.png",
+    "crop": [
+      220,
+      200,
+      600,
+      600
+    ],
+    "status": "static-approved"
+  },
+  "argue": {
+    "file": "partia-04-heroes-v2/layers-b1/argue/word-argue-full-1024.png",
+    "crop": [
+      140,
+      200,
+      760,
+      760
+    ],
+    "status": "static-approved"
+  },
+  "quietly": {
+    "file": "partia-04-heroes-v2/revisions-v3/quietly/word-quietly-full.png",
+    "crop": [
+      154,
+      154,
+      870,
+      870
+    ],
+    "status": "static-approved"
+  },
+  "flatly": {
+    "file": "partia-04-heroes-v2/layers-b1/flatly/word-flatly-full-1024.png",
+    "crop": [
+      140,
+      220,
+      720,
+      720
+    ],
+    "status": "static-approved"
+  },
+  "also": {
+    "file": "partia-04-heroes-v2/layers-b1/also/word-also-full-1024.png",
+    "crop": [
+      40,
+      124,
+      900,
+      900
+    ],
+    "status": "static-approved"
+  },
+  "own": {
+    "file": "partia-04-heroes-v2/layers-b2/own/word-own-full-1024.png",
+    "crop": [
+      300,
+      220,
+      400,
+      400
+    ],
+    "status": "static-approved"
+  },
+  "beloved": {
+    "file": "partia-04-heroes-v2/layers-b2/beloved/word-beloved-full-1024.png",
+    "crop": [
+      260,
+      130,
+      520,
+      520
+    ],
+    "status": "static-approved"
+  },
+  "disappointed": {
+    "file": "partia-04-heroes-v2/layers-b2/disappointed/word-disappointed-full-1024.png",
+    "crop": [
+      230,
+      160,
+      650,
+      650
+    ],
+    "status": "static-approved"
+  },
+  "devastated": {
+    "file": "partia-04-heroes-v2/layers-b2/devastated/word-devastated-full-1024.png",
+    "crop": [
+      100,
+      150,
+      870,
+      870
+    ],
+    "status": "static-approved"
+  },
+  "almost": {
+    "file": "partia-04-heroes-v2/layers-b2/almost/word-almost-full-1024.png",
+    "crop": [
+      240,
+      220,
+      650,
+      650
+    ],
+    "status": "static-approved"
+  },
+  "whatever": {
+    "file": "partia-04-heroes-v2/layers-b2/whatever/word-whatever-full-1024.png",
+    "crop": [
+      120,
+      150,
+      800,
+      800
+    ],
+    "status": "static-approved"
+  },
+  "consequences": {
+    "file": "partia-04-heroes-v2-next13/layers-b1/consequences/word-consequences-full.png",
+    "crop": [
+      210,
+      240,
+      600,
+      600
+    ],
+    "status": "static-approved"
+  },
+  "bludgeon": {
+    "file": "partia-04-heroes-v2-next13/layers-b1/bludgeon/word-bludgeon-full.png",
+    "crop": [
+      280,
+      230,
+      740,
+      740
+    ],
+    "status": "static-approved"
+  },
+  "smug": {
+    "file": "partia-04-heroes-v2-next13/layers-b1/smug/word-smug-full.png",
+    "crop": [
+      110,
+      280,
+      680,
+      680
+    ],
+    "status": "static-approved"
+  },
+  "satisfying": {
+    "file": "partia-04-heroes-v2-next13/layers-b1/satisfying/word-satisfying-full.png",
+    "crop": [
+      220,
+      230,
+      510,
+      510
+    ],
+    "status": "static-approved"
+  },
+  "glitch": {
+    "file": "partia-04-heroes-v2-next13/layers-b1/glitch/word-glitch-full.png",
+    "crop": [
+      35,
+      180,
+      830,
+      830
+    ],
+    "status": "static-approved"
+  },
+  "always": {
+    "file": "partia-04-heroes-v2-next13/layers-b1/always/word-always-full.png",
+    "crop": [
+      70,
+      100,
+      900,
+      900
+    ],
+    "status": "static-approved"
+  },
+  "specifically": {
+    "file": "partia-04-heroes-v2-next13/layers-b1/specifically/word-specifically-full.png",
+    "crop": [
+      240,
+      230,
+      580,
+      580
+    ],
+    "status": "static-approved"
+  },
+  "sweat-soaked": {
+    "file": "partia-04-heroes-v2-next13/layers-b1/sweat-soaked/word-sweat-soaked-full.png",
+    "crop": [
+      300,
+      250,
+      440,
+      440
+    ],
+    "status": "static-approved"
+  },
+  "undershirt": {
+    "file": "partia-04-heroes-v2-next13/layers-b2/undershirt/word-undershirt-full.png",
+    "crop": [
+      310,
+      240,
+      350,
+      350
+    ],
+    "status": "static-approved"
+  },
+  "semicircle": {
+    "file": "partia-04-heroes-v2-next13/layers-b2/semicircle/word-semicircle-full.png",
+    "crop": [
+      100,
+      150,
+      840,
+      840
+    ],
+    "status": "static-approved"
+  },
+  "form": {
+    "file": "partia-04-heroes-v2-next13/layers-b2/form/word-form-full.png",
+    "crop": [
+      150,
+      150,
+      750,
+      750
+    ],
+    "status": "static-approved"
+  },
+  "tiredly": {
+    "file": "partia-04-heroes-v2-next13/layers-b2/tiredly/word-tiredly-full.png",
+    "crop": [
+      150,
+      170,
+      760,
+      760
+    ],
+    "status": "static-approved"
+  },
+  "assume": {
+    "file": "partia-04-heroes-v2-next13/layers-b2/assume/word-assume-full.png",
+    "crop": [
+      75,
+      145,
+      870,
+      870
+    ],
+    "status": "static-approved"
+  }
+}
