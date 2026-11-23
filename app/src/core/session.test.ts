@@ -16,7 +16,7 @@ import {
   studiedIds,
 } from "./session";
 import { blankState } from "./srs";
-import { state, TODAY } from "./fixtures";
+import { deck, state, TODAY } from "./fixtures";
 import type { Step } from "./types";
 
 const steps: Step[] = [
@@ -191,11 +191,22 @@ describe("незаконченная часть урока: сохранить, 
 
   it("продолжить — с того же задания, счёт и прогресс не теряются", () => {
     const { st } = partway();
-    const r = resumable(st, "morning", TODAY, TODAY)!;
+    const r = resumable(st, "morning", TODAY, TODAY, deck)!;
     expect(runPosition(r)).toEqual({ n: 4, of: 5 });
     const s = restoreSession(r);
     expect(s.steps[s.i]).toMatchObject({ t: "build-listen" });
     expect([s.graded, s.right, s.first, s.newIds, s.t0]).toEqual([1, 1, [2], ["praise"], 1000]);
+  });
+
+  it.each<Step>([
+    { k: 5, t: "intro", w: "make-it-clear" },
+    { k: 5, t: "pairs", ws: ["praise", "make-it-clear"] },
+    { k: 5, t: "build-listen", en: "There was no avoiding the reporters after the game.", ru: "После игры репортёров было не избежать." },
+  ])("не предлагает продолжать часть с убранным материалом ($t)", (step) => {
+    const { st } = partway();
+    const run = { ...st.run!, steps: [...st.run!.steps, step] };
+    expect(resumable({ ...st, run }, "morning", TODAY, TODAY, deck)).toBeNull();
+    expect(st.srs.praise.lvl).toBeGreaterThan(0);
   });
 
   it("перерыв между уходом и «Продолжить» не идёт в минуты занятия", () => {
@@ -209,7 +220,7 @@ describe("незаконченная часть урока: сохранить, 
 
   it("ответ на последний шаг сохранён, «Дальше» не нажат — откроется последний шаг (не пустое занятие)", () => {
     const st = saveRun(state(), { ...startSession("morning", plan, 0)!, i: 4, first: [4] }, { ...o, at: 5 });
-    const s = restoreSession(resumable(st, "morning", TODAY, TODAY)!);
+    const s = restoreSession(resumable(st, "morning", TODAY, TODAY, deck)!);
     expect(s.i).toBe(4);
   });
 
@@ -217,7 +228,7 @@ describe("незаконченная часть урока: сохранить, 
     const { st } = partway(false); // ошибка — повтор «Выбери перевод» добавлен в конец
     expect(st.run!.steps).toHaveLength(6);
     const srsBefore = st.srs.praise;
-    let s = restoreSession(resumable(st, "morning", TODAY, TODAY)!, true);
+    let s = restoreSession(resumable(st, "morning", TODAY, TODAY, deck)!, true);
     expect(s.i).toBe(0);
     expect(s.steps).toHaveLength(5);
     expect(s.steps.some((x) => x.retry)).toBe(false);
@@ -237,20 +248,20 @@ describe("незаконченная часть урока: сохранить, 
 
   it("устаревание: начатая вчера часть не продолжается; другой вид, день урока или уже пройдена — тоже нет", () => {
     const { st } = partway();
-    expect(resumable(st, "morning", TODAY, TODAY)).not.toBeNull();
-    expect(resumable(st, "morning", "2026-11-21", "2026-11-21")).toBeNull(); // новый день — заново
-    expect(resumable({ ...st, run: { ...st.run!, date: "2026-11-19" } }, "morning", TODAY, TODAY)).toBeNull();
-    expect(resumable(st, "evening", TODAY, TODAY)).toBeNull();
-    expect(resumable(st, "morning", "2026-11-19", TODAY)).toBeNull();
+    expect(resumable(st, "morning", TODAY, TODAY, deck)).not.toBeNull();
+    expect(resumable(st, "morning", "2026-11-21", "2026-11-21", deck)).toBeNull(); // новый день — заново
+    expect(resumable({ ...st, run: { ...st.run!, date: "2026-11-19" } }, "morning", TODAY, TODAY, deck)).toBeNull();
+    expect(resumable(st, "evening", TODAY, TODAY, deck)).toBeNull();
+    expect(resumable(st, "morning", "2026-11-19", TODAY, deck)).toBeNull();
     const done = { ...st, days: { [TODAY]: { morning: { score: 1, total: 1, mins: 1, newN: 1, at: "" } } } };
-    expect(resumable(done, "morning", TODAY, TODAY)).toBeNull();
+    expect(resumable(done, "morning", TODAY, TODAY, deck)).toBeNull();
   });
 
   it("часть 2, перенесённая со вчера: день урока — вчера, начата сегодня — продолжается сегодня", () => {
     const ev = startSession("evening", [{ k: 0, t: "type", w: "praise", hint: false, eve: true }], 0)!;
     const st = saveRun(state(), ev, { day: "2026-11-19", date: TODAY, seed: 1 });
-    expect(resumable(st, "evening", "2026-11-19", TODAY)).not.toBeNull();
-    expect(resumable(st, "evening", TODAY, TODAY)).toBeNull();
+    expect(resumable(st, "evening", "2026-11-19", TODAY, deck)).not.toBeNull();
+    expect(resumable(st, "evening", TODAY, TODAY, deck)).toBeNull();
   });
 
   it("тренировка и «ещё 6 новых» не сохраняются; конец занятия убирает сохранённое", () => {

@@ -75,7 +75,7 @@ export function SessionScreen({ deck, kind, day, words, title, restart = false, 
   // незаконченная часть, начатая сегодня, продолжается (или начинается заново) из сохранённого; иначе — новый план
   const [init] = useState(() => {
     const t = todayKey();
-    const saved = savable(kind) ? resumable(state, kind, day ?? t, t) : null;
+    const saved = savable(kind) ? resumable(state, kind, day ?? t, t, deck) : null;
     if (saved) return { sess: restoreSession(saved, restart, state.runAt) as Session | null, seed: saved.seed, restarted: restart };
     const steps =
       kind === "drill"

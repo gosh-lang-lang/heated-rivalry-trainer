@@ -14,9 +14,9 @@ const count = (st: Step[], t: Step["t"]) => st.filter((s) => s.t === t).length;
 
 describe("words.json", () => {
   it("целостный", () => expect(validateDeck(deck)).toEqual([]));
-  it("22 редких слова из 112", () => expect(deck.words.filter((w) => w.rare).length).toBe(22));
-  it("112 слов, 5 партий, 34 фразы", () => {
-    expect([deck.words.length, deck.batches.length, deck.sentences.length]).toEqual([112, 5, 34]);
+  it("20 редких слов из 89", () => expect(deck.words.filter((w) => w.rare).length).toBe(20));
+  it("89 слов, 4 партии, 26 фраз", () => {
+    expect([deck.words.length, deck.batches.length, deck.sentences.length]).toEqual([89, 4, 26]);
   });
 });
 

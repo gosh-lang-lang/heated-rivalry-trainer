@@ -12,6 +12,9 @@ const IDS = words.words.map((w) => w.id);
 const PUBLIC = join(__dirname, "../../public");
 
 describe("сцены к словам: данные", () => {
+  it("в опубликованной колоде у каждой записи есть собранная сцена", () => {
+    expect(Object.keys(GEN).sort()).toEqual([...IDS].sort());
+  });
   it("новая партия: неподвижный фон и минимум две независимо движущиеся части", () => {
     expect(Object.keys(ANIMATED_04).sort()).toEqual(Object.keys(approvedSources).sort());
     for (const [id, spec] of Object.entries(ANIMATED_04)) {

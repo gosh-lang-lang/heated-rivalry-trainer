@@ -93,7 +93,7 @@ export const lessonStatus = (state: AppState, deck: Deck, now: Date = nowDate())
 
   const nt = newToday(deck, state, today);
   const m = days[today]?.morning ?? null;
-  const r1 = resumable(state, "morning", today, today);
+  const r1 = resumable(state, "morning", today, today, deck);
   const part1: LessonPart = {
     part: 1,
     n: lessonNo(days, today),
@@ -110,7 +110,7 @@ export const lessonStatus = (state: AppState, deck: Deck, now: Date = nowDate())
   const day2 = carry ?? today;
   const m2 = days[day2]?.morning ?? null;
   const e2 = days[day2]?.evening ?? null;
-  const r2 = resumable(state, "evening", day2, today);
+  const r2 = resumable(state, "evening", day2, today, deck);
   const can2 = !e2 && !!m2 && (!!r2 || eveningWords(deck, state.srs, day2).length > 0);
   const adv = can2 ? part2Advice(day2, m2, now) : null;
   const part2: LessonPart = {

@@ -1,7 +1,7 @@
 import { lessonNo } from "./curriculum";
 import { clockNow, nowDate } from "./dates";
 import { applyGrade, introduce } from "./srs";
-import type { AppState, SavedRun, SessionKind, SessionResult, Step } from "./types";
+import type { AppState, Deck, SavedRun, SessionKind, SessionResult, Step } from "./types";
 
 export interface Session {
   kind: SessionKind;
@@ -71,10 +71,16 @@ export const clearRun = (state: AppState, now = clockNow()): AppState =>
  * Сохранённая часть, которую можно продолжить: того же вида и дня урока, начатая сегодня (`today`) и ещё не пройденная.
  * С прошлого дня — нет: на новый день часть начинается заново (план строится по сегодняшним повторениям).
  */
-export const resumable = (state: AppState, kind: SessionKind, day: string, today: string): SavedRun | null => {
+export const resumable = (state: AppState, kind: SessionKind, day: string, today: string, deck: Deck): SavedRun | null => {
   const r = state.run;
   if (!r || r.kind !== kind || r.day !== day || r.date !== today) return null;
   if (state.days[day]?.[r.kind]) return null; // уже пройдена (например, на другом устройстве)
+  // После снятия материала с публикации строим новый план. Выученное остаётся в SRS.
+  for (const step of r.steps) {
+    if ("w" in step && step.w && !Object.hasOwn(deck.byId, step.w)) return null;
+    if (step.t === "pairs" && step.ws.some((id) => !Object.hasOwn(deck.byId, id))) return null;
+    if (step.t === "build-listen" && !step.w && !deck.sentences.some((s) => s.en === step.en)) return null;
+  }
   return r;
 };
 
