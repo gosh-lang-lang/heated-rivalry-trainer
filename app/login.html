@@ -2,7 +2,7 @@
 <html lang="ru">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
     <meta name="theme-color" content="#12306b" />
     <meta name="robots" content="noindex, nofollow" />
     <meta name="referrer" content="no-referrer" />
@@ -18,6 +18,7 @@
         --red:light-dark(#d9233a,#ff6b7c);--redSoft:light-dark(#fde6e9,#3a1a22);--ok:light-dark(#178a4c,#5ad48f);--okSoft:light-dark(#e1f5e9,#12301f)}
       *{box-sizing:border-box}
       html,body{margin:0;min-height:100%}
+      html{touch-action:pan-x pan-y}
       body{background:var(--bg);color:var(--ink);font:17px/1.5 Nunito,system-ui,sans-serif;min-height:100dvh;display:grid;grid-template-rows:auto 1fr}
       header{background:var(--navy);color:#fff;padding:28px 20px 84px;position:relative;overflow:hidden}
       header svg{position:absolute;right:-70px;top:-60px;width:260px;height:260px;opacity:.14}
